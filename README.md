@@ -1,190 +1,88 @@
-# 💪 GymConnect - Sistema para Personal Trainers
+# 💪 GymApp
 
-Conectando Personal Trainers e Alunos através de tecnologia moderna.
+Sistema profissional para Personal Trainers gerenciarem alunos, treinos e acompanhamento de evolução.
 
 ## 🚀 Tecnologias
 
 ### Frontend
-- React.js 18
-- TypeScript
+- React.js + TypeScript
 - Vite
 - TailwindCSS
 - Axios
 - React Router DOM
 
 ### Backend
-- Node.js
-- Express
-- TypeScript
+- Node.js + Express + TypeScript
 - Prisma ORM
+- PostgreSQL (Neon Database)
 - JWT Authentication
 - Bcrypt
 
-### Database
-- PostgreSQL (rodando fora do container)
-
 ### DevOps
-- Docker
-- Docker Compose
-
-## 📋 Funcionalidades
-
-### Personal Trainer
-- ✅ Cadastro e Login (email + senha)
-- ✅ Dashboard com lista de alunos
-- ✅ Cadastro de alunos com geração de código de acesso (5 dígitos)
-- ✅ Criação e edição de fichas de treino por dia
-- ✅ Definir dias da semana de treino
-- ✅ Acompanhamento de presença e evolução
-- ✅ Sistema de mensagens
-- ✅ Relatórios
-
-### Aluno
-- ✅ Acesso com código de 5 dígitos
-- ✅ Visualizar treino do dia
-- ✅ Marcar exercícios como concluídos
-- ✅ Histórico de treinos
-- ✅ Registro de evolução (peso, medidas)
-- ✅ Enviar mensagens ao Personal
-
-## 🛠️ Pré-requisitos
-
-- Node.js 18+
-- Docker e Docker Compose
-- PostgreSQL instalado localmente (rodando fora do container)
+- Docker + Docker Compose
 
 ## 📦 Instalação
 
-### 1. Clone o repositório
+### Requisitos
+- Node.js 18+
+- Docker & Docker Compose
+- PostgreSQL (ou usar Neon Database)
 
-```bash
-git clone <seu-repositorio>
-cd GymApp
-```
-
-### 2. Configure o PostgreSQL Local
-
-Certifique-se de que o PostgreSQL está rodando localmente:
-
-```sql
--- Criar o banco de dados
-CREATE DATABASE gymapp;
-```
-
-### 3. Configure as variáveis de ambiente
-
-```bash
-cp .env.example .env
-```
-
-Edite o arquivo `.env` com suas credenciais do PostgreSQL:
-
-```env
-DATABASE_URL="postgresql://seu_usuario:sua_senha@host.docker.internal:5432/gymapp?schema=public"
-JWT_SECRET=sua_chave_secreta_aqui
-```
-
-### 4. Instale as dependências
-
-```bash
-# Backend
-cd backend
-npm install
-
-# Frontend
-cd ../frontend
-npm install
-```
-
-### 5. Execute as migrations do Prisma
+### Backend
 
 ```bash
 cd backend
-npx prisma migrate dev
+npm install
 npx prisma generate
+npx prisma migrate dev
+npm run dev
 ```
 
-### 6. Inicie os containers Docker
+### Frontend
 
 ```bash
-# Na raiz do projeto
+cd frontend
+npm install
+npm run dev
+```
+
+### Docker
+
+```bash
 docker-compose up --build
 ```
 
-## 🌐 Acessando a aplicação
+## 🔧 Configuração
+
+1. Copie `.env.example` para `.env` na raiz do projeto
+2. Configure as variáveis de ambiente:
+   - `DATABASE_URL`: String de conexão PostgreSQL
+   - `JWT_SECRET`: Chave secreta para JWT
+3. Execute as migrações do Prisma
+
+## 📱 Funcionalidades
+
+### Para Personal Trainers
+- Dashboard com lista de alunos
+- Criar e gerenciar alunos
+- Criar fichas de treino personalizadas
+- Acompanhar evolução e progresso
+- Sistema de mensagens
+- Relatórios
+
+### Para Alunos
+- Login com código de 5 dígitos
+- Visualizar treino do dia
+- Marcar exercícios como concluídos
+- Registrar evolução (peso, medidas)
+- Enviar mensagens ao Personal
+
+## 🌐 Acesso
 
 - **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:3001
+- **Backend:** http://localhost:3001
+- **Prisma Studio:** `npx prisma studio`
 
-## 📱 Fluxo de Uso
+## 📄 Licença
 
-1. **Personal Trainer:**
-   - Acesse a tela de login
-   - Clique em "Cadastrar como Personal"
-   - Faça login com email e senha
-   - Cadastre alunos e gere códigos de acesso
-   - Crie treinos por dia da semana
-
-2. **Aluno:**
-   - Acesse a tela de login
-   - Escolha "Sou Aluno"
-   - Digite o código de 5 dígitos
-   - Acesse o treino do dia
-
-## 🗂️ Estrutura do Projeto
-
-```
-GymApp/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   ├── controllers/
-│   │   ├── middlewares/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── types/
-│   │   └── server.ts
-│   ├── prisma/
-│   │   └── schema.prisma
-│   ├── Dockerfile
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── contexts/
-│   │   ├── types/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
-## 🔧 Scripts Úteis
-
-```bash
-# Desenvolvimento (sem Docker)
-cd backend && npm run dev
-cd frontend && npm run dev
-
-# Docker
-docker-compose up          # Iniciar
-docker-compose down        # Parar
-docker-compose logs -f     # Ver logs
-
-# Prisma
-npx prisma studio          # Interface visual do banco
-npx prisma migrate dev     # Criar migration
-npx prisma generate        # Gerar client
-```
-
-## 📝 Licença
-
-MIT
+Projeto privado - Todos os direitos reservados
