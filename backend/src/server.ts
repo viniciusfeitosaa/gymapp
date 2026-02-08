@@ -38,6 +38,24 @@ app.use('/api/workouts', workoutRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/progress', progressRoutes);
 
+// Rota raiz - informações da API
+app.get('/', (req, res) => {
+  res.json({
+    name: 'GymApp API',
+    version: '1.0.0',
+    status: 'online',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      students: '/api/students',
+      workouts: '/api/workouts',
+      messages: '/api/messages',
+      progress: '/api/progress'
+    },
+    documentation: 'https://github.com/viniciusfeitosaa/gymapp'
+  });
+});
+
 // Rota de health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'GymConnect API is running!' });
