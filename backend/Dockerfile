@@ -37,6 +37,9 @@ COPY --from=builder /app/package*.json ./
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+# Ajustar permissões do diretório de trabalho
+RUN chown -R nodejs:nodejs /app
+
 USER nodejs
 
 # Expor porta
