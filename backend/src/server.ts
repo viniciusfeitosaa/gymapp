@@ -1,14 +1,24 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { authRoutes } from './routes/auth.routes';
 import { studentRoutes } from './routes/student.routes';
 import { workoutRoutes } from './routes/workout.routes';
 import { messageRoutes } from './routes/message.routes';
 import { progressRoutes } from './routes/progress.routes';
 
-// Carregar variáveis de ambiente
-dotenv.config();
+// Carregar variáveis de ambiente ANTES de qualquer outra coisa
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Verificar se DATABASE_URL está carregada
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERRO: DATABASE_URL não encontrada no arquivo .env');
+  process.exit(1);
+}
+
+console.log('✅ Variáveis de ambiente carregadas');
+console.log('✅ DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO ENCONTRADA');
 
 const app = express();
 const PORT = process.env.PORT || 3001;

@@ -3,6 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    @apply box-border;
+  }
+  
+  html, body {
+    @apply overflow-x-hidden;
+    @apply w-full;
+    @apply max-w-full;
+  }
+  
   body {
     @apply bg-gradient-to-br from-dark-900 via-dark-950 to-black;
     @apply font-sans text-slate-100;
@@ -20,22 +30,26 @@
   }
   
   .btn-primary {
-    @apply px-6 py-3 bg-gradient-accent text-white rounded-xl font-semibold shadow-medium hover:shadow-strong transform hover:-translate-y-0.5 transition-all duration-200;
+    @apply px-4 py-2 md:px-6 md:py-3 bg-gradient-accent text-white rounded-xl font-semibold shadow-medium hover:shadow-strong transform hover:-translate-y-0.5 transition-all duration-200 text-sm md:text-base;
   }
   
   .btn-secondary {
-    @apply px-6 py-3 bg-dark-800 text-white rounded-xl font-semibold shadow-soft hover:bg-dark-700 transform hover:-translate-y-0.5 transition-all duration-200;
+    @apply px-4 py-2 md:px-6 md:py-3 bg-dark-800 text-white rounded-xl font-semibold shadow-soft hover:bg-dark-700 transform hover:-translate-y-0.5 transition-all duration-200 text-sm md:text-base;
   }
   
   .input-modern {
-    @apply w-full px-4 py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-100/20 outline-none transition-all duration-200 placeholder:text-slate-500 text-white;
+    @apply w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-100/20 outline-none transition-all duration-200 placeholder:text-slate-500 text-white text-sm md:text-base;
   }
   
   .card-modern {
-    @apply bg-white rounded-2xl shadow-soft border border-slate-200 hover:shadow-medium transition-all duration-300;
+    @apply bg-white rounded-xl md:rounded-2xl shadow-soft border border-slate-200 hover:shadow-medium transition-all duration-300;
   }
   
   .gradient-text {
     @apply bg-gradient-accent bg-clip-text text-transparent;
+  }
+  
+  .container-responsive {
+    @apply w-full max-w-full px-4 sm:px-6 lg:px-8;
   }
 }
