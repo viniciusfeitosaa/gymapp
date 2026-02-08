@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Instalar dependências
-RUN npm ci --only=production
+# Instalar TODAS as dependências (incluindo devDependencies para o build)
+RUN npm ci
 
 # Copiar código fonte
 COPY . .
@@ -18,6 +18,9 @@ RUN npx prisma generate
 
 # Build TypeScript
 RUN npm run build
+
+# Instalar apenas dependências de produção para o stage final
+RUN npm ci --only=production
 
 # Production stage
 FROM node:18-alpine
