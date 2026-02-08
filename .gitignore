@@ -1,0 +1,133 @@
+# ==========================================
+# GYMCONNECT - .gitignore Seguro
+# ==========================================
+
+# ============ SEGURANÇA CRÍTICA ============
+# NUNCA commitar credenciais e secrets!
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+secrets.*
+credentials.*
+*secret*
+*password*
+*apikey*
+config/secrets/
+
+# ============ Node.js ============
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============ Build & Distribution ============
+dist/
+build/
+out/
+*.tsbuildinfo
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+
+# ============ Logs ============
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============ IDEs & Editors ============
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+
+# ============ Testing ============
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# ============ Database ============
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+prisma/migrations/**/migration.sql
+/prisma/migrations/**/*
+
+# ============ Temporary Files ============
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+.cache/
+
+# ============ OS Files ============
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============ Docker ============
+docker-compose.override.yml
+.dockerignore
+
+# ============ Git ============
+*.orig
+.git/
+
+# ============ Backups ============
+*.backup
+*.bak
+*~
+
+# ============ Sensitive Data ============
+# Certificados SSL
+*.crt
+*.key
+*.pem
+
+# Dados pessoais
+/uploads/
+/storage/
+
+# Tokens e Keys
+.aws/
+.gcloud/
+.azure/
+
+# ============ Performance ============
+.eslintcache
+.stylelintcache

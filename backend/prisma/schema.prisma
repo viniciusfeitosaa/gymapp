@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para Personal Trainers
+model PersonalTrainer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  cref      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  students  Student[]
+  messages  Message[]
+
+  @@map("personal_trainers")
+}
+
+// Modelo para Alunos
+model Student {
+  id              String   @id @default(uuid())
+  name            String
+  accessCode      String   @unique // Código de 5 dígitos
+  phone           String?
+  email           String?
+  birthDate       DateTime?
+  weight          Float?
+  height          Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Dias de treino (Segunda, Terça, etc)
+  trainingDays    String[] // ['MONDAY', 'WEDNESDAY', 'FRIDAY']
+
+  // Relacionamentos
+  personalTrainerId String
+  personalTrainer   PersonalTrainer @relation(fields: [personalTrainerId], references: [id], onDelete: Cascade)
+
+  workouts          Workout[]
+  workoutLogs       WorkoutLog[]
+  progressRecords   ProgressRecord[]
+  messages          Message[]
+
+  @@map("students")
+}
+
+// Modelo para Treinos (Ficha de Treino)
+model Workout {
+  id          String   @id @default(uuid())
+  name        String   // Ex: "Treino A - Peito e Tríceps"
+  dayOfWeek   String   // 'MONDAY', 'TUESDAY', etc
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  studentId   String
+  student     Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  exercises   Exercise[]
+  workoutLogs WorkoutLog[]
+
+  @@map("workouts")
+}
+
+// Modelo para Exercícios
+model Exercise {
+  id          String  @id @default(uuid())
+  name        String  // Ex: "Supino Reto"
+  sets        Int     // Número de séries
+  reps        String  // Ex: "12", "10-12", "até a falha"
+  rest        String? // Tempo de descanso
+  weight      String? // Peso utilizado
+  notes       String? // Observações
+  order       Int     // Ordem do exercício no treino
+  
+  // Relacionamentos
+  workoutId   String
+  workout     Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  exerciseLogs ExerciseLog[]
+
+  @@map("exercises")
+}
+
+// Modelo para Registro de Treino Completado
+model WorkoutLog {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  completed   Boolean  @default(false)
+  duration    Int?     // Duração em minutos
+  notes       String?
+
+  // Relacionamentos
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  workoutId   String
+  workout     Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  exerciseLogs ExerciseLog[]
+
+  @@map("workout_logs")
+}
+
+// Modelo para Registro de Exercício Completado
+model ExerciseLog {
+  id          String  @id @default(uuid())
+  completed   Boolean @default(false)
+  setsCompleted Int   @default(0)
+  weightUsed  String?
+  notes       String?
+
+  // Relacionamentos
+  workoutLogId String
+  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+
+  exerciseId   String
+  exercise     Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_logs")
+}
+
+// Modelo para Registro de Evolução (Peso, Medidas)
+model ProgressRecord {
+  id        String   @id @default(uuid())
+  date      DateTime @default(now())
+  weight    Float?
+  bodyFat   Float?
+  muscleMass Float?
+  
+  // Medidas em cm
+  chest     Float?
+  waist     Float?
+  hip       Float?
+  arm       Float?
+  thigh     Float?
+  calf      Float?
+  
+  notes     String?
+  photoUrl  String?
+
+  // Relacionamentos
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("progress_records")
+}
+
+// Modelo para Mensagens
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Remetente
+  fromPersonal Boolean // true = Personal enviou, false = Aluno enviou
+
+  // Relacionamentos
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  personalTrainerId String
+  personalTrainer   PersonalTrainer @relation(fields: [personalTrainerId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
