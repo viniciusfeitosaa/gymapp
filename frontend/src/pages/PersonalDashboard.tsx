@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Users, Dumbbell, MessageSquare, TrendingUp, BarChart3, User, Plus } from 'lucide-react';
+import { LogOut, Users, Dumbbell, MessageSquare, TrendingUp, BarChart3, Plus } from 'lucide-react';
 
 export default function PersonalDashboard() {
   const { user, logout } = useAuth();
