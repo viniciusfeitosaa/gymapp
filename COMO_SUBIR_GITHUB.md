@@ -15,7 +15,7 @@ Execute os comandos abaixo no PowerShell (dentro desta pasta):
 # Adicionar o remote do GitHub
 git remote add origin https://github.com/viniciusfeitosaa/GymApp.git
 
-# Fazer push
+# Fazer pushh
 git push -u origin main
 ```
 
