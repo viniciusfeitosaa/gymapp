@@ -1,0 +1,30 @@
+services:
+  # Backend API
+  - type: web
+    name: gymapp-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile.production
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+    autoDeploy: true
+    branch: main
+
+databases:
+  # Caso queira usar PostgreSQL do Render ao invés do Neon
+  # - name: gymapp-db
+  #   databaseName: gymapp
+  #   user: gymapp
+  #   plan: free
