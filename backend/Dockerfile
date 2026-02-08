@@ -25,6 +25,9 @@ RUN npm ci --only=production
 # Production stage
 FROM node:18-alpine
 
+# Instalar OpenSSL e dependências do Prisma
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /app
 
 # Copiar node_modules do builder
