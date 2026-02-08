@@ -24,8 +24,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigin = frontendUrl.replace(/\/$/, ''); // Remove barra final se existir
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigin,
   credentials: true
 }));
 app.use(express.json());
