@@ -17,7 +17,7 @@ export default function PersonalDashboard() {
               </div>
               <div>
                 <h1 className="text-lg md:text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
-                  GymConnect
+                  GymCode
                 </h1>
                 <p className="text-[10px] md:text-xs text-slate-500 font-medium">Painel do Personal Trainer</p>
               </div>

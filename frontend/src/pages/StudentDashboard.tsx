@@ -17,7 +17,7 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
-                  GymConnect
+                  GymCode
                 </h1>
                 <p className="text-xs text-slate-500 font-medium">Meus Treinos</p>
               </div>

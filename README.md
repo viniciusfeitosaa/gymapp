@@ -1,4 +1,4 @@
-# 💪 GymApp
+# 💪 Gym Code
 
 Sistema profissional para Personal Trainers gerenciarem alunos, treinos e acompanhamento de evolução.
 

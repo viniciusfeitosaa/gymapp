@@ -44,7 +44,7 @@ app.use('/api/progress', progressRoutes);
 // Rota raiz - informações da API
 app.get('/', (req, res) => {
   res.json({
-    name: 'GymApp API',
+    name: 'Gym Code API',
     version: '1.0.0',
     status: 'online',
     endpoints: {
@@ -61,7 +61,7 @@ app.get('/', (req, res) => {
 
 // Rota de health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'GymConnect API is running!' });
+  res.json({ status: 'ok', message: 'Gym Code API is running!' });
 });
 
 // Tratamento de erros

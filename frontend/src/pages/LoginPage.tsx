@@ -51,7 +51,7 @@ export default function LoginPage() {
                 <Dumbbell className="w-7 h-7 md:w-10 md:h-10 text-white" />
               </div>
               <h1 className="text-2xl md:text-4xl font-display font-bold text-white mb-2 md:mb-3">
-                Gym<span className="bg-gradient-accent bg-clip-text text-transparent">Connect</span>
+                Gym<span className="bg-gradient-accent bg-clip-text text-transparent">Code</span>
               </h1>
               <p className="text-slate-300 text-sm md:text-lg">Conectando Personal Trainers e Alunos</p>
               <div className="flex items-center justify-center gap-2 mt-3 md:mt-4">
@@ -122,7 +122,7 @@ export default function LoginPage() {
               onClick={() => setUserType(null)}
               className="text-xs md:text-sm text-accent-400 hover:text-accent-300 font-medium transition-colors inline-flex items-center gap-1"
             >
-              ← Voltar para GymConnect
+              ← Voltar para Gym Code
             </button>
           </div>
 

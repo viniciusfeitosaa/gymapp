@@ -71,7 +71,7 @@ export default function RegisterPage() {
               <Dumbbell className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-display font-bold text-white mb-2">Cadastro Personal</h1>
-            <p className="text-slate-300">Crie sua conta no GymConnect</p>
+            <p className="text-slate-300">Crie sua conta no Gym Code</p>
           </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
