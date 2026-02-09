@@ -24,11 +24,27 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-const allowedOrigin = frontendUrl.replace(/\/$/, ''); // Remove barra final se existir
+const allowedOrigins = [
+  'https://mygymcode.com',
+  'https://www.mygymcode.com',
+  'https://letsgym.netlify.app',
+  'http://localhost:5173' // Para desenvolvimento
+];
 
 app.use(cors({
-  origin: allowedOrigin,
+  origin: (origin, callback) => {
+    // Permitir requisições sem origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    
+    // Remover barra final se existir
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
