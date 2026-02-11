@@ -3,7 +3,7 @@ import confetti from 'canvas-confetti';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Dumbbell, Calendar, TrendingUp, MessageSquare, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
+import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
 
 interface Exercise {
   id?: string;
@@ -359,16 +359,6 @@ function StudentDashboardHome({
     const t = setTimeout(run, 300);
     return () => clearTimeout(t);
   }, [todayCompleted, todayWorkout]);
-
-  const dayLabels: { [key: string]: string } = {
-    MONDAY: 'Segunda-feira',
-    TUESDAY: 'Terça-feira',
-    WEDNESDAY: 'Quarta-feira',
-    THURSDAY: 'Quinta-feira',
-    FRIDAY: 'Sexta-feira',
-    SATURDAY: 'Sábado',
-    SUNDAY: 'Domingo',
-  };
 
   const personalPhone = user?.personalTrainer?.phone;
   const whatsappUrl = personalPhone
@@ -1181,7 +1171,7 @@ function StudentPerfilPage() {
                 <div className="bg-dark-50 rounded-lg p-4">
                   <p className="text-sm text-dark-500 mb-1">Código de acesso</p>
                   <p className="text-dark-900 font-semibold text-lg tracking-wider">
-                    {profile?.accessCode ?? (display as StudentProfile)?.accessCode}
+                    {profile?.accessCode ?? display?.accessCode}
                   </p>
                 </div>
               )}
@@ -1247,14 +1237,3 @@ function StudentPerfilPage() {
   );
 }
 
-function QuickActionCard({ icon, title, description, gradient }: any) {
-  return (
-    <button className="card-modern p-6 text-left group hover:scale-105 transition-all duration-300 w-full">
-      <div className={`bg-gradient-to-br ${gradient} text-white p-3.5 rounded-xl inline-flex mb-4 shadow-medium group-hover:scale-110 transition-transform duration-300`}>
-        {icon}
-      </div>
-      <h3 className="text-lg font-display font-bold text-dark-900 mb-2">{title}</h3>
-      <p className="text-sm text-dark-500">{description}</p>
-    </button>
-  );
-}

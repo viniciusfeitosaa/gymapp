@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, MessageSquare, BarChart3, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle } from 'lucide-react';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
 
 interface Student {
@@ -186,7 +186,6 @@ function DashboardHome() {
   // Calcular estatísticas
   const totalAlunos = students.length;
   const totalTreinos = 0; // TODO: Implementar quando tiver endpoint de treinos
-  const taxaConclusao = 0; // TODO: Calcular baseado em dados reais
 
   if (loading) {
     return (
@@ -487,39 +486,6 @@ function AlunosPage() {
         />
       )}
     </div>
-  );
-}
-
-function StatCard({ icon, title, value, subtitle, gradient }: any) {
-  return (
-    <div className="card-modern p-3 md:p-6 group hover:scale-105 transition-transform duration-300">
-      <div className="flex items-start justify-between mb-3 md:mb-4">
-        <div>
-          <p className="text-[10px] md:text-sm text-dark-500 font-medium mb-0.5 md:mb-1">{title}</p>
-          <p className="text-2xl md:text-4xl font-display font-bold text-dark-900">{value}</p>
-          <p className="text-[10px] md:text-xs text-dark-400 mt-0.5 md:mt-1">{subtitle}</p>
-        </div>
-        <div className={`bg-gradient-to-br ${gradient} text-white p-2 md:p-3 rounded-lg md:rounded-xl shadow-medium group-hover:scale-110 transition-transform duration-300`}>
-          {icon}
-        </div>
-      </div>
-      <div className="h-0.5 md:h-1 bg-gradient-to-r from-dark-100 to-transparent rounded-full"></div>
-    </div>
-  );
-}
-
-function QuickActionCard({ icon, title, description, gradient, onClick }: any) {
-  return (
-    <button 
-      onClick={onClick}
-      className="card-modern p-4 md:p-6 text-left group hover:scale-105 transition-all duration-300 w-full"
-    >
-      <div className={`bg-gradient-to-br ${gradient} text-white p-2.5 md:p-3.5 rounded-lg md:rounded-xl inline-flex mb-3 md:mb-4 shadow-medium group-hover:scale-110 transition-transform duration-300`}>
-        {icon}
-      </div>
-      <h3 className="text-sm md:text-lg font-display font-bold text-dark-900 mb-1 md:mb-2">{title}</h3>
-      <p className="text-xs md:text-sm text-dark-500">{description}</p>
-    </button>
   );
 }
 
@@ -1316,50 +1282,6 @@ function PerfilPage() {
               Sair da Conta
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WorkoutCard({ workout, onDelete }: { workout: Workout; onDelete: () => void }) {
-  const dayLabels: { [key: string]: string } = {
-    MONDAY: 'Segunda',
-    TUESDAY: 'Terça',
-    WEDNESDAY: 'Quarta',
-    THURSDAY: 'Quinta',
-    FRIDAY: 'Sexta',
-    SATURDAY: 'Sábado',
-    SUNDAY: 'Domingo',
-  };
-
-  return (
-    <div className="card-modern p-4 md:p-6 hover:shadow-strong transition-all duration-300 relative">
-      <button
-        onClick={onDelete}
-        className="absolute top-3 right-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        title="Excluir treino"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
-      
-      <div className="mb-4 pr-8">
-        <h4 className="text-lg font-bold text-dark-900 mb-2">{workout.name}</h4>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded">
-            {dayLabels[workout.dayOfWeek]}
-          </span>
-          {workout.isActive && (
-            <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded">
-              Ativo
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-dark-500 mb-3">{workout.description || 'Sem descrição'}</p>
-        
-        <div className="flex items-center gap-2 text-sm text-dark-600">
-          <Dumbbell className="w-4 h-4" />
-          <span>{workout.exercises?.length || 0} exercícios</span>
         </div>
       </div>
     </div>
