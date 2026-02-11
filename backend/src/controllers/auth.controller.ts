@@ -19,8 +19,59 @@ const loginPersonalSchema = z.object({
 });
 
 const loginStudentSchema = z.object({
-  accessCode: z.string().length(5, 'Código deve ter 5 dígitos'),
+  accessCode: z.string().length(5, 'Código deve ter 5 caracteres (4 números + 1 letra)'),
 });
+
+// Bloqueio após 2 tentativas erradas: 5 minutos
+const MAX_LOGIN_ATTEMPTS = 2;
+const LOCKOUT_MINUTES = 5;
+const LOCKOUT_MS = LOCKOUT_MINUTES * 60 * 1000;
+
+type LockoutEntry = { count: number; blockedUntil: number };
+const loginLockout = new Map<string, LockoutEntry>();
+
+function normalizeIp(ip: string | undefined): string {
+  if (!ip) return 'unknown';
+  const trimmed = ip.trim();
+  if (trimmed === '::1' || trimmed === '::ffff:127.0.0.1') return '127.0.0.1';
+  if (trimmed.startsWith('::ffff:')) return trimmed.slice(7);
+  return trimmed;
+}
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return normalizeIp(forwarded.split(',')[0]?.trim());
+  }
+  const ip = req.ip ?? (req as any).socket?.remoteAddress ?? (req as any).connection?.remoteAddress;
+  return normalizeIp(ip);
+}
+
+function isLockedOut(key: string): { locked: boolean; remainingMs?: number } {
+  const entry = loginLockout.get(key);
+  if (!entry) return { locked: false };
+  if (Date.now() < entry.blockedUntil) {
+    return { locked: true, remainingMs: entry.blockedUntil - Date.now() };
+  }
+  loginLockout.delete(key);
+  return { locked: false };
+}
+
+function recordFailedAttempt(key: string): void {
+  const entry = loginLockout.get(key);
+  const now = Date.now();
+  if (!entry) {
+    loginLockout.set(key, { count: 1, blockedUntil: 0 });
+    return;
+  }
+  const count = entry.count + 1;
+  const blockedUntil = count >= MAX_LOGIN_ATTEMPTS ? now + LOCKOUT_MS : 0;
+  loginLockout.set(key, { count, blockedUntil });
+}
+
+function clearLockout(key: string): void {
+  loginLockout.delete(key);
+}
 
 export class AuthController {
   // Cadastro de Personal Trainer
@@ -84,6 +135,16 @@ export class AuthController {
   async loginPersonal(req: Request, res: Response) {
     try {
       const data = loginPersonalSchema.parse(req.body);
+      const lockKey = `personal:${data.email.toLowerCase()}`;
+
+      const lock = isLockedOut(lockKey);
+      if (lock.locked && lock.remainingMs !== undefined) {
+        const minutes = Math.ceil(lock.remainingMs / 60000);
+        return res.status(429).json({
+          error: 'Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.',
+          lockoutMinutes: minutes,
+        });
+      }
 
       // Buscar Personal Trainer
       const personal = await prisma.personalTrainer.findUnique({
@@ -91,15 +152,19 @@ export class AuthController {
       });
 
       if (!personal) {
-        return res.status(401).json({ error: 'Email ou senha incorretos' });
+        recordFailedAttempt(lockKey);
+        return res.status(400).json({ error: 'Email ou senha incorretos' });
       }
 
       // Verificar senha
       const validPassword = await bcrypt.compare(data.password, personal.password);
 
       if (!validPassword) {
-        return res.status(401).json({ error: 'Email ou senha incorretos' });
+        recordFailedAttempt(lockKey);
+        return res.status(400).json({ error: 'Email ou senha incorretos' });
       }
+
+      clearLockout(lockKey);
 
       // Gerar token JWT
       const token = jwt.sign(
@@ -128,14 +193,25 @@ export class AuthController {
     }
   }
 
-  // Login de Aluno (com código de 5 dígitos)
+  // Login de Aluno (código: 4 números + 1 letra maiúscula)
   async loginStudent(req: Request, res: Response) {
     try {
       const data = loginStudentSchema.parse(req.body);
+      const ip = getClientIp(req);
+      const lockKey = `student:${ip}`;
+
+      const lock = isLockedOut(lockKey);
+      if (lock.locked && lock.remainingMs !== undefined) {
+        const minutes = Math.ceil(lock.remainingMs / 60000);
+        return res.status(429).json({
+          error: 'Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.',
+          lockoutMinutes: minutes,
+        });
+      }
 
       // Buscar aluno pelo código
       const student = await prisma.student.findUnique({
-        where: { accessCode: data.accessCode },
+        where: { accessCode: data.accessCode.toUpperCase() },
         include: {
           personalTrainer: {
             select: {
@@ -148,8 +224,11 @@ export class AuthController {
       });
 
       if (!student) {
-        return res.status(401).json({ error: 'Código inválido' });
+        recordFailedAttempt(lockKey);
+        return res.status(400).json({ error: 'Código inválido' });
       }
+
+      clearLockout(lockKey);
 
       // Gerar token JWT
       const token = jwt.sign(

@@ -40,6 +40,30 @@
   .input-modern {
     @apply w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-100/20 outline-none transition-all duration-200 placeholder:text-slate-500 text-white text-sm md:text-base;
   }
+
+  .select-modern {
+    @apply w-full px-4 py-3.5 md:px-5 md:py-4 bg-white border-2 border-dark-200 rounded-xl text-dark-900 font-medium text-sm md:text-base cursor-pointer outline-none transition-all duration-200;
+    @apply hover:border-primary-300 focus:border-accent-500 focus:ring-4 focus:ring-accent-100/30;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    padding-right: 2.75rem;
+  }
+
+  .select-modern option {
+    @apply py-2.5 px-3 font-medium text-dark-800;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    background-color: #fff;
+    color: #1e293b;
+  }
+
+  .select-modern option[value=""] {
+    @apply text-slate-500;
+  }
   
   .card-modern {
     @apply bg-white rounded-xl md:rounded-2xl shadow-soft border border-slate-200 hover:shadow-medium transition-all duration-300;

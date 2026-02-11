@@ -22,9 +22,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginAttempt = error.config?.url?.includes('login');
+
+    if (error.response?.status === 401 && !isLoginAttempt) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('userType');
       window.location.href = '/login';
     }
     return Promise.reject(error);

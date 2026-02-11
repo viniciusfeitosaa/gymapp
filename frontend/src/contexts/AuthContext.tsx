@@ -32,35 +32,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, type: UserType) => {
-    try {
-      const response = await api.post(`/auth/${type}/login`, { email, password });
-      const { user: userData, token } = response.data;
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('userType', type);
-
-      setUser(userData);
-      setUserType(type);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Erro ao fazer login');
+    const response = await api.post(`/auth/${type}/login`, { email, password }, {
+      validateStatus: (status) => status < 500,
+    });
+    if (response.status === 400 || response.status === 429) {
+      throw new Error(response.data?.error || 'Erro ao fazer login');
     }
+    const { user: userData, token } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('userType', type);
+    setUser(userData);
+    setUserType(type);
   };
 
   const loginStudent = async (accessCode: string) => {
-    try {
-      const response = await api.post('/auth/student/login', { accessCode });
-      const { user: userData, token } = response.data;
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('userType', 'student');
-
-      setUser(userData);
-      setUserType('student');
-    } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Código inválido');
+    const response = await api.post('/auth/student/login', { accessCode }, {
+      validateStatus: (status) => status < 500,
+    });
+    if (response.status === 400 || response.status === 429) {
+      throw new Error(response.data?.error || 'Código inválido');
     }
+    const { user: userData, token } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('userType', 'student');
+    setUser(userData);
+    setUserType('student');
   };
 
   const logout = () => {

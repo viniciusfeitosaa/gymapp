@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Dumbbell, User, Lock, Sparkles } from 'lucide-react';
+
+const STUDENT_LOCKOUT_MINUTES = 5;
+const STUDENT_LOCKOUT_MS = STUDENT_LOCKOUT_MINUTES * 60 * 1000;
+const STUDENT_BLOCKED_UNTIL_KEY = 'studentLoginBlockedUntil';
+const MAX_STUDENT_ATTEMPTS = 2;
 
 export default function LoginPage() {
   const [userType, setUserType] = useState<'personal' | 'student' | null>(null);
@@ -10,9 +15,41 @@ export default function LoginPage() {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [failedStudentAttempts, setFailedStudentAttempts] = useState(0);
+  const [studentBlockedUntil, setStudentBlockedUntil] = useState<number | null>(null);
 
   const { login, loginStudent } = useAuth();
   const navigate = useNavigate();
+
+  const isStudentBlocked =
+    studentBlockedUntil !== null && Date.now() < studentBlockedUntil;
+
+  useEffect(() => {
+    if (userType !== 'student') return;
+    const stored = sessionStorage.getItem(STUDENT_BLOCKED_UNTIL_KEY);
+    if (!stored) return;
+    const until = Number(stored);
+    if (until > Date.now()) {
+      setStudentBlockedUntil(until);
+      setError('Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.');
+    } else {
+      sessionStorage.removeItem(STUDENT_BLOCKED_UNTIL_KEY);
+      setStudentBlockedUntil(null);
+    }
+  }, [userType]);
+
+  useEffect(() => {
+    if (!studentBlockedUntil || studentBlockedUntil <= Date.now()) return;
+    const t = setInterval(() => {
+      if (Date.now() >= studentBlockedUntil) {
+        setStudentBlockedUntil(null);
+        setError('');
+        sessionStorage.removeItem(STUDENT_BLOCKED_UNTIL_KEY);
+        clearInterval(t);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [studentBlockedUntil]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,13 +59,32 @@ export default function LoginPage() {
     try {
       if (userType === 'personal') {
         await login(email, password, 'personal');
-        navigate('/personal/dashboard');
+        navigate('/personal/home');
       } else if (userType === 'student') {
+        if (isStudentBlocked) {
+          setError('Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.');
+          setLoading(false);
+          return;
+        }
         await loginStudent(accessCode);
+        setFailedStudentAttempts(0);
+        setStudentBlockedUntil(null);
+        sessionStorage.removeItem(STUDENT_BLOCKED_UNTIL_KEY);
         navigate('/student/dashboard');
       }
     } catch (err: any) {
-      setError(err.message);
+      const message = err?.message || 'Código inválido';
+      setError(message);
+      if (userType === 'student') {
+        const nextAttempts = failedStudentAttempts + 1;
+        setFailedStudentAttempts(nextAttempts);
+        if (nextAttempts >= MAX_STUDENT_ATTEMPTS) {
+          const until = Date.now() + STUDENT_LOCKOUT_MS;
+          setStudentBlockedUntil(until);
+          sessionStorage.setItem(STUDENT_BLOCKED_UNTIL_KEY, String(until));
+          setError('Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.');
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -118,17 +174,26 @@ export default function LoginPage() {
             <h1 className="text-xl md:text-3xl font-display font-bold text-white mb-2">
               {userType === 'personal' ? 'Área do Personal' : 'Área do Aluno'}
             </h1>
-            <button
-              onClick={() => setUserType(null)}
-              className="text-xs md:text-sm text-accent-400 hover:text-accent-300 font-medium transition-colors inline-flex items-center gap-1"
-            >
-              ← Voltar para Gym Code
-            </button>
+            {!(userType === 'student' && error) && (
+              <button
+                type="button"
+                onClick={() => setUserType(null)}
+                className="text-xs md:text-sm text-accent-400 hover:text-accent-300 font-medium transition-colors inline-flex items-center gap-1"
+              >
+                ← Voltar para Gym Code
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-2 md:px-4 md:py-3 rounded-xl backdrop-blur-sm text-xs md:text-sm">
+            {error && !(userType === 'student' && (error.includes('Aguarde') || isStudentBlocked)) && (
+              <div
+                className={`px-3 py-2 md:px-4 md:py-3 rounded-xl backdrop-blur-sm text-xs md:text-sm ${
+                  error.includes('Aguarde')
+                    ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+                    : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                }`}
+              >
                 {error}
               </div>
             )}
@@ -169,6 +234,14 @@ export default function LoginPage() {
                   </div>
                 </div>
               </>
+            ) : (error.includes('Aguarde') || isStudentBlocked) ? (
+              <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/10 p-4 md:p-5 text-center">
+                <p className="text-sm font-semibold text-amber-400 mb-1">Acesso bloqueado</p>
+                <p className="text-xs text-amber-200/90">
+                  {error || 'Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.'}
+                </p>
+                <p className="text-xs text-slate-500 mt-2">Tente novamente em 5 minutos.</p>
+              </div>
             ) : (
               <div>
                 <label className="block text-xs md:text-sm font-semibold text-dark-200 mb-2 text-center">
@@ -177,19 +250,22 @@ export default function LoginPage() {
                 <input
                   type="text"
                   value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  className="w-full px-3 md:px-4 py-3 md:py-4 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none text-center text-2xl md:text-3xl font-bold tracking-[0.3em] md:tracking-[0.5em] text-white placeholder:text-slate-600 placeholder:tracking-[0.3em] md:placeholder:tracking-[0.5em]"
-                  placeholder="00000"
+                  onChange={(e) => setAccessCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
+                  className="w-full px-3 md:px-4 py-3 md:py-4 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none text-center text-2xl md:text-3xl font-bold tracking-[0.2em] md:tracking-[0.4em] text-white placeholder:text-slate-600 placeholder:tracking-[0.2em] md:placeholder:tracking-[0.4em]"
+                  placeholder="A1234"
                   maxLength={5}
                   required
                 />
-                <p className="text-xs text-slate-400 text-center mt-2">Digite os 5 dígitos fornecidos pelo seu Personal</p>
+                <p className="text-xs text-slate-400 text-center mt-2">4 números + 1 letra maiúscula (ex: A1234)</p>
+                {error && (
+                  <p className="text-xs text-slate-500 text-center mt-1">Tentativas são contadas por dispositivo. Após 2 erros, bloqueio de 5 minutos.</p>
+                )}
               </div>
             )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (userType === 'student' && (error.includes('Aguarde') || isStudentBlocked))}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {loading ? (

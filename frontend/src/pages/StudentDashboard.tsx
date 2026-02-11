@@ -1,38 +1,232 @@
-import { Routes, Route } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, MutableRefObject } from 'react';
+import confetti from 'canvas-confetti';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Dumbbell, Calendar, TrendingUp, MessageSquare, Activity, Clock } from 'lucide-react';
+import { api } from '../services/api';
+import { LogOut, Dumbbell, Calendar, TrendingUp, MessageSquare, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
+
+interface Exercise {
+  id?: string;
+  name: string;
+  sets: number;
+  reps: string;
+  rest?: string;
+  weight?: string;
+  notes?: string;
+  videoUrl?: string;
+  order: number;
+}
+
+interface Workout {
+  id: string;
+  name: string;
+  dayOfWeek: string;
+  description?: string;
+  exercises: Exercise[];
+}
+
+function FocusModeWorkout({
+  workout,
+  onClose,
+  onFinished,
+}: {
+  workout: Workout;
+  onClose: () => void;
+  onFinished?: () => void;
+}) {
+  const [phase, setPhase] = useState<'countdown' | 'workout'>('countdown');
+  const [count, setCount] = useState(3);
+  const [finishing, setFinishing] = useState(false);
+
+  useEffect(() => {
+    if (phase !== 'countdown') return;
+    if (count <= 0) {
+      const t = setTimeout(() => setPhase('workout'), 800);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setCount(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [phase, count]);
+
+  const handleFinish = async () => {
+    try {
+      setFinishing(true);
+      await api.post(`/workouts/log/${workout.id}`, {});
+      onFinished?.();
+      onClose();
+    } catch (e) {
+      console.error('Erro ao registrar treino:', e);
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      {/* Botão sair (canto) */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+        aria-label="Sair"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      {phase === 'countdown' ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center animate-scaleIn">
+            <p className="text-white/70 text-lg md:text-xl font-semibold mb-4 uppercase tracking-wider">
+              Preparar...
+            </p>
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-accent flex items-center justify-center shadow-strong animate-pulse">
+              <span className="text-6xl md:text-7xl font-display font-bold text-white">
+                {count > 0 ? count : 'Go!'}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-24">
+          <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 truncate">
+            {workout.name}
+          </h2>
+          {workout.description && (
+            <p className="text-white/70 text-sm mb-4 line-clamp-2">{workout.description}</p>
+          )}
+
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {(workout.exercises || []).map((ex, idx) => (
+              <div
+                key={ex.id ?? idx}
+                className="bg-white/10 backdrop-blur rounded-2xl p-5 md:p-6 border border-white/10"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-accent flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-2">{ex.name}</h3>
+                    <div className="flex flex-wrap gap-3 text-sm text-white/90">
+                      <span><strong>{ex.sets}</strong> séries</span>
+                      <span><strong>{ex.reps}</strong> reps</span>
+                      {ex.rest && <span>Descanso: <strong>{ex.rest}</strong></span>}
+                      {ex.weight && <span>Peso: <strong>{ex.weight}</strong></span>}
+                    </div>
+                    {ex.notes && (
+                      <p className="text-white/70 text-sm mt-2 italic">💡 {ex.notes}</p>
+                    )}
+                    {ex.videoUrl && (
+                      <a
+                        href={ex.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 mt-3 text-accent-400 hover:text-accent-300 text-sm font-semibold"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        Ver vídeo
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 to-transparent pt-8">
+            <button
+              onClick={handleFinish}
+              disabled={finishing}
+              className="w-full py-4 rounded-2xl bg-gradient-accent text-white font-bold text-lg shadow-strong flex items-center justify-center gap-2 disabled:opacity-70"
+            >
+              {finishing ? (
+                <span className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <>
+                  <CheckCircle className="w-6 h-6" />
+                  Finalizar treino
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [focusWorkout, setFocusWorkout] = useState<Workout | null>(null);
+  const refetchLogsRef = useRef<() => void>(() => {});
+
+  const currentPath = location.pathname.split('/').pop() || 'dashboard';
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Início', icon: Home, path: '/student/dashboard' },
+    { id: 'treinos', label: 'Treinos', icon: Dumbbell, path: '/student/treinos' },
+    { id: 'perfil', label: 'Perfil', icon: User, path: '/student/perfil' },
+  ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-50 via-white to-primary-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100 sticky top-0 z-50">
+      <header className="bg-gradient-to-r from-primary-50/95 via-white to-primary-50/95 backdrop-blur-xl shadow-soft border-b border-primary-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-medium">
-                <Dumbbell className="w-7 h-7 text-white" />
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center shadow-medium">
+                <Dumbbell className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
-                  GymCode
+                <h1 className="text-xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
+                  Gym Code
                 </h1>
                 <p className="text-xs text-slate-500 font-medium">Meus Treinos</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Desktop Menu */}
+            <nav className="hidden md:flex items-center gap-2">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentPath === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.path)}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+                      isActive
+                        ? 'bg-gradient-accent text-white shadow-medium'
+                        : 'text-dark-600 hover:bg-dark-100'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-semibold text-dark-900">{user?.name}</p>
                 <p className="text-xs text-dark-400">Aluno</p>
               </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center text-white font-bold text-lg">
                 {user?.name?.charAt(0)}
               </div>
               <button
-                onClick={logout}
-                className="p-2.5 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+                onClick={handleLogout}
+                className="p-2 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                 title="Sair"
               >
                 <LogOut className="w-5 h-5" />
@@ -44,71 +238,1009 @@ export default function StudentDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Routes>
-          <Route path="dashboard" element={<StudentDashboardHome />} />
-        </Routes>
+        {currentPath === 'dashboard' && (
+          <StudentDashboardHome
+            onStartFocusMode={setFocusWorkout}
+            refetchLogsRef={refetchLogsRef}
+          />
+        )}
+        {currentPath === 'treinos' && (
+          <StudentTreinosPage
+            onStartFocusMode={setFocusWorkout}
+            refetchLogsRef={refetchLogsRef}
+          />
+        )}
+        {currentPath === 'perfil' && <StudentPerfilPage />}
       </main>
+
+      {/* Modo focado: countdown + exercícios */}
+      {focusWorkout && (
+        <FocusModeWorkout
+          workout={focusWorkout}
+          onClose={() => setFocusWorkout(null)}
+          onFinished={() => refetchLogsRef.current()}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
+        <div className="grid grid-cols-3 gap-1 p-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPath === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-gradient-accent text-white'
+                    : 'text-dark-600'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-semibold">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
 
-function StudentDashboardHome() {
+interface WorkoutLogItem {
+  id: string;
+  date: string;
+  workoutId?: string;
+  workout?: { id: string; name: string; dayOfWeek: string };
+}
+
+function StudentDashboardHome({
+  onStartFocusMode,
+  refetchLogsRef,
+}: {
+  onStartFocusMode: (w: Workout) => void;
+  refetchLogsRef: MutableRefObject<() => void>;
+}) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [todayWorkout, setTodayWorkout] = useState<Workout | null>(null);
+  const [logs, setLogs] = useState<WorkoutLogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
+
+  const loadMyLogs = useCallback(async () => {
+    try {
+      const response = await api.get('/workouts/my-logs');
+      setLogs(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao carregar registros:', error);
+      setLogs([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTodayWorkout();
+    loadMyLogs();
+  }, [loadMyLogs]);
+
+  useEffect(() => {
+    refetchLogsRef.current = loadMyLogs;
+    return () => {
+      refetchLogsRef.current = () => {};
+    };
+  }, [refetchLogsRef, loadMyLogs]);
+
+  const loadTodayWorkout = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/workouts/today');
+      setTodayWorkout(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar treino:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completedWorkoutIds = logs.map((l) => l.workout?.id).filter(Boolean) as string[];
+  const todayCompleted = todayWorkout?.id && completedWorkoutIds.includes(todayWorkout.id);
+
+  const confettiFiredRef = useRef(false);
+  useEffect(() => {
+    if (!todayCompleted || confettiFiredRef.current || !todayWorkout) return;
+    confettiFiredRef.current = true;
+    const colors = ['#f97316', '#ea580c', '#22c55e', '#16a34a', '#3b82f6', '#6366f1'];
+    const run = () => {
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.75 }, colors });
+      confetti({ particleCount: 50, spread: 100, origin: { y: 0.6 }, colors, scalar: 0.9 });
+    };
+    const t = setTimeout(run, 300);
+    return () => clearTimeout(t);
+  }, [todayCompleted, todayWorkout]);
+
+  const dayLabels: { [key: string]: string } = {
+    MONDAY: 'Segunda-feira',
+    TUESDAY: 'Terça-feira',
+    WEDNESDAY: 'Quarta-feira',
+    THURSDAY: 'Quinta-feira',
+    FRIDAY: 'Sexta-feira',
+    SATURDAY: 'Sábado',
+    SUNDAY: 'Domingo',
+  };
+
+  const personalPhone = user?.personalTrainer?.phone;
+  const whatsappUrl = personalPhone
+    ? (() => {
+        const digits = personalPhone.replace(/\D/g, '');
+        if (digits.length < 10) return null;
+        const number = digits.length <= 11 ? '55' + digits : digits;
+        return `https://wa.me/${number}`;
+      })()
+    : null;
+
   return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-4xl font-display font-bold text-dark-900 mb-2">
-          Meu Dashboard
-        </h2>
-        <p className="text-dark-500 text-lg">Acompanhe seu progresso e evolução</p>
+    <div className="pb-20 md:pb-0">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+            Bem-vindo, {user?.name?.split(' ')[0] || 'Aluno'}! 👋
+          </h2>
+          <p className="text-dark-500 text-lg">Vamos treinar hoje?</p>
+        </div>
+        {whatsappUrl && (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white bg-[#25D366] hover:bg-[#20BD5A] shadow-medium transition-colors shrink-0"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            WhatsApp do Personal
+          </a>
+        )}
       </div>
 
       {/* Today's Info */}
-      <div className="card-modern p-6 mb-8 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-100">
+      <div
+        className={`card-modern p-6 mb-8 border-2 transition-all duration-300 ${
+          todayCompleted
+            ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 shadow-medium'
+            : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-100'
+        }`}
+      >
         <div className="flex items-center gap-3 mb-4">
-          <Clock className="w-6 h-6 text-blue-600" />
+          {todayCompleted ? (
+            <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+          ) : (
+            <Clock className="w-6 h-6 text-blue-600" />
+          )}
           <h3 className="text-lg font-display font-bold text-dark-900">Hoje</h3>
         </div>
-        <p className="text-3xl font-display font-bold text-dark-900 mb-1">
+        <p className="text-lg md:text-xl font-display font-bold text-dark-900 mb-1 capitalize">
           {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
-        <p className="text-dark-600">Pronto para treinar?</p>
+        {todayCompleted ? (
+          <p className="text-emerald-700 font-semibold text-lg flex items-center gap-2">
+            <span>Treino de hoje concluído!</span>
+            <span className="text-2xl" aria-hidden>🎉</span>
+          </p>
+        ) : (
+          <p className="text-dark-600">
+            {todayWorkout ? 'Você tem treino hoje!' : 'Dia de descanso'}
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <QuickActionCard
-          icon={<Calendar className="w-6 h-6" />}
-          title="Treino de Hoje"
-          description="Veja seu treino do dia"
-          gradient="from-blue-500 to-blue-600"
-        />
-        <QuickActionCard
-          icon={<TrendingUp className="w-6 h-6" />}
-          title="Minha Evolução"
-          description="Acompanhe seu progresso"
-          gradient="from-green-500 to-green-600"
-        />
-        <QuickActionCard
-          icon={<MessageSquare className="w-6 h-6" />}
-          title="Mensagens"
-          description="Fale com seu Personal"
-          gradient="from-purple-500 to-purple-600"
-        />
-      </div>
-
-      {/* Empty State */}
-      <div className="card-modern p-12 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Activity className="w-10 h-10 text-blue-600" />
+      {loading ? (
+        <div className="card-modern p-12 text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-dark-500 mt-4">Carregando...</p>
         </div>
-        <h3 className="text-2xl font-display font-bold text-dark-900 mb-3">
-          Nenhum Treino para Hoje
+      ) : todayWorkout ? (
+        <div className="card-modern p-6 md:p-8">
+          {todayCompleted && (
+            <div className="flex justify-end mb-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-semibold shadow-medium">
+                <CheckCircle className="w-4 h-4" />
+                Concluído
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-2xl font-display font-bold text-dark-900 mb-1 truncate" title={todayWorkout.name}>
+                {todayWorkout.name}
+              </h3>
+              {todayWorkout.description && (
+                <p className="text-dark-600 line-clamp-2" title={todayWorkout.description}>
+                  {todayWorkout.description}
+                </p>
+              )}
+            </div>
+            {!todayCompleted && (
+              <button
+                onClick={() => onStartFocusMode(todayWorkout)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Iniciar
+              </button>
+            )}
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 text-dark-700">
+              <Dumbbell className="w-5 h-5" />
+              <span className="font-semibold">
+                {todayWorkout.exercises?.length || 0} exercício(s)
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todayWorkout.exercises?.slice(0, 3).map((exercise, idx) => (
+              <div
+                key={exercise.id ?? idx}
+                role="button"
+                tabIndex={0}
+                onClick={() => setFocusedExercise(exercise)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setFocusedExercise(exercise);
+                  }
+                }}
+                className="bg-dark-50 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-dark-100 hover:shadow-soft transition-all border-2 border-transparent hover:border-accent-200"
+              >
+                <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
+                  {idx + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-dark-900">{exercise.name}</p>
+                  <p className="text-sm text-dark-600">
+                    {exercise.sets}x{exercise.reps}
+                    {exercise.weight && ` • ${exercise.weight}`}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-dark-400 flex-shrink-0" />
+              </div>
+            ))}
+            {todayWorkout.exercises && todayWorkout.exercises.length > 3 && (
+              <p className="text-sm text-dark-500 text-center pt-2">
+                + {todayWorkout.exercises.length - 3} exercício(s)
+              </p>
+            )}
+          </div>
+
+          {/* Modal focado no exercício (Home) */}
+          {focusedExercise && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
+              onClick={() => setFocusedExercise(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="exercise-modal-title-home"
+            >
+              <div
+                className="bg-white rounded-2xl shadow-strong max-w-md w-full p-6 md:p-8 animate-scaleIn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-12 h-12 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0">
+                    {(todayWorkout.exercises?.indexOf(focusedExercise) ?? 0) + 1}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFocusedExercise(null)}
+                    className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+                    aria-label="Fechar"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <h2 id="exercise-modal-title-home" className="text-2xl font-display font-bold text-dark-900 mb-4">
+                  {focusedExercise.name}
+                </h2>
+                <div className="space-y-4 text-base">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-dark-50 rounded-xl p-4">
+                      <p className="text-sm text-dark-500 mb-1">Séries</p>
+                      <p className="text-xl font-bold text-dark-900">{focusedExercise.sets}</p>
+                    </div>
+                    <div className="bg-dark-50 rounded-xl p-4">
+                      <p className="text-sm text-dark-500 mb-1">Repetições</p>
+                      <p className="text-xl font-bold text-dark-900">{focusedExercise.reps}</p>
+                    </div>
+                    {focusedExercise.rest && (
+                      <div className="bg-dark-50 rounded-xl p-4">
+                        <p className="text-sm text-dark-500 mb-1">Descanso</p>
+                        <p className="text-xl font-bold text-dark-900">{focusedExercise.rest}</p>
+                      </div>
+                    )}
+                    {focusedExercise.weight && (
+                      <div className="bg-dark-50 rounded-xl p-4">
+                        <p className="text-sm text-dark-500 mb-1">Peso</p>
+                        <p className="text-xl font-bold text-dark-900">{focusedExercise.weight}</p>
+                      </div>
+                    )}
+                  </div>
+                  {focusedExercise.notes && (
+                    <div className="bg-accent-50 rounded-xl p-4 border border-accent-100">
+                      <p className="text-sm text-dark-600 font-medium mb-1">💡 Observações</p>
+                      <p className="text-dark-800">{focusedExercise.notes}</p>
+                    </div>
+                  )}
+                  {focusedExercise.videoUrl && (
+                    <a
+                      href={focusedExercise.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-accent hover:opacity-90 text-white font-semibold transition-opacity shadow-medium"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      Ver vídeo no YouTube
+                    </a>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFocusedExercise(null)}
+                  className="w-full mt-6 py-3 rounded-xl border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card-modern p-12 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Activity className="w-10 h-10 text-blue-600" />
+          </div>
+          <h3 className="text-2xl font-display font-bold text-dark-900 mb-3">
+            Nenhum Treino para Hoje
+          </h3>
+          <p className="text-dark-500 text-lg mb-6 max-w-md mx-auto">
+            Aproveite seu dia de descanso ou veja seus outros treinos!
+          </p>
+          <button
+            onClick={() => navigate('/student/treinos')}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <Calendar className="w-5 h-5" />
+            Ver Todos os Treinos
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentTreinosPage({
+  onStartFocusMode,
+  refetchLogsRef,
+}: {
+  onStartFocusMode: (w: Workout) => void;
+  refetchLogsRef: MutableRefObject<() => void>;
+}) {
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [logs, setLogs] = useState<WorkoutLogItem[]>([]);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadMyLogs = useCallback(async () => {
+    try {
+      const response = await api.get('/workouts/my-logs');
+      setLogs(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao carregar registros:', error);
+      setLogs([]);
+    }
+  }, []);
+
+  const daysOfWeek = [
+    { value: 'MONDAY', label: 'Segunda', short: 'SEG' },
+    { value: 'TUESDAY', label: 'Terça', short: 'TER' },
+    { value: 'WEDNESDAY', label: 'Quarta', short: 'QUA' },
+    { value: 'THURSDAY', label: 'Quinta', short: 'QUI' },
+    { value: 'FRIDAY', label: 'Sexta', short: 'SEX' },
+    { value: 'SATURDAY', label: 'Sábado', short: 'SÁB' },
+    { value: 'SUNDAY', label: 'Domingo', short: 'DOM' },
+  ];
+
+  useEffect(() => {
+    loadWorkouts();
+    loadMyLogs();
+  }, [loadMyLogs]);
+
+  useEffect(() => {
+    refetchLogsRef.current = loadMyLogs;
+    return () => {
+      refetchLogsRef.current = () => {};
+    };
+  }, [refetchLogsRef, loadMyLogs]);
+
+  const loadWorkouts = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/workouts/my-workouts');
+      setWorkouts(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao carregar treinos:', error);
+      setWorkouts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const workoutsByDay = daysOfWeek.map(day => ({
+    ...day,
+    workout: (workouts || []).find(w => w.dayOfWeek === day.value)
+  }));
+
+  const completedWorkoutIds = logs.map((l) => l.workout?.id ?? l.workoutId).filter(Boolean) as string[];
+
+  if (loading) {
+    return (
+      <div className="card-modern p-12 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto"></div>
+        <p className="text-dark-500 mt-4">Carregando treinos...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-20 md:pb-0">
+      <div className="mb-6">
+        <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+          Meus Treinos
+        </h2>
+        <p className="text-dark-500 text-lg">Veja seus treinos da semana</p>
+      </div>
+
+      {/* Grade de Dias */}
+      <div className="card-modern p-4 md:p-6 mb-6">
+        <h3 className="text-lg font-display font-bold text-dark-900 mb-4">
+          Selecione o Dia
         </h3>
-        <p className="text-dark-500 text-lg mb-6 max-w-md mx-auto">
-          Aproveite seu dia de descanso ou aguarde seu Personal criar novos treinos!
-        </p>
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-dark-100 text-dark-600 rounded-xl font-semibold">
-          <Calendar className="w-5 h-5" />
-          Ver Próximos Treinos
+        <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+          {workoutsByDay.map((day) => (
+            <button
+              key={day.value}
+              onClick={() => setSelectedDay(day.value)}
+              className={`p-2 rounded-lg transition-all ${
+                selectedDay === day.value
+                  ? 'bg-gradient-accent text-white shadow-strong scale-105'
+                  : day.workout
+                  ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200'
+                  : 'bg-dark-50 hover:bg-dark-100 border-2 border-dashed border-dark-200'
+              }`}
+            >
+              <div className="text-center">
+                <div className={`text-sm font-bold mb-0.5 ${
+                  selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-700' : 'text-dark-400'
+                }`}>
+                  {day.short}
+                </div>
+                <div className={`text-[10px] font-semibold ${
+                  selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-600' : 'text-dark-400'
+                }`}>
+                  {day.label}
+                </div>
+                {day.workout && selectedDay !== day.value && (
+                  <div className="mt-1 w-1 h-1 bg-green-500 rounded-full mx-auto"></div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Detalhes do Dia Selecionado */}
+      {selectedDay && (() => {
+        const dayData = workoutsByDay.find(d => d.value === selectedDay);
+        if (!dayData) return null;
+
+        return dayData.workout ? (
+          <WorkoutDetailCard
+            workout={dayData.workout}
+            dayLabel={dayData.label}
+            onStartFocusMode={onStartFocusMode}
+            isCompleted={completedWorkoutIds.includes(dayData.workout.id)}
+          />
+        ) : (
+          <div className="card-modern p-12 text-center">
+            <div className="w-16 h-16 bg-dark-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Dumbbell className="w-8 h-8 text-dark-400" />
+            </div>
+            <h4 className="text-xl font-bold text-dark-900 mb-2">
+              Sem Treino para {dayData.label}
+            </h4>
+            <p className="text-dark-500">
+              Seu personal ainda não definiu treino para este dia
+            </p>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+function WorkoutDetailCard({
+  workout,
+  dayLabel,
+  onStartFocusMode,
+  isCompleted,
+}: {
+  workout: Workout;
+  dayLabel: string;
+  onStartFocusMode: (w: Workout) => void;
+  isCompleted?: boolean;
+}) {
+  const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
+  const [videoPlayer, setVideoPlayer] = useState<{ embedUrl: string; originalUrl: string } | null>(null);
+
+  return (
+    <div className="card-modern p-6 md:p-8">
+      {isCompleted && (
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-semibold shadow-medium">
+            <CheckCircle className="w-4 h-4" />
+            Concluído
+          </div>
+        </div>
+      )}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-sm text-blue-600 mb-2">
+            <Calendar className="w-4 h-4 flex-shrink-0" />
+            <span className="font-semibold truncate">{dayLabel}</span>
+          </div>
+          <h3 className="text-2xl font-display font-bold text-dark-900 mb-2 truncate" title={workout.name}>
+            {workout.name}
+          </h3>
+          {workout.description && (
+            <p className="text-dark-600 line-clamp-2" title={workout.description}>
+              {workout.description}
+            </p>
+          )}
+        </div>
+        {!isCompleted && (
+          <button
+            onClick={() => onStartFocusMode(workout)}
+            className="btn-primary inline-flex items-center gap-2 flex-shrink-0"
+          >
+            <Play className="w-4 h-4" />
+            Iniciar
+          </button>
+        )}
+      </div>
+
+      <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-2 text-dark-700">
+          <Dumbbell className="w-5 h-5" />
+          <span className="font-semibold">
+            {workout.exercises?.length || 0} exercício(s)
+          </span>
+        </div>
+      </div>
+
+      {workout.exercises && workout.exercises.length > 0 && (
+        <div className="space-y-4">
+          <h5 className="text-lg font-display font-bold text-dark-900">
+            Exercícios
+          </h5>
+          <div className="space-y-3">
+            {workout.exercises.map((exercise, idx) => (
+              <div
+                key={exercise.id ?? idx}
+                role="button"
+                tabIndex={0}
+                onClick={() => setFocusedExercise(exercise)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setFocusedExercise(exercise);
+                  }
+                }}
+                className="w-full text-left card-modern p-4 hover:shadow-medium transition-shadow cursor-pointer border-2 border-transparent hover:border-accent-200"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <h6 className="font-bold text-dark-900 mb-2">{exercise.name}</h6>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <span className="text-dark-500">Séries:</span>
+                        <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
+                      </div>
+                      <div>
+                        <span className="text-dark-500">Reps:</span>
+                        <span className="ml-2 font-semibold text-dark-900">{exercise.reps}</span>
+                      </div>
+                      {exercise.rest && (
+                        <div>
+                          <span className="text-dark-500">Descanso:</span>
+                          <span className="ml-2 font-semibold text-dark-900">{exercise.rest}</span>
+                        </div>
+                      )}
+                      {exercise.weight && (
+                        <div>
+                          <span className="text-dark-500">Peso:</span>
+                          <span className="ml-2 font-semibold text-dark-900">{exercise.weight}</span>
+                        </div>
+                      )}
+                    </div>
+                    {exercise.notes && (
+                      <p className="text-sm text-dark-600 mt-2 italic">
+                        💡 {exercise.notes}
+                      </p>
+                    )}
+                    {exercise.videoUrl && (
+                      <span onClick={(e) => e.stopPropagation()} className="inline-block mt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const embed = getYouTubeEmbedUrl(exercise.videoUrl!);
+                            if (embed) setVideoPlayer({ embedUrl: embed, originalUrl: exercise.videoUrl! });
+                            else window.open(exercise.videoUrl, '_blank');
+                          }}
+                          className="inline-flex items-center gap-2 text-sm text-accent-600 hover:text-accent-700 font-semibold"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                          </svg>
+                          Ver vídeo no YouTube
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+      {/* Modal focado no exercício */}
+      {focusedExercise && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setFocusedExercise(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="exercise-modal-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-strong max-w-md w-full p-6 md:p-8 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="w-12 h-12 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0">
+                {(workout.exercises?.indexOf(focusedExercise) ?? 0) + 1}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFocusedExercise(null)}
+                className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <h2 id="exercise-modal-title" className="text-2xl font-display font-bold text-dark-900 mb-4">
+              {focusedExercise.name}
+            </h2>
+            <div className="space-y-4 text-base">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-dark-50 rounded-xl p-4">
+                  <p className="text-sm text-dark-500 mb-1">Séries</p>
+                  <p className="text-xl font-bold text-dark-900">{focusedExercise.sets}</p>
+                </div>
+                <div className="bg-dark-50 rounded-xl p-4">
+                  <p className="text-sm text-dark-500 mb-1">Repetições</p>
+                  <p className="text-xl font-bold text-dark-900">{focusedExercise.reps}</p>
+                </div>
+                {focusedExercise.rest && (
+                  <div className="bg-dark-50 rounded-xl p-4">
+                    <p className="text-sm text-dark-500 mb-1">Descanso</p>
+                    <p className="text-xl font-bold text-dark-900">{focusedExercise.rest}</p>
+                  </div>
+                )}
+                {focusedExercise.weight && (
+                  <div className="bg-dark-50 rounded-xl p-4">
+                    <p className="text-sm text-dark-500 mb-1">Peso</p>
+                    <p className="text-xl font-bold text-dark-900">{focusedExercise.weight}</p>
+                  </div>
+                )}
+              </div>
+              {focusedExercise.notes && (
+                <div className="bg-accent-50 rounded-xl p-4 border border-accent-100">
+                  <p className="text-sm text-dark-600 font-medium mb-1">💡 Observações</p>
+                  <p className="text-dark-800">{focusedExercise.notes}</p>
+                </div>
+              )}
+              {focusedExercise.videoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const embed = getYouTubeEmbedUrl(focusedExercise.videoUrl!);
+                    if (embed) setVideoPlayer({ embedUrl: embed, originalUrl: focusedExercise.videoUrl! });
+                    else window.open(focusedExercise.videoUrl, '_blank');
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-accent hover:opacity-90 text-white font-semibold transition-opacity shadow-medium"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  Ver vídeo no YouTube
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFocusedExercise(null)}
+              className="w-full mt-6 py-3 rounded-xl border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Player de vídeo dentro do app */}
+      {videoPlayer && (
+        <div
+          className="fixed inset-0 z-[110] flex flex-col bg-black/95 backdrop-blur-sm animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Player de vídeo"
+        >
+          <div className="flex items-center justify-between p-3 md:p-4 bg-black/50">
+            <p className="text-white font-semibold">Vídeo do exercício</p>
+            <button
+              type="button"
+              onClick={() => setVideoPlayer(null)}
+              className="p-2 rounded-lg text-white hover:bg-white/20 transition-colors"
+              aria-label="Fechar vídeo"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0 overflow-auto">
+            <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden bg-dark-900 shadow-strong flex-shrink-0">
+              <iframe
+                src={videoPlayer.embedUrl}
+                title="Vídeo do exercício"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            <a
+              href={videoPlayer.originalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-colors"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              Não consegue assistir aqui? Abrir no YouTube
+            </a>
+          </div>
+        </div>
+      )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Converte URL do YouTube (watch ou youtu.be) em URL de embed para iframe */
+function getYouTubeEmbedUrl(watchUrl: string): string | null {
+  if (!watchUrl || !watchUrl.includes('youtube') && !watchUrl.includes('youtu.be')) return null;
+  let videoId: string | null = null;
+  let startSec = 0;
+  try {
+    const url = new URL(watchUrl);
+    if (url.hostname === 'www.youtu.be' || url.hostname === 'youtu.be') {
+      videoId = url.pathname.slice(1).split('/')[0] || null;
+      const t = url.searchParams.get('t');
+      if (t) startSec = parseInt(t.replace('s', ''), 10) || 0;
+    } else {
+      videoId = url.searchParams.get('v');
+      const t = url.searchParams.get('t');
+      if (t) startSec = parseInt(t.replace('s', ''), 10) || 0;
+    }
+    if (!videoId) return null;
+    const base = `https://www.youtube-nocookie.com/embed/${videoId}`;
+    const params = startSec > 0 ? `?start=${startSec}` : '';
+    return base + params;
+  } catch {
+    return null;
+  }
+}
+
+const DAY_LABELS: { [key: string]: string } = {
+  MONDAY: 'Segunda-feira',
+  TUESDAY: 'Terça-feira',
+  WEDNESDAY: 'Quarta-feira',
+  THURSDAY: 'Quinta-feira',
+  FRIDAY: 'Sexta-feira',
+  SATURDAY: 'Sábado',
+  SUNDAY: 'Domingo',
+};
+
+interface StudentProfile {
+  id: string;
+  name: string;
+  accessCode: string;
+  phone?: string;
+  email?: string;
+  birthDate?: string;
+  weight?: number;
+  height?: number;
+  trainingDays: string[];
+  personalTrainer?: { id: string; name: string; phone?: string; email?: string };
+}
+
+function StudentPerfilPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await api.get('/students/me/profile');
+        setProfile(response.data?.student ?? null);
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const display = profile ?? user;
+  const trainingDaysLabel =
+    profile?.trainingDays?.length &&
+    profile.trainingDays
+      .map((d) => DAY_LABELS[d] || d)
+      .join(', ');
+
+  if (loading) {
+    return (
+      <div className="pb-20 md:pb-0">
+        <div className="card-modern p-12 text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto" />
+          <p className="text-dark-500 mt-4">Carregando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-20 md:pb-0">
+      <div className="mb-6">
+        <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+          Meu Perfil
+        </h2>
+        <p className="text-dark-500 text-lg">Suas informações</p>
+      </div>
+
+      <div className="card-modern p-6 md:p-8">
+        <div className="flex items-center gap-6 mb-8">
+          <div className="w-20 h-20 bg-gradient-accent rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-medium">
+            {(display?.name ?? user?.name)?.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-2xl font-display font-bold text-dark-900 mb-1">
+              {display?.name ?? user?.name}
+            </h3>
+            <p className="text-dark-500 mb-2">Aluno</p>
+            {profile?.accessCode && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-50 border border-accent-200">
+                <span className="text-sm text-dark-600 font-medium">Código de acesso:</span>
+                <span className="text-lg font-display font-bold text-accent-700 tracking-wider">
+                  {profile.accessCode}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-lg font-display font-bold text-dark-900 mb-4">
+              Informações
+            </h4>
+            <div className="space-y-3">
+              <div className="bg-dark-50 rounded-lg p-4">
+                <p className="text-sm text-dark-500 mb-1">Nome</p>
+                <p className="text-dark-900 font-semibold">{display?.name ?? user?.name}</p>
+              </div>
+              {(profile?.accessCode || display?.accessCode) && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Código de acesso</p>
+                  <p className="text-dark-900 font-semibold text-lg tracking-wider">
+                    {profile?.accessCode ?? (display as StudentProfile)?.accessCode}
+                  </p>
+                </div>
+              )}
+              {(profile?.email ?? user?.email) && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Email</p>
+                  <p className="text-dark-900 font-semibold">{profile?.email ?? user?.email}</p>
+                </div>
+              )}
+              {(profile?.phone ?? user?.phone) && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Telefone</p>
+                  <p className="text-dark-900 font-semibold">{profile?.phone ?? user?.phone}</p>
+                </div>
+              )}
+              {profile?.birthDate && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Data de nascimento</p>
+                  <p className="text-dark-900 font-semibold">
+                    {new Date(profile.birthDate).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              )}
+              {(profile?.weight != null && profile?.weight > 0) && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Peso</p>
+                  <p className="text-dark-900 font-semibold">{profile.weight} kg</p>
+                </div>
+              )}
+              {(profile?.height != null && profile?.height > 0) && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Altura</p>
+                  <p className="text-dark-900 font-semibold">{profile.height} cm</p>
+                </div>
+              )}
+              {trainingDaysLabel && (
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Dias de treino</p>
+                  <p className="text-dark-900 font-semibold">{trainingDaysLabel}</p>
+                </div>
+              )}
+              {profile?.personalTrainer?.name && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <p className="text-sm text-dark-500 mb-1">Personal Trainer</p>
+                  <p className="text-dark-900 font-semibold">{profile.personalTrainer.name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-6 border-t">
+            <button
+              onClick={handleLogout}
+              className="w-full md:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
+            >
+              <LogOut className="w-5 h-5" />
+              Sair da Conta
+            </button>
+          </div>
         </div>
       </div>
     </div>

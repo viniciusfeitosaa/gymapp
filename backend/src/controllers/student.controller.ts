@@ -13,14 +13,20 @@ const createStudentSchema = z.object({
   trainingDays: z.array(z.string()).optional(),
 });
 
+// Letras maiúsculas A–Z (26). Código: 4 números + 1 letra → 10⁴ × 26 × 5 pos = 1.300.000 combinações
+const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 export class StudentController {
-  // Gerar código único de 5 dígitos
+  // Gerar código único: 4 números + 1 letra maiúscula (posição aleatória)
   private async generateUniqueCode(): Promise<string> {
     let code: string;
     let exists = true;
 
     while (exists) {
-      code = Math.floor(10000 + Math.random() * 90000).toString();
+      const digits = Math.floor(Math.random() * 10000).toString().padStart(4, '0'); // 0000–9999
+      const letter = UPPERCASE_LETTERS[Math.floor(Math.random() * UPPERCASE_LETTERS.length)];
+      const pos = Math.floor(Math.random() * 5); // 0 a 4: posição da letra
+      code = digits.slice(0, pos) + letter + digits.slice(pos);
       const student = await prisma.student.findUnique({ where: { accessCode: code } });
       exists = !!student;
     }
@@ -48,10 +54,7 @@ export class StudentController {
         },
       });
 
-      res.status(201).json({
-        message: 'Aluno cadastrado com sucesso!',
-        student,
-      });
+      res.status(201).json(student);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors[0].message });
@@ -71,7 +74,7 @@ export class StudentController {
         orderBy: { createdAt: 'desc' },
       });
 
-      res.json({ students });
+      res.json(students);
     } catch (error) {
       console.error('Get students error:', error);
       res.status(500).json({ error: 'Erro ao buscar alunos' });

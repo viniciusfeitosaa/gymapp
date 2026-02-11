@@ -8,55 +8,83 @@ export class WorkoutController {
   // Criar treino (Personal)
   async createWorkout(req: AuthRequest, res: Response) {
     try {
-      const { studentId, name, dayOfWeek, description, exercises } = req.body;
       const personalId = req.userId!;
+      const { studentId, name, dayOfWeek, description, exercises } = req.body;
 
-      // Verificar se o aluno pertence ao Personal
       const student = await prisma.student.findFirst({
         where: { id: studentId, personalTrainerId: personalId },
       });
-
       if (!student) {
         return res.status(404).json({ error: 'Aluno não encontrado' });
       }
 
-      // Criar treino com exercícios
       const workout = await prisma.workout.create({
         data: {
+          studentId,
           name,
           dayOfWeek,
-          description,
-          studentId,
-          exercises: {
-            create: exercises || [],
-          },
+          description: description || null,
+          exercises: exercises?.length
+            ? {
+                create: exercises.map((ex: any, i: number) => ({
+                  name: ex.name,
+                  sets: ex.sets,
+                  reps: ex.reps,
+                  rest: ex.rest || null,
+                  weight: ex.weight || null,
+                  notes: ex.notes || null,
+                  videoUrl: ex.videoUrl || null,
+                  order: ex.order ?? i,
+                })),
+              }
+            : undefined,
         },
         include: {
           exercises: true,
         },
       });
 
-      res.status(201).json({
-        message: 'Treino criado com sucesso!',
-        workout,
-      });
+      res.status(201).json(workout);
     } catch (error) {
       console.error('Create workout error:', error);
       res.status(500).json({ error: 'Erro ao criar treino' });
     }
   }
 
+  // Buscar todos os treinos do Personal
+  async getAllWorkouts(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+
+      const workouts = await prisma.workout.findMany({
+        where: {
+          student: {
+            personalTrainerId: personalId,
+          },
+        },
+        include: {
+          exercises: { orderBy: { order: 'asc' } },
+          student: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(workouts);
+    } catch (error) {
+      console.error('Get all workouts error:', error);
+      res.status(500).json({ error: 'Erro ao buscar treinos' });
+    }
+  }
+
   // Buscar treinos de um aluno (Personal)
   async getStudentWorkouts(req: AuthRequest, res: Response) {
     try {
-      const { studentId } = req.params;
       const personalId = req.userId!;
+      const { studentId } = req.params;
 
-      // Verificar se o aluno pertence ao Personal
       const student = await prisma.student.findFirst({
         where: { id: studentId, personalTrainerId: personalId },
       });
-
       if (!student) {
         return res.status(404).json({ error: 'Aluno não encontrado' });
       }
@@ -64,16 +92,14 @@ export class WorkoutController {
       const workouts = await prisma.workout.findMany({
         where: { studentId },
         include: {
-          exercises: {
-            orderBy: { order: 'asc' },
-          },
+          exercises: { orderBy: { order: 'asc' } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { dayOfWeek: 'asc' },
       });
 
-      res.json({ workouts });
+      res.json(workouts);
     } catch (error) {
-      console.error('Get workouts error:', error);
+      console.error('Get student workouts error:', error);
       res.status(500).json({ error: 'Erro ao buscar treinos' });
     }
   }
@@ -83,14 +109,12 @@ export class WorkoutController {
     try {
       const { id } = req.params;
       const personalId = req.userId!;
+      const { exercises, ...workoutData } = req.body;
 
-      // Verificar se o treino pertence a um aluno do Personal
       const workout = await prisma.workout.findFirst({
         where: {
           id,
-          student: {
-            personalTrainerId: personalId,
-          },
+          student: { personalTrainerId: personalId },
         },
       });
 
@@ -98,37 +122,54 @@ export class WorkoutController {
         return res.status(404).json({ error: 'Treino não encontrado' });
       }
 
-      const updatedWorkout = await prisma.workout.update({
-        where: { id },
-        data: req.body,
-        include: {
-          exercises: true,
-        },
+      const updatedWorkout = await prisma.$transaction(async (tx) => {
+        await tx.workout.update({
+          where: { id },
+          data: workoutData,
+        });
+
+        if (exercises && Array.isArray(exercises)) {
+          await tx.exercise.deleteMany({ where: { workoutId: id } });
+          if (exercises.length > 0) {
+            await tx.exercise.createMany({
+              data: exercises.map((ex: any, i: number) => ({
+                workoutId: id,
+                name: ex.name,
+                sets: ex.sets,
+                reps: ex.reps,
+                rest: ex.rest || null,
+                weight: ex.weight || null,
+                notes: ex.notes || null,
+                videoUrl: ex.videoUrl || null,
+                order: ex.order ?? i,
+              })),
+            });
+          }
+        }
+
+        return await tx.workout.findUnique({
+          where: { id },
+          include: { exercises: { orderBy: { order: 'asc' } } },
+        });
       });
 
-      res.json({
-        message: 'Treino atualizado com sucesso!',
-        workout: updatedWorkout,
-      });
+      res.json(updatedWorkout);
     } catch (error) {
       console.error('Update workout error:', error);
       res.status(500).json({ error: 'Erro ao atualizar treino' });
     }
   }
 
-  // Deletar treino (Personal)
+  // Excluir treino (Personal)
   async deleteWorkout(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
       const personalId = req.userId!;
 
-      // Verificar se o treino pertence a um aluno do Personal
       const workout = await prisma.workout.findFirst({
         where: {
           id,
-          student: {
-            personalTrainerId: personalId,
-          },
+          student: { personalTrainerId: personalId },
         },
       });
 
@@ -137,15 +178,14 @@ export class WorkoutController {
       }
 
       await prisma.workout.delete({ where: { id } });
-
-      res.json({ message: 'Treino deletado com sucesso!' });
+      res.json({ message: 'Treino excluído com sucesso' });
     } catch (error) {
       console.error('Delete workout error:', error);
-      res.status(500).json({ error: 'Erro ao deletar treino' });
+      res.status(500).json({ error: 'Erro ao excluir treino' });
     }
   }
 
-  // Aluno ver seus treinos
+  // Aluno: listar meus treinos
   async getMyWorkouts(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
@@ -153,21 +193,19 @@ export class WorkoutController {
       const workouts = await prisma.workout.findMany({
         where: { studentId },
         include: {
-          exercises: {
-            orderBy: { order: 'asc' },
-          },
+          exercises: { orderBy: { order: 'asc' } },
         },
         orderBy: { dayOfWeek: 'asc' },
       });
 
-      res.json({ workouts });
+      res.json(workouts);
     } catch (error) {
       console.error('Get my workouts error:', error);
       res.status(500).json({ error: 'Erro ao buscar treinos' });
     }
   }
 
-  // Aluno ver treino do dia
+  // Aluno: treino do dia
   async getTodayWorkout(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
@@ -181,59 +219,91 @@ export class WorkoutController {
           isActive: true,
         },
         include: {
-          exercises: {
-            orderBy: { order: 'asc' },
-          },
+          exercises: { orderBy: { order: 'asc' } },
         },
       });
 
-      if (!workout) {
-        return res.json({
-          message: 'Nenhum treino programado para hoje',
-          workout: null,
-        });
-      }
-
-      res.json({ workout });
+      res.json(workout);
     } catch (error) {
       console.error('Get today workout error:', error);
       res.status(500).json({ error: 'Erro ao buscar treino do dia' });
     }
   }
 
-  // Aluno registrar treino completo
-  async logWorkout(req: AuthRequest, res: Response) {
+  // Aluno: listar meus logs de treino (para exibir selo "Concluído")
+  async getMyLogs(req: AuthRequest, res: Response) {
     try {
-      const { workoutId } = req.params;
-      const { completed, duration, notes } = req.body;
       const studentId = req.userId!;
 
-      // Verificar se o treino pertence ao aluno
+      const logs = await prisma.workoutLog.findMany({
+        where: { studentId, completed: true },
+        include: {
+          workout: { select: { id: true, name: true, dayOfWeek: true } },
+        },
+        orderBy: { date: 'desc' },
+        take: 100,
+      });
+
+      res.json(logs);
+    } catch (error) {
+      console.error('Get my logs error:', error);
+      res.status(500).json({ error: 'Erro ao buscar registros' });
+    }
+  }
+
+  // Aluno: registrar treino realizado
+  async logWorkout(req: AuthRequest, res: Response) {
+    try {
+      const studentId = req.userId!;
+      const { workoutId } = req.params;
+      const { duration, notes } = req.body;
+
       const workout = await prisma.workout.findFirst({
         where: { id: workoutId, studentId },
       });
-
       if (!workout) {
         return res.status(404).json({ error: 'Treino não encontrado' });
       }
 
-      const workoutLog = await prisma.workoutLog.create({
+      const log = await prisma.workoutLog.create({
         data: {
           studentId,
           workoutId,
-          completed,
-          duration,
-          notes,
+          completed: true,
+          duration: duration || null,
+          notes: notes || null,
         },
       });
 
-      res.status(201).json({
-        message: 'Treino registrado com sucesso!',
-        workoutLog,
-      });
+      res.status(201).json(log);
     } catch (error) {
       console.error('Log workout error:', error);
       res.status(500).json({ error: 'Erro ao registrar treino' });
+    }
+  }
+
+  // Personal: logs recentes dos alunos (para Atividades Recentes)
+  async getRecentLogs(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+
+      const logs = await prisma.workoutLog.findMany({
+        where: {
+          completed: true,
+          student: { personalTrainerId: personalId },
+        },
+        include: {
+          workout: { select: { id: true, name: true, dayOfWeek: true } },
+          student: { select: { id: true, name: true } },
+        },
+        orderBy: { date: 'desc' },
+        take: 20,
+      });
+
+      res.json(logs);
+    } catch (error) {
+      console.error('Get recent logs error:', error);
+      res.status(500).json({ error: 'Erro ao buscar atividades' });
     }
   }
 }

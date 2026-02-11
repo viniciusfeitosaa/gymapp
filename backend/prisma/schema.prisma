@@ -33,7 +33,7 @@ model PersonalTrainer {
 model Student {
   id              String   @id @default(uuid())
   name            String
-  accessCode      String   @unique // Código de 5 dígitos
+  accessCode      String   @unique // Código: 4 números + 1 letra maiúscula (ex: A1234, 1A234)
   phone           String?
   email           String?
   birthDate       DateTime?
@@ -86,6 +86,7 @@ model Exercise {
   rest        String? // Tempo de descanso
   weight      String? // Peso utilizado
   notes       String? // Observações
+  videoUrl    String? // URL do vídeo do YouTube
   order       Int     // Ordem do exercício no treino
   
   // Relacionamentos
