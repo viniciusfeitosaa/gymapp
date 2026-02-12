@@ -25,6 +25,7 @@ interface Exercise {
   weight?: string;
   notes?: string;
   videoUrl?: string;
+  imageUrl?: string;
   order: number;
 }
 
@@ -169,7 +170,7 @@ function DashboardHome() {
         setLoading(true);
         const [studentsRes, logsRes] = await Promise.all([
           api.get('/students'),
-          api.get('/workouts/recent-logs').catch(() => ({ data: [] })),
+          api.get('/workouts/recent-logs?days=7').catch(() => ({ data: [] })),
         ]);
         setStudents(studentsRes.data);
         setRecentLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
@@ -211,13 +212,13 @@ function DashboardHome() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-xl font-display font-bold text-dark-900 mb-1">
-                Distribuição de Alunos por Dia
+                Treinos concluídos por dia
               </h3>
-              <p className="text-sm text-dark-500">Quantidade de alunos que treinam em cada dia</p>
+              <p className="text-sm text-dark-500">Últimos 7 dias — alunos que finalizaram o treino</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-dark-600">
               <div className="w-3 h-3 rounded-full bg-gradient-accent"></div>
-              <span>Alunos</span>
+              <span>Conclusões</span>
             </div>
           </div>
           
@@ -229,52 +230,52 @@ function DashboardHome() {
               ))}
             </div>
             
-            {/* Bars */}
+            {/* Bars: últimos 7 dias corridos (uma barra por data) */}
             <div className="relative h-full flex items-end justify-around gap-2 md:gap-4 px-2">
               {(() => {
-                const dayMapping: { [key: string]: string } = {
-                  'MONDAY': 'Seg',
-                  'TUESDAY': 'Ter',
-                  'WEDNESDAY': 'Qua',
-                  'THURSDAY': 'Qui',
-                  'FRIDAY': 'Sex',
-                  'SATURDAY': 'Sáb',
-                  'SUNDAY': 'Dom',
-                };
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const last7Dates: Date[] = [];
+                for (let i = 6; i >= 0; i--) {
+                  const d = new Date(today);
+                  d.setDate(d.getDate() - i);
+                  last7Dates.push(d);
+                }
 
-                const daysOrder = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-                
-                // Contar alunos por dia
-                const dayCount: { [key: string]: number } = {};
-                daysOrder.forEach(day => { dayCount[day] = 0; });
-                
-                students.forEach(student => {
-                  student.trainingDays?.forEach(day => {
-                    if (dayCount[day] !== undefined) {
-                      dayCount[day]++;
-                    }
-                  });
+                const dateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+                const countByDate: { [key: string]: number } = {};
+                last7Dates.forEach((d) => { countByDate[dateKey(d)] = 0; });
+
+                recentLogs.forEach((log) => {
+                  const d = new Date(log.date);
+                  d.setHours(0, 0, 0, 0);
+                  const key = dateKey(d);
+                  if (countByDate[key] !== undefined) countByDate[key]++;
                 });
 
-                const maxCount = Math.max(...Object.values(dayCount), 1);
-                
-                return daysOrder.map((dayKey) => {
-                  const count = dayCount[dayKey];
+                const maxCount = Math.max(...Object.values(countByDate), 1);
+
+                return last7Dates.map((d) => {
+                  const key = dateKey(d);
+                  const count = countByDate[key] ?? 0;
                   const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                  
+                  const label = d.toLocaleDateString('pt-BR', { day: 'numeric', month: '2-digit' });
+                  const isToday = dateKey(d) === dateKey(today);
                   return (
-                    <div key={dayKey} className="flex-1 flex flex-col items-center gap-3">
+                    <div key={key} className="flex-1 flex flex-col items-center gap-3">
                       <div className="w-full relative group">
                         <div
                           className="w-full bg-gradient-accent rounded-t-lg transition-all duration-500 hover:opacity-80 cursor-pointer"
                           style={{ height: `${Math.max(percentage, 5)}%` }}
                         >
                           <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
-                            {count} {count === 1 ? 'aluno' : 'alunos'}
+                            {count} {count === 1 ? 'conclusão' : 'conclusões'}
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs md:text-sm font-medium text-dark-600">{dayMapping[dayKey]}</span>
+                      <span className={`text-xs md:text-sm font-medium ${isToday ? 'text-accent-600 font-semibold' : 'text-dark-600'}`}>
+                        {label}{isToday ? ' (hoje)' : ''}
+                      </span>
                     </div>
                   );
                 });
@@ -282,11 +283,11 @@ function DashboardHome() {
             </div>
           </div>
           
-          {totalAlunos === 0 && (
+          {recentLogs.length === 0 && (
             <div className="absolute inset-6 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
               <div className="text-center">
-                <Users className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500 font-medium">Adicione alunos para ver as estatísticas</p>
+                <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
+                <p className="text-dark-500 font-medium">Nenhuma conclusão nos últimos 7 dias</p>
               </div>
             </div>
           )}
@@ -321,15 +322,18 @@ function DashboardHome() {
         <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-4">
           Atividades Recentes
         </h3>
-        {recentLogs.length === 0 ? (
+        {(() => {
+          const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const logsLast24h = recentLogs.filter((log) => new Date(log.date) >= last24h);
+          return logsLast24h.length === 0 ? (
           <div className="text-center py-12 text-dark-400">
             <Dumbbell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Nenhuma conclusão de treino ainda</p>
+            <p>Nenhuma conclusão de treino nas últimas 24h</p>
             <p className="text-sm mt-1">Quando seus alunos finalizarem treinos, aparecerão aqui</p>
           </div>
         ) : (
           <ul className="space-y-3">
-            {recentLogs.map((log) => (
+            {logsLast24h.map((log) => (
               <li
                 key={log.id}
                 className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100"
@@ -356,7 +360,8 @@ function DashboardHome() {
               </li>
             ))}
           </ul>
-        )}
+        );
+        })()}
       </div>
     </div>
   );
@@ -1107,7 +1112,16 @@ function TreinosPage() {
                                 <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold text-base shadow-soft flex-shrink-0">
                                   {idx + 1}
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
+                                  {exercise.imageUrl && (
+                                    <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50 mb-3">
+                                      <img
+                                        src={exercise.imageUrl}
+                                        alt={exercise.name}
+                                        className="w-full h-auto max-h-48 object-contain"
+                                      />
+                                    </div>
+                                  )}
                                   <h6 className="font-bold text-dark-900 mb-2">
                                     {exercise.name}
                                   </h6>
@@ -1399,6 +1413,7 @@ function AddWorkoutModal({
         weight: '',
         notes: '',
         videoUrl: '',
+        imageUrl: '',
         order: exercises.length,
       },
     ]);
@@ -1700,6 +1715,20 @@ function AddWorkoutModal({
 
                       <div className="md:col-span-2">
                         <label className="block text-sm font-semibold text-dark-700 mb-2">
+                          Foto do exercício (URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={exercise.imageUrl}
+                          onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
+                          className="input-modern"
+                          placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                        />
+                        <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-dark-700 mb-2">
                           Observações
                         </label>
                         <textarea
@@ -1833,6 +1862,7 @@ function EditWorkoutModal({
       weight: ex.weight || '',
       notes: ex.notes || '',
       videoUrl: ex.videoUrl || '',
+      imageUrl: ex.imageUrl || '',
       order: ex.order,
     })) || []
   );
@@ -1860,6 +1890,7 @@ function EditWorkoutModal({
         weight: '',
         notes: '',
         videoUrl: '',
+        imageUrl: '',
         order: exercises.length,
       },
     ]);
@@ -2101,6 +2132,20 @@ function EditWorkoutModal({
                           className="input-modern"
                           placeholder="https://youtube.com/watch?v=..."
                         />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-dark-700 mb-2">
+                          Foto do exercício (URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={exercise.imageUrl}
+                          onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
+                          className="input-modern"
+                          placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                        />
+                        <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
                       </div>
 
                       <div className="md:col-span-2">

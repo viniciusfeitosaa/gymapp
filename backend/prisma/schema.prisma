@@ -87,6 +87,7 @@ model Exercise {
   weight      String? // Peso utilizado
   notes       String? // Observações
   videoUrl    String? // URL do vídeo do YouTube
+  imageUrl    String? // URL da foto do exercício (para o aluno)
   order       Int     // Ordem do exercício no treino
   
   // Relacionamentos

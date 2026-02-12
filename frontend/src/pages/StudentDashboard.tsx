@@ -14,6 +14,7 @@ interface Exercise {
   weight?: string;
   notes?: string;
   videoUrl?: string;
+  imageUrl?: string;
   order: number;
 }
 
@@ -491,7 +492,12 @@ function StudentDashboardHome({
                 <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
                   {idx + 1}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
+                  {exercise.imageUrl && (
+                    <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-100 mb-2">
+                      <img src={exercise.imageUrl} alt={exercise.name} className="w-full h-auto max-h-32 object-contain" />
+                    </div>
+                  )}
                   <p className="font-semibold text-dark-900">{exercise.name}</p>
                   <p className="text-sm text-dark-600">
                     {exercise.sets}x{exercise.reps}
@@ -538,6 +544,15 @@ function StudentDashboardHome({
                   {focusedExercise.name}
                 </h2>
                 <div className="space-y-4 text-base">
+                  {focusedExercise.imageUrl && (
+                    <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
+                      <img
+                        src={focusedExercise.imageUrl}
+                        alt={focusedExercise.name}
+                        className="w-full h-auto max-h-64 object-contain"
+                      />
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-dark-50 rounded-xl p-4">
                       <p className="text-sm text-dark-500 mb-1">Séries</p>
@@ -848,7 +863,16 @@ function WorkoutDetailCard({
                   <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
                     {idx + 1}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
+                    {exercise.imageUrl && (
+                      <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50 mb-3">
+                        <img
+                          src={exercise.imageUrl}
+                          alt={exercise.name}
+                          className="w-full h-auto max-h-48 object-contain"
+                        />
+                      </div>
+                    )}
                     <h6 className="font-bold text-dark-900 mb-2">{exercise.name}</h6>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div>
@@ -931,6 +955,15 @@ function WorkoutDetailCard({
               {focusedExercise.name}
             </h2>
             <div className="space-y-4 text-base">
+              {focusedExercise.imageUrl && (
+                <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
+                  <img
+                    src={focusedExercise.imageUrl}
+                    alt={focusedExercise.name}
+                    className="w-full h-auto max-h-64 object-contain"
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-dark-50 rounded-xl p-4">
                   <p className="text-sm text-dark-500 mb-1">Séries</p>

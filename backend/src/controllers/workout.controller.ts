@@ -34,6 +34,7 @@ export class WorkoutController {
                   weight: ex.weight || null,
                   notes: ex.notes || null,
                   videoUrl: ex.videoUrl || null,
+                  imageUrl: ex.imageUrl || null,
                   order: ex.order ?? i,
                 })),
               }
@@ -109,7 +110,7 @@ export class WorkoutController {
     try {
       const { id } = req.params;
       const personalId = req.userId!;
-      const { exercises, ...workoutData } = req.body;
+      const { exercises, ...rest } = req.body;
 
       const workout = await prisma.workout.findFirst({
         where: {
@@ -122,11 +123,20 @@ export class WorkoutController {
         return res.status(404).json({ error: 'Treino não encontrado' });
       }
 
+      const workoutData: { name?: string; dayOfWeek?: string; description?: string | null; studentId?: string; isActive?: boolean } = {};
+      if (rest.name !== undefined) workoutData.name = String(rest.name);
+      if (rest.dayOfWeek !== undefined) workoutData.dayOfWeek = String(rest.dayOfWeek);
+      if (rest.description !== undefined) workoutData.description = rest.description === '' ? null : String(rest.description);
+      if (rest.studentId !== undefined) workoutData.studentId = String(rest.studentId);
+      if (rest.isActive !== undefined) workoutData.isActive = Boolean(rest.isActive);
+
       const updatedWorkout = await prisma.$transaction(async (tx) => {
-        await tx.workout.update({
-          where: { id },
-          data: workoutData,
-        });
+        if (Object.keys(workoutData).length > 0) {
+          await tx.workout.update({
+            where: { id },
+            data: workoutData,
+          });
+        }
 
         if (exercises && Array.isArray(exercises)) {
           await tx.exercise.deleteMany({ where: { workoutId: id } });
@@ -134,14 +144,15 @@ export class WorkoutController {
             await tx.exercise.createMany({
               data: exercises.map((ex: any, i: number) => ({
                 workoutId: id,
-                name: ex.name,
-                sets: ex.sets,
-                reps: ex.reps,
-                rest: ex.rest || null,
-                weight: ex.weight || null,
-                notes: ex.notes || null,
-                videoUrl: ex.videoUrl || null,
-                order: ex.order ?? i,
+                name: String(ex.name ?? ''),
+                sets: Math.max(1, Number(ex.sets) || 1),
+                reps: String(ex.reps ?? ''),
+                rest: ex.rest ? String(ex.rest) : null,
+                weight: ex.weight ? String(ex.weight) : null,
+                notes: ex.notes ? String(ex.notes) : null,
+                videoUrl: ex.videoUrl ? String(ex.videoUrl) : null,
+                imageUrl: ex.imageUrl ? String(ex.imageUrl) : null,
+                order: Number(ex.order) >= 0 ? Number(ex.order) : i,
               })),
             });
           }
@@ -156,7 +167,7 @@ export class WorkoutController {
       res.json(updatedWorkout);
     } catch (error) {
       console.error('Update workout error:', error);
-      res.status(500).json({ error: 'Erro ao atualizar treino' });
+      res.status(500).json({ error: (error as Error)?.message || 'Erro ao atualizar treino' });
     }
   }
 
@@ -282,14 +293,17 @@ export class WorkoutController {
     }
   }
 
-  // Personal: logs recentes dos alunos (para Atividades Recentes)
+  // Personal: logs recentes dos alunos (últimas 24h por padrão; ?days=7 para gráfico)
   async getRecentLogs(req: AuthRequest, res: Response) {
     try {
       const personalId = req.userId!;
+      const days = Math.min(30, Math.max(1, parseInt(String(req.query.days), 10) || 1));
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
       const logs = await prisma.workoutLog.findMany({
         where: {
           completed: true,
+          date: { gte: since },
           student: { personalTrainerId: personalId },
         },
         include: {
@@ -297,7 +311,7 @@ export class WorkoutController {
           student: { select: { id: true, name: true } },
         },
         orderBy: { date: 'desc' },
-        take: 20,
+        take: days === 1 ? 50 : 200,
       });
 
       res.json(logs);
