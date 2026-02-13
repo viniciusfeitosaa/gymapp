@@ -274,10 +274,7 @@ export default function StudentDashboard() {
           />
         )}
         {currentPath === 'treinos' && (
-          <StudentTreinosPage
-            onStartFocusMode={setFocusWorkout}
-            refetchLogsRef={refetchLogsRef}
-          />
+          <StudentTreinosPage refetchLogsRef={refetchLogsRef} />
         )}
         {currentPath === 'perfil' && <StudentPerfilPage />}
       </main>
@@ -688,10 +685,8 @@ function StudentDashboardHome({
 }
 
 function StudentTreinosPage({
-  onStartFocusMode,
   refetchLogsRef,
 }: {
-  onStartFocusMode: (w: Workout) => void;
   refetchLogsRef: MutableRefObject<() => void>;
 }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -816,7 +811,6 @@ function StudentTreinosPage({
           <WorkoutDetailCard
             workout={dayData.workout}
             dayLabel={dayData.label}
-            onStartFocusMode={onStartFocusMode}
             isCompleted={completedWorkoutIds.includes(dayData.workout.id)}
           />
         ) : (
@@ -840,12 +834,10 @@ function StudentTreinosPage({
 function WorkoutDetailCard({
   workout,
   dayLabel,
-  onStartFocusMode,
   isCompleted,
 }: {
   workout: Workout;
   dayLabel: string;
-  onStartFocusMode: (w: Workout) => void;
   isCompleted?: boolean;
 }) {
   const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
