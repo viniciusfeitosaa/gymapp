@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email?: string;
   phone?: string;
+  taxId?: string;
   accessCode?: string;
   personalTrainer?: {
     id: string;

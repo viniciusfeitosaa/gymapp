@@ -34,11 +34,33 @@ export class StudentController {
     return code!;
   }
 
-  // Criar aluno (Personal)
+  // Criar aluno (Personal) — bloqueado se atingir limite do plano (não assinante = 1 aluno)
   async createStudent(req: AuthRequest, res: Response) {
     try {
       const data = createStudentSchema.parse(req.body);
       const personalId = req.userId!;
+
+      let maxStudentsAllowed = 1;
+      try {
+        const personal = await prisma.personalTrainer.findUnique({
+          where: { id: personalId },
+          select: { maxStudentsAllowed: true },
+        });
+        if (personal?.maxStudentsAllowed != null) maxStudentsAllowed = personal.maxStudentsAllowed;
+      } catch {
+        // Coluna maxStudentsAllowed pode não existir se a migration ainda não foi aplicada
+      }
+
+      const currentCount = await prisma.student.count({
+        where: { personalTrainerId: personalId },
+      });
+      if (currentCount >= maxStudentsAllowed) {
+        return res.status(403).json({
+          error: 'Limite de alunos do plano gratuito atingido. Assine para cadastrar mais alunos.',
+          code: 'SUBSCRIPTION_LIMIT',
+          maxStudentsAllowed,
+        });
+      }
 
       const student = await prisma.student.create({
         data: {
@@ -64,7 +86,7 @@ export class StudentController {
     }
   }
 
-  // Listar alunos do Personal
+  // Listar alunos do Personal (inclui info de assinatura para o frontend)
   async getStudents(req: AuthRequest, res: Response) {
     try {
       const personalId = req.userId!;
@@ -74,7 +96,28 @@ export class StudentController {
         orderBy: { createdAt: 'desc' },
       });
 
-      res.json(students);
+      let maxAllowed = 1;
+      try {
+        const personal = await prisma.personalTrainer.findUnique({
+          where: { id: personalId },
+          select: { maxStudentsAllowed: true },
+        });
+        if (personal?.maxStudentsAllowed != null) maxAllowed = personal.maxStudentsAllowed;
+      } catch {
+        // Coluna maxStudentsAllowed pode não existir se a migration ainda não foi aplicada
+      }
+
+      const atLimit = students.length >= maxAllowed;
+
+      res.json({
+        students,
+        subscription: {
+          maxStudentsAllowed: maxAllowed,
+          currentCount: students.length,
+          atLimit,
+          canAddMore: !atLimit,
+        },
+      });
     } catch (error) {
       console.error('Get students error:', error);
       res.status(500).json({ error: 'Erro ao buscar alunos' });

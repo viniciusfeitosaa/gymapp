@@ -95,42 +95,70 @@ function FocusModeWorkout({
             <p className="text-white/70 text-sm mb-4 line-clamp-2">{workout.description}</p>
           )}
 
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-5 pr-1">
             {(workout.exercises || []).map((ex, idx) => (
               <div
                 key={ex.id ?? idx}
-                className="bg-white/10 backdrop-blur rounded-2xl p-5 md:p-6 border border-white/10"
+                className="relative bg-gradient-to-b from-white/[0.14] to-white/[0.06] backdrop-blur-xl rounded-2xl p-5 md:p-6 border border-white/25 shadow-xl shadow-black/25 overflow-hidden before:absolute before:inset-0 before:rounded-2xl before:border before:border-white/10 before:pointer-events-none"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-accent flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-accent flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg shadow-accent-500/25 ring-2 ring-white/30">
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg md:text-xl font-bold text-white mb-2">{ex.name}</h3>
-                    <div className="flex flex-wrap gap-3 text-sm text-white/90">
-                      <span><strong>{ex.sets}</strong> séries</span>
-                      <span><strong>{ex.reps}</strong> reps</span>
-                      {ex.rest && <span>Descanso: <strong>{ex.rest}</strong></span>}
-                      {ex.weight && <span>Peso: <strong>{ex.weight}</strong></span>}
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight drop-shadow-sm">{ex.name}</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
+                        <strong className="font-bold">{ex.sets}</strong> séries
+                      </span>
+                      <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
+                        <strong className="font-bold">{ex.reps}</strong> reps
+                      </span>
+                      {ex.rest && (
+                        <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
+                          Descanso <strong className="font-bold">{ex.rest}</strong>
+                        </span>
+                      )}
+                      {ex.weight && (
+                        <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
+                          Peso <strong className="font-bold">{ex.weight}</strong>
+                        </span>
+                      )}
                     </div>
                     {ex.notes && (
-                      <p className="text-white/70 text-sm mt-2 italic">💡 {ex.notes}</p>
-                    )}
-                    {ex.videoUrl && (
-                      <a
-                        href={ex.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 mt-3 text-accent-400 hover:text-accent-300 text-sm font-semibold"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                        </svg>
-                        Ver vídeo
-                      </a>
+                      <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-400/25 shadow-sm">
+                        <p className="text-amber-100 text-sm italic">💡 {ex.notes}</p>
+                      </div>
                     )}
                   </div>
                 </div>
+                {ex.imageUrl && (
+                  <>
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2">Referência</p>
+                      <div className="rounded-xl overflow-hidden border border-white/20 bg-black/20 shadow-inner ring-1 ring-white/10">
+                        <img
+                          src={ex.imageUrl}
+                          alt={ex.name}
+                          className="w-full h-auto object-cover max-h-56"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {ex.videoUrl && (
+                  <a
+                    href={ex.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center justify-center gap-2 mt-3 px-4 py-2.5 rounded-xl bg-red-500/25 hover:bg-red-500/35 border border-red-400/40 text-red-100 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${ex.imageUrl ? 'w-full' : ''}`}
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    Ver vídeo no YouTube
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -265,7 +293,7 @@ export default function StudentDashboard() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="grid grid-cols-3 gap-1 p-2">
+        <div className="grid grid-cols-3 gap-0.5 p-1.5">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -273,14 +301,14 @@ export default function StudentDashboard() {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all ${
+                className={`flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${
                   isActive
                     ? 'bg-gradient-accent text-white'
                     : 'text-dark-600'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-semibold">{item.label}</span>
+                <Icon className="w-4 h-4" />
+                <span className="text-[10px] font-semibold leading-tight">{item.label}</span>
               </button>
             );
           })}
@@ -310,6 +338,7 @@ function StudentDashboardHome({
   const [logs, setLogs] = useState<WorkoutLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
+  const [streakStats, setStreakStats] = useState<{ streak: number; points: number; totalWorkouts: number; missedLast7: number } | null>(null);
 
   const loadMyLogs = useCallback(async () => {
     try {
@@ -321,17 +350,32 @@ function StudentDashboardHome({
     }
   }, []);
 
+  const loadStreakStats = useCallback(async () => {
+    try {
+      const response = await api.get('/workouts/streak-stats');
+      setStreakStats(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar ofensiva/pontos:', error);
+      setStreakStats(null);
+    }
+  }, []);
+
   useEffect(() => {
     loadTodayWorkout();
     loadMyLogs();
-  }, [loadMyLogs]);
+    loadStreakStats();
+  }, [loadMyLogs, loadStreakStats]);
 
   useEffect(() => {
-    refetchLogsRef.current = loadMyLogs;
+    const refetch = () => {
+      loadMyLogs();
+      loadStreakStats();
+    };
+    refetchLogsRef.current = refetch;
     return () => {
       refetchLogsRef.current = () => {};
     };
-  }, [refetchLogsRef, loadMyLogs]);
+  }, [refetchLogsRef, loadMyLogs, loadStreakStats]);
 
   const loadTodayWorkout = async () => {
     try {
@@ -375,19 +419,19 @@ function StudentDashboardHome({
     <div className="pb-20 md:pb-0">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+          <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
             Bem-vindo, {user?.name?.split(' ')[0] || 'Aluno'}! 👋
           </h2>
-          <p className="text-dark-500 text-lg">Vamos treinar hoje?</p>
+          <p className="text-dark-500 text-sm md:text-base">Vamos treinar hoje?</p>
         </div>
         {whatsappUrl && (
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white bg-[#25D366] hover:bg-[#20BD5A] shadow-medium transition-colors shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#25D366] hover:bg-[#20BD5A] shadow-medium transition-colors shrink-0"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
             </svg>
             WhatsApp do Personal
@@ -397,34 +441,45 @@ function StudentDashboardHome({
 
       {/* Today's Info */}
       <div
-        className={`card-modern p-6 mb-8 border-2 transition-all duration-300 ${
+        className={`card-modern p-5 mb-6 border-2 transition-all duration-300 ${
           todayCompleted
             ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 shadow-medium'
             : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-100'
         }`}
       >
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2.5 mb-3">
           {todayCompleted ? (
-            <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-white" />
+            <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-white" />
             </div>
           ) : (
-            <Clock className="w-6 h-6 text-blue-600" />
+            <Clock className="w-5 h-5 text-blue-600" />
           )}
-          <h3 className="text-lg font-display font-bold text-dark-900">Hoje</h3>
+          <h3 className="text-base font-display font-bold text-dark-900">Hoje</h3>
         </div>
-        <p className="text-lg md:text-xl font-display font-bold text-dark-900 mb-1 capitalize">
+        <p className="text-base md:text-lg font-display font-bold text-dark-900 mb-1 capitalize">
           {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
         {todayCompleted ? (
-          <p className="text-emerald-700 font-semibold text-lg flex items-center gap-2">
+          <p className="text-emerald-700 font-semibold text-base flex items-center gap-2">
             <span>Treino de hoje concluído!</span>
-            <span className="text-2xl" aria-hidden>🎉</span>
+            <span className="text-xl" aria-hidden>🎉</span>
           </p>
         ) : (
-          <p className="text-dark-600">
+          <p className="text-dark-600 text-sm">
             {todayWorkout ? 'Você tem treino hoje!' : 'Dia de descanso'}
           </p>
+        )}
+        {streakStats !== null && (
+          <div className="mt-4 pt-4 border-t border-dark-200/60 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl" aria-hidden>🔥</span>
+              <div>
+                <p className="text-dark-900 font-bold text-lg leading-tight">{streakStats.streak}</p>
+                <p className="text-dark-500 text-xs font-medium">dias seguidos</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -434,47 +489,49 @@ function StudentDashboardHome({
           <p className="text-dark-500 mt-4">Carregando...</p>
         </div>
       ) : todayWorkout ? (
-        <div className="card-modern p-6 md:p-8">
+        <div className="card-modern p-5 md:p-6">
           {todayCompleted && (
-            <div className="flex justify-end mb-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-semibold shadow-medium">
-                <CheckCircle className="w-4 h-4" />
+            <div className="flex justify-end mb-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold shadow-medium">
+                <CheckCircle className="w-3 h-3" />
                 Concluído
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col gap-3 mb-4">
+            {!todayCompleted && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => onStartFocusMode(todayWorkout)}
+                  className="btn-primary inline-flex items-center justify-center gap-1.5 text-sm py-2 px-4"
+                >
+                  <Play className="w-3.5 h-3.5 shrink-0" />
+                  Iniciar
+                </button>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <h3 className="text-2xl font-display font-bold text-dark-900 mb-1 truncate" title={todayWorkout.name}>
+              <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 truncate" title={todayWorkout.name}>
                 {todayWorkout.name}
               </h3>
               {todayWorkout.description && (
-                <p className="text-dark-600 line-clamp-2" title={todayWorkout.description}>
+                <p className="text-dark-600 text-sm line-clamp-2" title={todayWorkout.description}>
                   {todayWorkout.description}
                 </p>
               )}
             </div>
-            {!todayCompleted && (
-              <button
-                onClick={() => onStartFocusMode(todayWorkout)}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                <Play className="w-4 h-4" />
-                Iniciar
-              </button>
-            )}
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-4 mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-3 mb-4">
             <div className="flex items-center gap-2 text-dark-700">
-              <Dumbbell className="w-5 h-5" />
-              <span className="font-semibold">
+              <Dumbbell className="w-4 h-4" />
+              <span className="text-sm font-semibold">
                 {todayWorkout.exercises?.length || 0} exercício(s)
               </span>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {todayWorkout.exercises?.slice(0, 3).map((exercise, idx) => (
               <div
                 key={exercise.id ?? idx}
@@ -487,24 +544,24 @@ function StudentDashboardHome({
                     setFocusedExercise(exercise);
                   }
                 }}
-                className="bg-dark-50 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-dark-100 hover:shadow-soft transition-all border-2 border-transparent hover:border-accent-200"
+                className="bg-dark-50 rounded-lg p-3 flex items-center gap-2.5 cursor-pointer hover:bg-dark-100 hover:shadow-soft transition-all border-2 border-transparent hover:border-accent-200"
               >
-                <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
+                <div className="w-7 h-7 bg-gradient-accent text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {idx + 1}
                 </div>
                 <div className="flex-1 min-w-0">
                   {exercise.imageUrl && (
-                    <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-100 mb-2">
-                      <img src={exercise.imageUrl} alt={exercise.name} className="w-full h-auto max-h-32 object-contain" />
+                    <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-100 mb-1.5">
+                      <img src={exercise.imageUrl} alt={exercise.name} className="w-full h-auto max-h-28 object-contain" />
                     </div>
                   )}
-                  <p className="font-semibold text-dark-900">{exercise.name}</p>
-                  <p className="text-sm text-dark-600">
+                  <p className="font-semibold text-sm text-dark-900">{exercise.name}</p>
+                  <p className="text-xs text-dark-600">
                     {exercise.sets}x{exercise.reps}
                     {exercise.weight && ` • ${exercise.weight}`}
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-dark-400 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-dark-400 flex-shrink-0" />
               </div>
             ))}
             {todayWorkout.exercises && todayWorkout.exercises.length > 3 && (
@@ -524,11 +581,11 @@ function StudentDashboardHome({
               aria-labelledby="exercise-modal-title-home"
             >
               <div
-                className="bg-white rounded-2xl shadow-strong max-w-md w-full p-6 md:p-8 animate-scaleIn"
+                className="bg-white rounded-2xl shadow-strong max-w-md w-full p-5 md:p-6 animate-scaleIn"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="w-12 h-12 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-10 h-10 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0">
                     {(todayWorkout.exercises?.indexOf(focusedExercise) ?? 0) + 1}
                   </div>
                   <button
@@ -537,48 +594,48 @@ function StudentDashboardHome({
                     className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
                     aria-label="Fechar"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-                <h2 id="exercise-modal-title-home" className="text-2xl font-display font-bold text-dark-900 mb-4">
+                <h2 id="exercise-modal-title-home" className="text-xl font-display font-bold text-dark-900 mb-3">
                   {focusedExercise.name}
                 </h2>
-                <div className="space-y-4 text-base">
+                <div className="space-y-3 text-sm">
                   {focusedExercise.imageUrl && (
                     <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
                       <img
                         src={focusedExercise.imageUrl}
                         alt={focusedExercise.name}
-                        className="w-full h-auto max-h-64 object-contain"
+                        className="w-full h-auto max-h-56 object-contain"
                       />
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-dark-50 rounded-xl p-4">
-                      <p className="text-sm text-dark-500 mb-1">Séries</p>
-                      <p className="text-xl font-bold text-dark-900">{focusedExercise.sets}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-dark-50 rounded-lg p-3">
+                      <p className="text-xs text-dark-500 mb-0.5">Séries</p>
+                      <p className="text-base font-bold text-dark-900">{focusedExercise.sets}</p>
                     </div>
-                    <div className="bg-dark-50 rounded-xl p-4">
-                      <p className="text-sm text-dark-500 mb-1">Repetições</p>
-                      <p className="text-xl font-bold text-dark-900">{focusedExercise.reps}</p>
+                    <div className="bg-dark-50 rounded-lg p-3">
+                      <p className="text-xs text-dark-500 mb-0.5">Repetições</p>
+                      <p className="text-base font-bold text-dark-900">{focusedExercise.reps}</p>
                     </div>
                     {focusedExercise.rest && (
-                      <div className="bg-dark-50 rounded-xl p-4">
-                        <p className="text-sm text-dark-500 mb-1">Descanso</p>
-                        <p className="text-xl font-bold text-dark-900">{focusedExercise.rest}</p>
+                      <div className="bg-dark-50 rounded-lg p-3">
+                        <p className="text-xs text-dark-500 mb-0.5">Descanso</p>
+                        <p className="text-base font-bold text-dark-900">{focusedExercise.rest}</p>
                       </div>
                     )}
                     {focusedExercise.weight && (
-                      <div className="bg-dark-50 rounded-xl p-4">
-                        <p className="text-sm text-dark-500 mb-1">Peso</p>
-                        <p className="text-xl font-bold text-dark-900">{focusedExercise.weight}</p>
+                      <div className="bg-dark-50 rounded-lg p-3">
+                        <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                        <p className="text-base font-bold text-dark-900">{focusedExercise.weight}</p>
                       </div>
                     )}
                   </div>
                   {focusedExercise.notes && (
-                    <div className="bg-accent-50 rounded-xl p-4 border border-accent-100">
-                      <p className="text-sm text-dark-600 font-medium mb-1">💡 Observações</p>
-                      <p className="text-dark-800">{focusedExercise.notes}</p>
+                    <div className="bg-accent-50 rounded-lg p-3 border border-accent-100">
+                      <p className="text-xs text-dark-600 font-medium mb-0.5">💡 Observações</p>
+                      <p className="text-dark-800 text-sm">{focusedExercise.notes}</p>
                     </div>
                   )}
                   {focusedExercise.videoUrl && (
@@ -586,9 +643,9 @@ function StudentDashboardHome({
                       href={focusedExercise.videoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-accent hover:opacity-90 text-white font-semibold transition-opacity shadow-medium"
+                      className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-gradient-accent hover:opacity-90 text-white text-sm font-semibold transition-opacity shadow-medium"
                     >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                       </svg>
                       Ver vídeo no YouTube
@@ -598,7 +655,7 @@ function StudentDashboardHome({
                 <button
                   type="button"
                   onClick={() => setFocusedExercise(null)}
-                  className="w-full mt-6 py-3 rounded-xl border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+                  className="w-full mt-4 py-2.5 rounded-xl border-2 border-dark-200 text-dark-700 text-sm font-semibold hover:bg-dark-50 transition-colors"
                 >
                   Fechar
                 </button>
@@ -608,20 +665,20 @@ function StudentDashboardHome({
         </div>
       ) : (
         <div className="card-modern p-12 text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Activity className="w-10 h-10 text-blue-600" />
+          <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-7 h-7 text-blue-600" />
           </div>
-          <h3 className="text-2xl font-display font-bold text-dark-900 mb-3">
+          <h3 className="text-xl font-display font-bold text-dark-900 mb-2">
             Nenhum Treino para Hoje
           </h3>
-          <p className="text-dark-500 text-lg mb-6 max-w-md mx-auto">
+          <p className="text-dark-500 text-sm mb-4 max-w-md mx-auto">
             Aproveite seu dia de descanso ou veja seus outros treinos!
           </p>
           <button
             onClick={() => navigate('/student/treinos')}
-            className="btn-primary inline-flex items-center gap-2"
+            className="btn-primary inline-flex items-center gap-1.5 text-sm py-2 px-4"
           >
-            <Calendar className="w-5 h-5" />
+            <Calendar className="w-4 h-4" />
             Ver Todos os Treinos
           </button>
         </div>
@@ -706,15 +763,15 @@ function StudentTreinosPage({
   return (
     <div className="pb-20 md:pb-0">
       <div className="mb-6">
-        <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+        <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
           Meus Treinos
         </h2>
-        <p className="text-dark-500 text-lg">Veja seus treinos da semana</p>
+        <p className="text-dark-500 text-sm md:text-base">Veja seus treinos da semana</p>
       </div>
 
       {/* Grade de Dias */}
       <div className="card-modern p-4 md:p-6 mb-6">
-        <h3 className="text-lg font-display font-bold text-dark-900 mb-4">
+        <h3 className="text-base font-display font-bold text-dark-900 mb-4">
           Selecione o Dia
         </h3>
         <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
@@ -764,13 +821,13 @@ function StudentTreinosPage({
           />
         ) : (
           <div className="card-modern p-12 text-center">
-            <div className="w-16 h-16 bg-dark-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Dumbbell className="w-8 h-8 text-dark-400" />
+            <div className="w-12 h-12 bg-dark-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Dumbbell className="w-6 h-6 text-dark-400" />
             </div>
-            <h4 className="text-xl font-bold text-dark-900 mb-2">
+            <h4 className="text-lg font-bold text-dark-900 mb-2">
               Sem Treino para {dayData.label}
             </h4>
-            <p className="text-dark-500">
+            <p className="text-dark-500 text-sm">
               Seu personal ainda não definiu treino para este dia
             </p>
           </div>
@@ -797,43 +854,34 @@ function WorkoutDetailCard({
   return (
     <div className="card-modern p-6 md:p-8">
       {isCompleted && (
-        <div className="flex justify-end mb-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-semibold shadow-medium">
-            <CheckCircle className="w-4 h-4" />
+        <div className="flex justify-end mb-3">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold shadow-medium">
+            <CheckCircle className="w-3 h-3" />
             Concluído
           </div>
         </div>
       )}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm text-blue-600 mb-2">
-            <Calendar className="w-4 h-4 flex-shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-blue-600 mb-1.5">
+            <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="font-semibold truncate">{dayLabel}</span>
           </div>
-          <h3 className="text-2xl font-display font-bold text-dark-900 mb-2 truncate" title={workout.name}>
+          <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 truncate" title={workout.name}>
             {workout.name}
           </h3>
           {workout.description && (
-            <p className="text-dark-600 line-clamp-2" title={workout.description}>
+            <p className="text-dark-600 text-sm line-clamp-2" title={workout.description}>
               {workout.description}
             </p>
           )}
         </div>
-        {!isCompleted && (
-          <button
-            onClick={() => onStartFocusMode(workout)}
-            className="btn-primary inline-flex items-center gap-2 flex-shrink-0"
-          >
-            <Play className="w-4 h-4" />
-            Iniciar
-          </button>
-        )}
       </div>
 
-      <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-4 mb-6">
+      <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-3 mb-4">
         <div className="flex items-center gap-2 text-dark-700">
-          <Dumbbell className="w-5 h-5" />
-          <span className="font-semibold">
+          <Dumbbell className="w-4 h-4" />
+          <span className="text-sm font-semibold">
             {workout.exercises?.length || 0} exercício(s)
           </span>
         </div>
@@ -841,10 +889,10 @@ function WorkoutDetailCard({
 
       {workout.exercises && workout.exercises.length > 0 && (
         <div className="space-y-4">
-          <h5 className="text-lg font-display font-bold text-dark-900">
+          <h5 className="text-base font-display font-bold text-dark-900">
             Exercícios
           </h5>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {workout.exercises.map((exercise, idx) => (
               <div
                 key={exercise.id ?? idx}
@@ -857,24 +905,24 @@ function WorkoutDetailCard({
                     setFocusedExercise(exercise);
                   }
                 }}
-                className="w-full text-left card-modern p-4 hover:shadow-medium transition-shadow cursor-pointer border-2 border-transparent hover:border-accent-200"
+                className="w-full text-left card-modern p-3 hover:shadow-medium transition-shadow cursor-pointer border-2 border-transparent hover:border-accent-200"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold flex-shrink-0">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 bg-gradient-accent text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     {exercise.imageUrl && (
-                      <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50 mb-3">
+                      <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-50 mb-1.5">
                         <img
                           src={exercise.imageUrl}
                           alt={exercise.name}
-                          className="w-full h-auto max-h-48 object-contain"
+                          className="w-full h-auto max-h-28 object-contain"
                         />
                       </div>
                     )}
-                    <h6 className="font-bold text-dark-900 mb-2">{exercise.name}</h6>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <h6 className="font-semibold text-sm text-dark-900 mb-1.5">{exercise.name}</h6>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                       <div>
                         <span className="text-dark-500">Séries:</span>
                         <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
@@ -897,12 +945,12 @@ function WorkoutDetailCard({
                       )}
                     </div>
                     {exercise.notes && (
-                      <p className="text-sm text-dark-600 mt-2 italic">
+                      <p className="text-xs text-dark-600 mt-1.5 italic">
                         💡 {exercise.notes}
                       </p>
                     )}
                     {exercise.videoUrl && (
-                      <span onClick={(e) => e.stopPropagation()} className="inline-block mt-3">
+                      <span onClick={(e) => e.stopPropagation()} className="inline-block mt-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -910,9 +958,9 @@ function WorkoutDetailCard({
                             if (embed) setVideoPlayer({ embedUrl: embed, originalUrl: exercise.videoUrl! });
                             else window.open(exercise.videoUrl, '_blank');
                           }}
-                          className="inline-flex items-center gap-2 text-sm text-accent-600 hover:text-accent-700 font-semibold"
+                          className="inline-flex items-center gap-1.5 text-xs text-accent-600 hover:text-accent-700 font-semibold"
                         >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                           </svg>
                           Ver vídeo no YouTube
@@ -935,11 +983,11 @@ function WorkoutDetailCard({
           aria-labelledby="exercise-modal-title"
         >
           <div
-            className="bg-white rounded-2xl shadow-strong max-w-md w-full p-6 md:p-8 animate-scaleIn"
+            className="bg-white rounded-2xl shadow-strong max-w-md w-full p-5 md:p-6 animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-12 h-12 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-10 h-10 bg-gradient-accent text-white rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0">
                 {(workout.exercises?.indexOf(focusedExercise) ?? 0) + 1}
               </div>
               <button
@@ -948,13 +996,13 @@ function WorkoutDetailCard({
                 className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
                 aria-label="Fechar"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <h2 id="exercise-modal-title" className="text-2xl font-display font-bold text-dark-900 mb-4">
+            <h2 id="exercise-modal-title" className="text-xl font-display font-bold text-dark-900 mb-3">
               {focusedExercise.name}
             </h2>
-            <div className="space-y-4 text-base">
+            <div className="space-y-3 text-sm">
               {focusedExercise.imageUrl && (
                 <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
                   <img
@@ -964,32 +1012,32 @@ function WorkoutDetailCard({
                   />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-dark-50 rounded-xl p-4">
-                  <p className="text-sm text-dark-500 mb-1">Séries</p>
-                  <p className="text-xl font-bold text-dark-900">{focusedExercise.sets}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Séries</p>
+                  <p className="text-base font-bold text-dark-900">{focusedExercise.sets}</p>
                 </div>
-                <div className="bg-dark-50 rounded-xl p-4">
-                  <p className="text-sm text-dark-500 mb-1">Repetições</p>
-                  <p className="text-xl font-bold text-dark-900">{focusedExercise.reps}</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Repetições</p>
+                  <p className="text-base font-bold text-dark-900">{focusedExercise.reps}</p>
                 </div>
                 {focusedExercise.rest && (
-                  <div className="bg-dark-50 rounded-xl p-4">
-                    <p className="text-sm text-dark-500 mb-1">Descanso</p>
-                    <p className="text-xl font-bold text-dark-900">{focusedExercise.rest}</p>
+                  <div className="bg-dark-50 rounded-lg p-3">
+                    <p className="text-xs text-dark-500 mb-0.5">Descanso</p>
+                    <p className="text-base font-bold text-dark-900">{focusedExercise.rest}</p>
                   </div>
                 )}
                 {focusedExercise.weight && (
-                  <div className="bg-dark-50 rounded-xl p-4">
-                    <p className="text-sm text-dark-500 mb-1">Peso</p>
-                    <p className="text-xl font-bold text-dark-900">{focusedExercise.weight}</p>
+                  <div className="bg-dark-50 rounded-lg p-3">
+                    <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                    <p className="text-base font-bold text-dark-900">{focusedExercise.weight}</p>
                   </div>
                 )}
               </div>
               {focusedExercise.notes && (
-                <div className="bg-accent-50 rounded-xl p-4 border border-accent-100">
-                  <p className="text-sm text-dark-600 font-medium mb-1">💡 Observações</p>
-                  <p className="text-dark-800">{focusedExercise.notes}</p>
+                <div className="bg-accent-50 rounded-lg p-3 border border-accent-100">
+                  <p className="text-xs text-dark-600 font-medium mb-0.5">💡 Observações</p>
+                  <p className="text-dark-800 text-sm">{focusedExercise.notes}</p>
                 </div>
               )}
               {focusedExercise.videoUrl && (
@@ -1000,9 +1048,9 @@ function WorkoutDetailCard({
                     if (embed) setVideoPlayer({ embedUrl: embed, originalUrl: focusedExercise.videoUrl! });
                     else window.open(focusedExercise.videoUrl, '_blank');
                   }}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-accent hover:opacity-90 text-white font-semibold transition-opacity shadow-medium"
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-gradient-accent hover:opacity-90 text-white text-sm font-semibold transition-opacity shadow-medium"
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
                   Ver vídeo no YouTube
@@ -1012,7 +1060,7 @@ function WorkoutDetailCard({
             <button
               type="button"
               onClick={() => setFocusedExercise(null)}
-              className="w-full mt-6 py-3 rounded-xl border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+              className="w-full mt-4 py-2.5 rounded-xl border-2 border-dark-200 text-dark-700 text-sm font-semibold hover:bg-dark-50 transition-colors"
             >
               Fechar
             </button>
@@ -1163,26 +1211,26 @@ function StudentPerfilPage() {
   return (
     <div className="pb-20 md:pb-0">
       <div className="mb-6">
-        <h2 className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">
+        <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
           Meu Perfil
         </h2>
-        <p className="text-dark-500 text-lg">Suas informações</p>
+        <p className="text-dark-500 text-sm md:text-base">Suas informações</p>
       </div>
 
-      <div className="card-modern p-6 md:p-8">
-        <div className="flex items-center gap-6 mb-8">
-          <div className="w-20 h-20 bg-gradient-accent rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-medium">
+      <div className="card-modern p-5 md:p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 bg-gradient-accent rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-medium">
             {(display?.name ?? user?.name)?.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-2xl font-display font-bold text-dark-900 mb-1">
+            <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5">
               {display?.name ?? user?.name}
             </h3>
-            <p className="text-dark-500 mb-2">Aluno</p>
+            <p className="text-dark-500 text-sm mb-1.5">Aluno</p>
             {profile?.accessCode && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-50 border border-accent-200">
-                <span className="text-sm text-dark-600 font-medium">Código de acesso:</span>
-                <span className="text-lg font-display font-bold text-accent-700 tracking-wider">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-50 border border-accent-200">
+                <span className="text-xs text-dark-600 font-medium">Código de acesso:</span>
+                <span className="text-base font-display font-bold text-accent-700 tracking-wider">
                   {profile.accessCode}
                 </span>
               </div>
@@ -1190,77 +1238,77 @@ function StudentPerfilPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <h4 className="text-lg font-display font-bold text-dark-900 mb-4">
+            <h4 className="text-base font-display font-bold text-dark-900 mb-3">
               Informações
             </h4>
-            <div className="space-y-3">
-              <div className="bg-dark-50 rounded-lg p-4">
-                <p className="text-sm text-dark-500 mb-1">Nome</p>
-                <p className="text-dark-900 font-semibold">{display?.name ?? user?.name}</p>
+            <div className="space-y-2.5">
+              <div className="bg-dark-50 rounded-lg p-3">
+                <p className="text-xs text-dark-500 mb-0.5">Nome</p>
+                <p className="text-dark-900 font-semibold text-sm">{display?.name ?? user?.name}</p>
               </div>
               {(profile?.accessCode || display?.accessCode) && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Código de acesso</p>
-                  <p className="text-dark-900 font-semibold text-lg tracking-wider">
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Código de acesso</p>
+                  <p className="text-dark-900 font-semibold text-sm tracking-wider">
                     {profile?.accessCode ?? display?.accessCode}
                   </p>
                 </div>
               )}
               {(profile?.email ?? user?.email) && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Email</p>
-                  <p className="text-dark-900 font-semibold">{profile?.email ?? user?.email}</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Email</p>
+                  <p className="text-dark-900 font-semibold text-sm">{profile?.email ?? user?.email}</p>
                 </div>
               )}
               {(profile?.phone ?? user?.phone) && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Telefone</p>
-                  <p className="text-dark-900 font-semibold">{profile?.phone ?? user?.phone}</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Telefone</p>
+                  <p className="text-dark-900 font-semibold text-sm">{profile?.phone ?? user?.phone}</p>
                 </div>
               )}
               {profile?.birthDate && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Data de nascimento</p>
-                  <p className="text-dark-900 font-semibold">
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Data de nascimento</p>
+                  <p className="text-dark-900 font-semibold text-sm">
                     {new Date(profile.birthDate).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               )}
               {(profile?.weight != null && profile?.weight > 0) && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Peso</p>
-                  <p className="text-dark-900 font-semibold">{profile.weight} kg</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                  <p className="text-dark-900 font-semibold text-sm">{profile.weight} kg</p>
                 </div>
               )}
               {(profile?.height != null && profile?.height > 0) && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Altura</p>
-                  <p className="text-dark-900 font-semibold">{profile.height} cm</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Altura</p>
+                  <p className="text-dark-900 font-semibold text-sm">{profile.height} cm</p>
                 </div>
               )}
               {trainingDaysLabel && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Dias de treino</p>
-                  <p className="text-dark-900 font-semibold">{trainingDaysLabel}</p>
+                <div className="bg-dark-50 rounded-lg p-3">
+                  <p className="text-xs text-dark-500 mb-0.5">Dias de treino</p>
+                  <p className="text-dark-900 font-semibold text-sm">{trainingDaysLabel}</p>
                 </div>
               )}
               {profile?.personalTrainer?.name && (
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <p className="text-sm text-dark-500 mb-1">Personal Trainer</p>
-                  <p className="text-dark-900 font-semibold">{profile.personalTrainer.name}</p>
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-dark-500 mb-0.5">Personal Trainer</p>
+                  <p className="text-dark-900 font-semibold text-sm">{profile.personalTrainer.name}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="pt-6 border-t">
+          <div className="pt-4 border-t">
             <button
               onClick={handleLogout}
-              className="w-full md:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
+              className="w-full md:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-1.5 shadow-medium"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
               Sair da Conta
             </button>
           </div>

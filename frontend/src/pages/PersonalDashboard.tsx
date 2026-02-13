@@ -164,16 +164,21 @@ function DashboardHome() {
   const [recentLogs, setRecentLogs] = useState<RecentLogItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [totalTreinos, setTotalTreinos] = useState(0);
+
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true);
-        const [studentsRes, logsRes] = await Promise.all([
+        const [studentsRes, logsRes, workoutsRes] = await Promise.all([
           api.get('/students'),
           api.get('/workouts/recent-logs?days=7').catch(() => ({ data: [] })),
+          api.get('/workouts').catch(() => ({ data: [] })),
         ]);
-        setStudents(studentsRes.data);
+        const studentsData = studentsRes.data;
+        setStudents(Array.isArray(studentsData) ? studentsData : (studentsData?.students ?? []));
         setRecentLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
+        setTotalTreinos(Array.isArray(workoutsRes.data) ? workoutsRes.data.length : 0);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       } finally {
@@ -186,7 +191,6 @@ function DashboardHome() {
 
   // Calcular estatísticas
   const totalAlunos = students.length;
-  const totalTreinos = 0; // TODO: Implementar quando tiver endpoint de treinos
 
   if (loading) {
     return (
@@ -209,16 +213,16 @@ function DashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
         {/* Gráfico Principal */}
         <div className="lg:col-span-2 card-modern p-6 md:p-8 relative">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col gap-3 mb-6">
+            <div className="flex items-center gap-2 text-sm text-dark-600">
+              <div className="w-3 h-3 rounded-full bg-gradient-accent"></div>
+              <span>Conclusões</span>
+            </div>
             <div>
               <h3 className="text-xl font-display font-bold text-dark-900 mb-1">
                 Treinos concluídos por dia
               </h3>
               <p className="text-sm text-dark-500">Últimos 7 dias — alunos que finalizaram o treino</p>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-dark-600">
-              <div className="w-3 h-3 rounded-full bg-gradient-accent"></div>
-              <span>Conclusões</span>
             </div>
           </div>
           
@@ -231,7 +235,7 @@ function DashboardHome() {
             </div>
             
             {/* Bars: últimos 7 dias corridos (uma barra por data) */}
-            <div className="relative h-full flex items-end justify-around gap-2 md:gap-4 px-2">
+            <div className="relative h-full flex items-end justify-around gap-2 md:gap-4 px-2 min-h-0">
               {(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -259,21 +263,22 @@ function DashboardHome() {
                   const key = dateKey(d);
                   const count = countByDate[key] ?? 0;
                   const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  const barHeight = Math.max(percentage, count === 0 ? 0 : 5);
                   const label = d.toLocaleDateString('pt-BR', { day: 'numeric', month: '2-digit' });
                   const isToday = dateKey(d) === dateKey(today);
                   return (
-                    <div key={key} className="flex-1 flex flex-col items-center gap-3">
-                      <div className="w-full relative group">
+                    <div key={key} className="flex-1 flex flex-col items-center gap-3 min-h-0">
+                      <div className="flex-1 w-full min-h-0 flex flex-col justify-end relative group">
                         <div
-                          className="w-full bg-gradient-accent rounded-t-lg transition-all duration-500 hover:opacity-80 cursor-pointer"
-                          style={{ height: `${Math.max(percentage, 5)}%` }}
+                          className="w-full bg-gradient-accent rounded-t-lg transition-all duration-500 hover:opacity-80 cursor-pointer min-h-[2px]"
+                          style={{ height: `${barHeight}%` }}
                         >
                           <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
                             {count} {count === 1 ? 'conclusão' : 'conclusões'}
                           </div>
                         </div>
                       </div>
-                      <span className={`text-xs md:text-sm font-medium ${isToday ? 'text-accent-600 font-semibold' : 'text-dark-600'}`}>
+                      <span className={`text-xs md:text-sm font-medium flex-shrink-0 ${isToday ? 'text-accent-600 font-semibold' : 'text-dark-600'}`}>
                         {label}{isToday ? ' (hoje)' : ''}
                       </span>
                     </div>
@@ -367,8 +372,16 @@ function DashboardHome() {
   );
 }
 
+type SubscriptionInfo = {
+  maxStudentsAllowed: number;
+  currentCount: number;
+  atLimit: boolean;
+  canAddMore: boolean;
+};
+
 function AlunosPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -379,7 +392,11 @@ function AlunosPage() {
     try {
       setLoading(true);
       const response = await api.get('/students');
-      setStudents(response.data);
+      const data = response.data;
+      const list = Array.isArray(data) ? data : (data?.students ?? []);
+      setStudents(list);
+      if (data?.subscription) setSubscription(data.subscription);
+      else setSubscription({ maxStudentsAllowed: 1, currentCount: list.length, atLimit: list.length >= 1, canAddMore: list.length < 1 });
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
     } finally {
@@ -436,9 +453,13 @@ function AlunosPage() {
           <p className="text-dark-500 mb-6 md:mb-8 max-w-md mx-auto text-sm md:text-lg">
             Cadastre seus alunos e comece a criar fichas de treino personalizadas para cada um deles.
           </p>
+          {subscription?.atLimit && (
+            <p className="text-amber-600 text-sm mb-3">Limite do plano gratuito atingido. Assine para cadastrar mais alunos.</p>
+          )}
           <button 
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary inline-flex items-center gap-2"
+            onClick={() => !subscription?.atLimit && setShowAddModal(true)}
+            disabled={subscription?.atLimit}
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4 md:w-5 md:h-5" />
             Adicionar Primeiro Aluno
@@ -446,13 +467,20 @@ function AlunosPage() {
         </div>
       ) : (
         <div className="card-modern p-4 md:p-6">
+          {subscription?.atLimit && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+              <strong>Limite do plano gratuito:</strong> você pode ter até {subscription.maxStudentsAllowed} aluno(s). Assine para cadastrar mais alunos.
+            </div>
+          )}
           <div className="flex justify-between items-center mb-4 md:mb-6">
             <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900">
               Meus Alunos ({students?.length || 0})
             </h3>
             <button 
-              onClick={() => setShowAddModal(true)}
-              className="btn-primary inline-flex items-center gap-2 text-sm md:text-base"
+              onClick={() => !subscription?.atLimit && setShowAddModal(true)}
+              disabled={subscription?.atLimit}
+              className="btn-primary inline-flex items-center gap-2 text-sm md:text-base disabled:opacity-60 disabled:cursor-not-allowed"
+              title={subscription?.atLimit ? 'Limite de alunos atingido. Assine para cadastrar mais.' : undefined}
             >
               <Plus className="w-4 h-4" />
               Novo Aluno
@@ -617,7 +645,12 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       const response = await api.post('/students', payload);
       setNewStudent(response.data);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao criar aluno');
+      const data = err.response?.data;
+      if (err.response?.status === 403 && data?.code === 'SUBSCRIPTION_LIMIT') {
+        setError(data?.error || 'Limite de alunos do plano gratuito atingido. Assine para cadastrar mais alunos.');
+      } else {
+        setError(data?.error || 'Erro ao criar aluno');
+      }
       setLoading(false);
     }
   };
@@ -902,7 +935,8 @@ function TreinosPage() {
         api.get('/students')
       ]);
       setWorkouts(workoutsRes.data);
-      setStudents(studentsRes.data);
+      const studentsData = studentsRes.data;
+      setStudents(Array.isArray(studentsData) ? studentsData : (studentsData?.students ?? []));
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -1235,13 +1269,78 @@ function TreinosPage() {
   );
 }
 
+function formatCpfDisplay(value: string | undefined): string {
+  if (!value) return '';
+  const d = value.replace(/\D/g, '');
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}`;
+}
+
 function PerfilPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showPlans, setShowPlans] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [form, setForm] = useState({
+    name: user?.name ?? '',
+    phone: user?.phone ?? '',
+    taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '',
+  });
+  useEffect(() => {
+    setForm({
+      name: user?.name ?? '',
+      phone: user?.phone ?? '',
+      taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '',
+    });
+  }, [user?.name, user?.phone, user?.taxId]);
+
+  const subscriptionSuccess = new URLSearchParams(location.search).get('subscription') === 'success';
+
+  const handleSaveProfile = async () => {
+    setProfileError('');
+    setSaving(true);
+    try {
+      const res = await api.patch('/personal/me', {
+        name: form.name.trim() || undefined,
+        phone: form.phone.trim() || null,
+        taxId: form.taxId.replace(/\D/g, '') || null,
+      });
+      updateUser(res.data);
+      setEditing(false);
+    } catch (err: any) {
+      setProfileError(err.response?.data?.error || 'Erro ao salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleAssinarPro = async () => {
+    setCheckoutError('');
+    setCheckoutLoading(true);
+    try {
+      const { data } = await api.post<{ url: string }>('/subscription/create-checkout');
+      if (data?.url) window.location.href = data.url;
+      else setCheckoutError('Link de pagamento não disponível.');
+    } catch (err: any) {
+      const code = err.response?.data?.code;
+      const msg = err.response?.data?.error || 'Erro ao gerar link de pagamento. Tente novamente.';
+      setCheckoutError(msg);
+      if (code === 'CPF_REQUIRED') setShowPlans(true);
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   return (
@@ -1251,6 +1350,98 @@ function PerfilPage() {
           Perfil
         </h2>
         <p className="text-dark-500 text-sm md:text-lg">Gerencie suas informações pessoais</p>
+      </div>
+
+      {subscriptionSuccess && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+          Pagamento recebido! Seu plano Pro foi ativado — você já pode cadastrar alunos ilimitados.
+        </div>
+      )}
+
+      {/* Área Assinatura - clicável para expandir planos */}
+      <div className="card-modern p-6 md:p-8 mb-6">
+        <button
+          type="button"
+          onClick={() => setShowPlans((v) => !v)}
+          className="w-full flex items-center justify-between gap-4 text-left hover:opacity-90 transition-opacity"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-accent-100 to-accent-200 rounded-xl flex items-center justify-center">
+              <Dumbbell className="w-6 h-6 text-accent-600" />
+            </div>
+            <div>
+              <h4 className="text-lg font-display font-bold text-dark-900">Assinatura</h4>
+              <p className="text-dark-500 text-sm">Ver planos e benefícios</p>
+            </div>
+          </div>
+          <span className={`text-2xl text-dark-400 transition-transform ${showPlans ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+
+        {showPlans && (
+          <div className="mt-6 pt-6 border-t border-dark-100">
+            <p className="text-dark-600 text-sm mb-4">Escolha o plano ideal para você:</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Plano Gratuito */}
+              <div className="rounded-xl border-2 border-dark-200 bg-dark-50/50 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-display font-bold text-dark-900">Gratuito</h5>
+                  <span className="text-2xl font-display font-bold text-dark-900">R$ 0</span>
+                </div>
+                <ul className="space-y-2 text-sm text-dark-600 mb-4">
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> 1 aluno
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Fichas de treino
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Acompanhamento básico
+                  </li>
+                </ul>
+                <p className="text-xs text-dark-500">Ideal para começar</p>
+              </div>
+
+              {/* Plano Pago - destaque */}
+              <div className="rounded-xl border-2 border-accent-300 bg-gradient-to-br from-accent-50 to-white p-5 relative shadow-medium">
+                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-accent-500 text-white text-xs font-semibold">
+                  Recomendado
+                </div>
+                <div className="flex items-center justify-between mb-3 mt-6">
+                  <h5 className="font-display font-bold text-dark-900">Pro</h5>
+                  <div className="text-right">
+                    <span className="text-2xl font-display font-bold text-accent-600">R$ 29,90</span>
+                    <span className="text-dark-500 text-sm block">/mês</span>
+                  </div>
+                </div>
+                <ul className="space-y-2 text-sm text-dark-700 mb-4">
+                  <li className="flex items-center gap-2 font-semibold text-accent-700">
+                    <span>✓</span> Alunos ilimitados
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Tudo do plano Gratuito
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Fichas e exercícios sem limite
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Suporte prioritário
+                  </li>
+                </ul>
+                {checkoutError && (
+                  <p className="text-red-600 text-xs mb-2">{checkoutError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAssinarPro}
+                  disabled={checkoutLoading}
+                  className="w-full py-2.5 rounded-xl bg-gradient-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {checkoutLoading ? 'Gerando link...' : 'Assinar por R$ 29,90'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card-modern p-6 md:p-8">
@@ -1269,22 +1460,102 @@ function PerfilPage() {
             <h4 className="text-lg font-display font-bold text-dark-900 mb-4">
               Informações da Conta
             </h4>
-            <div className="space-y-3">
-              <div className="bg-dark-50 rounded-lg p-4">
-                <p className="text-sm text-dark-500 mb-1">Nome</p>
-                <p className="text-dark-900 font-semibold">{user?.name}</p>
-              </div>
-              <div className="bg-dark-50 rounded-lg p-4">
-                <p className="text-sm text-dark-500 mb-1">Email</p>
-                <p className="text-dark-900 font-semibold">{user?.email}</p>
-              </div>
-              {user?.phone && (
-                <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Telefone</p>
-                  <p className="text-dark-900 font-semibold">{user?.phone}</p>
+            {profileError && (
+              <p className="text-red-600 text-sm mb-3">{profileError}</p>
+            )}
+            {editing ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-dark-500 mb-1 block">Nome</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                  />
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className="text-sm text-dark-500 mb-1 block">Email</label>
+                  <p className="text-dark-600 py-2">{user?.email}</p>
+                  <p className="text-xs text-dark-400">O email não pode ser alterado aqui.</p>
+                </div>
+                <div>
+                  <label className="text-sm text-dark-500 mb-1 block">Telefone</label>
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="(11) 99999-9999"
+                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-dark-500 mb-1 block">CPF (necessário para assinar o plano Pro)</label>
+                  <input
+                    type="text"
+                    value={form.taxId}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 11);
+                      setForm((f) => ({ ...f, taxId: formatCpfDisplay(v) }));
+                    }}
+                    placeholder="000.000.000-00"
+                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="px-4 py-2.5 rounded-xl bg-accent-500 text-white font-semibold text-sm disabled:opacity-70"
+                  >
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditing(false); setForm({ name: user?.name ?? '', phone: user?.phone ?? '', taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '' }); }}
+                    className="px-4 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Nome</p>
+                  <p className="text-dark-900 font-semibold">{user?.name}</p>
+                </div>
+                <div className="bg-dark-50 rounded-lg p-4">
+                  <p className="text-sm text-dark-500 mb-1">Email</p>
+                  <p className="text-dark-900 font-semibold">{user?.email}</p>
+                </div>
+                {(user?.phone || user?.taxId) && (
+                  <>
+                    {user?.phone && (
+                      <div className="bg-dark-50 rounded-lg p-4">
+                        <p className="text-sm text-dark-500 mb-1">Telefone</p>
+                        <p className="text-dark-900 font-semibold">{user.phone}</p>
+                      </div>
+                    )}
+                    {user?.taxId && (
+                      <div className="bg-dark-50 rounded-lg p-4">
+                        <p className="text-sm text-dark-500 mb-1">CPF</p>
+                        <p className="text-dark-900 font-semibold">{formatCpfDisplay(user.taxId)}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm hover:bg-dark-50"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Editar perfil e CPF
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="pt-6 border-t">

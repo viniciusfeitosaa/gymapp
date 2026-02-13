@@ -7,6 +7,9 @@ import { studentRoutes } from './routes/student.routes';
 import { workoutRoutes } from './routes/workout.routes';
 import { messageRoutes } from './routes/message.routes';
 import { progressRoutes } from './routes/progress.routes';
+import { subscriptionRoutes } from './routes/subscription.routes';
+import { personalRoutes } from './routes/personal.routes';
+import { webhooksRoutes } from './routes/webhooks.routes';
 
 // Carregar variáveis de ambiente ANTES de qualquer outra coisa
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -56,6 +59,9 @@ app.use('/api/students', studentRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/personal', personalRoutes);
+app.use('/api/webhooks', webhooksRoutes);
 
 // Rota raiz - informações da API
 app.get('/', (req, res) => {

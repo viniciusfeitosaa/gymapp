@@ -15,6 +15,7 @@ router.delete('/:id', authenticatePersonal, workoutController.deleteWorkout.bind
 // Rotas do Aluno
 router.get('/my-workouts', authenticateStudent, workoutController.getMyWorkouts.bind(workoutController));
 router.get('/my-logs', authenticateStudent, workoutController.getMyLogs.bind(workoutController));
+router.get('/streak-stats', authenticateStudent, workoutController.getStreakStats.bind(workoutController));
 router.get('/today', authenticateStudent, workoutController.getTodayWorkout.bind(workoutController));
 router.post('/log/:workoutId', authenticateStudent, workoutController.logWorkout.bind(workoutController));
 

@@ -9,6 +9,7 @@ interface AuthContextData {
   login: (email: string, password: string, type: UserType) => Promise<void>;
   loginStudent: (accessCode: string) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void;
   isAuthenticated: boolean;
 }
 
@@ -69,6 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserType(null);
   };
 
+  const updateUser = (data: Partial<User>) => {
+    if (!user) return;
+    const next = { ...user, ...data };
+    setUser(next);
+    localStorage.setItem('user', JSON.stringify(next));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -78,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         loginStudent,
         logout,
+        updateUser,
         isAuthenticated: !!user,
       }}
     >

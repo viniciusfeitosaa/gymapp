@@ -18,9 +18,13 @@ model PersonalTrainer {
   email     String   @unique
   password  String
   phone     String?
+  taxId     String?   // CPF para pagamentos (AbacatePay)
   cref      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Assinatura: plano gratuito = 1 aluno; assinante = mais alunos (maxStudentsAllowed)
+  maxStudentsAllowed Int @default(1)
 
   // Relações
   students  Student[]

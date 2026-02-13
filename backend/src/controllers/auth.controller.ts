@@ -149,6 +149,7 @@ export class AuthController {
       // Buscar Personal Trainer
       const personal = await prisma.personalTrainer.findUnique({
         where: { email: data.email },
+        select: { id: true, name: true, email: true, phone: true, taxId: true, cref: true, password: true },
       });
 
       if (!personal) {
@@ -180,6 +181,7 @@ export class AuthController {
           name: personal.name,
           email: personal.email,
           phone: personal.phone,
+          taxId: personal.taxId ?? undefined,
           cref: personal.cref,
         },
         token,

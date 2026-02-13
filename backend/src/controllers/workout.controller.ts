@@ -262,6 +262,77 @@ export class WorkoutController {
     }
   }
 
+  // Aluno: estatísticas de ofensiva (streak) e pontos (estilo Duolingo)
+  async getStreakStats(req: AuthRequest, res: Response) {
+    try {
+      const studentId = req.userId!;
+
+      const [logs, workouts] = await Promise.all([
+        prisma.workoutLog.findMany({
+          where: { studentId, completed: true },
+          select: { date: true },
+          orderBy: { date: 'desc' },
+          take: 500,
+        }),
+        prisma.workout.findMany({
+          where: { studentId, isActive: true },
+          select: { dayOfWeek: true },
+        }),
+      ]);
+
+      const toDateKey = (d: Date) => {
+        const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+        return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      };
+      const dateToWeekday = (d: Date) => d.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
+
+      const datesSet = new Set(logs.map((l) => toDateKey(new Date(l.date))));
+      const expectedWeekdays = new Set(
+        workouts.map((w) => DAYS_OF_WEEK.indexOf(w.dayOfWeek)).filter((i) => i >= 0)
+      );
+
+      const POINTS_PER_WORKOUT = 50;
+      const PENALTY_PER_MISSED = 15;
+      const LOOKBACK_DAYS = 7;
+
+      let missedLast7 = 0;
+      const check = new Date();
+      for (let i = 0; i < LOOKBACK_DAYS; i++) {
+        const key = toDateKey(check);
+        const weekday = dateToWeekday(check);
+        if (expectedWeekdays.size > 0 && expectedWeekdays.has(weekday) && !datesSet.has(key)) missedLast7++;
+        check.setDate(check.getDate() - 1);
+      }
+
+      const earned = logs.length * POINTS_PER_WORKOUT;
+      const penalty = missedLast7 * PENALTY_PER_MISSED;
+      const points = Math.max(0, earned - penalty);
+
+      let now = new Date();
+      const todayKey = toDateKey(now);
+      const hasToday = datesSet.has(todayKey);
+      let ref = new Date(now);
+      if (!hasToday) ref.setDate(ref.getDate() - 1);
+      let streak = 0;
+      const refKey = toDateKey(ref);
+      if (datesSet.has(refKey)) {
+        let cur = new Date(ref);
+        while (true) {
+          const key = toDateKey(cur);
+          if (!datesSet.has(key)) break;
+          streak++;
+          cur.setDate(cur.getDate() - 1);
+          if (streak >= 500) break;
+        }
+      }
+
+      res.json({ streak, points, totalWorkouts: logs.length, missedLast7 });
+    } catch (error) {
+      console.error('Get streak stats error:', error);
+      res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+    }
+  }
+
   // Aluno: registrar treino realizado
   async logWorkout(req: AuthRequest, res: Response) {
     try {
