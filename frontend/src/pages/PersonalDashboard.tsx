@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle, TrendingUp, TrendingDown, MessageCircle } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
 
 interface Student {
@@ -158,12 +159,75 @@ interface RecentLogItem {
   student: { id: string; name: string };
 }
 
+const TZ_BR = 'America/Sao_Paulo';
+function toDateKeyBR(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ_BR, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff: number }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (diff <= 0 || firedRef.current || !cardRef.current || !canvasRef.current) return;
+    firedRef.current = true;
+    const card = cardRef.current;
+    const canvas = canvasRef.current;
+    const rect = card.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const colors = ['#10b981', '#059669', '#34d399', '#f97316', '#fbbf24', '#3b82f6'];
+    const t = setTimeout(() => {
+      confetti({
+        canvas,
+        particleCount: 80,
+        spread: 100,
+        origin: { x: 0.5, y: 0.5 },
+        colors,
+        scalar: 0.9,
+      });
+      setTimeout(() => {
+        confetti({ canvas, particleCount: 40, spread: 120, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.7 });
+      }, 150);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [diff]);
+
+  return (
+    <div ref={cardRef} className="card-modern p-6 md:p-8 relative overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ left: 0, top: 0 }}
+      />
+      <div className="relative z-10">
+        <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Resumo da semana</h3>
+        <p className="text-sm text-dark-500 mb-4">Treinos concluídos esta semana</p>
+        <p className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">{thisWeekCount}</p>
+        <p className="text-sm text-dark-600 mb-1">
+          {diff >= 0 ? `+${diff}` : `${diff}`} em relação à semana anterior
+        </p>
+        {diff !== 0 && (
+          <span className={`inline-flex items-center gap-1 text-sm font-medium ${diff > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {diff > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            {diff > 0 ? 'Em alta' : 'Em baixa'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DashboardHome() {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [recentLogs, setRecentLogs] = useState<RecentLogItem[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [totalTreinos, setTotalTreinos] = useState(0);
 
   useEffect(() => {
@@ -172,13 +236,15 @@ function DashboardHome() {
         setLoading(true);
         const [studentsRes, logsRes, workoutsRes] = await Promise.all([
           api.get('/students'),
-          api.get('/workouts/recent-logs?days=7').catch(() => ({ data: [] })),
+          api.get('/workouts/recent-logs?days=14').catch(() => ({ data: [] })),
           api.get('/workouts').catch(() => ({ data: [] })),
         ]);
         const studentsData = studentsRes.data;
         setStudents(Array.isArray(studentsData) ? studentsData : (studentsData?.students ?? []));
         setRecentLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
-        setTotalTreinos(Array.isArray(workoutsRes.data) ? workoutsRes.data.length : 0);
+        const workoutsList = Array.isArray(workoutsRes.data) ? workoutsRes.data : [];
+        setWorkouts(workoutsList);
+        setTotalTreinos(workoutsList.length);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       } finally {
@@ -209,96 +275,113 @@ function DashboardHome() {
         <p className="text-dark-500 text-sm md:text-lg">Bem-vindo ao seu painel de controle</p>
       </div>
 
-      {/* Gráfico de Atividades */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
-        {/* Gráfico Principal */}
-        <div className="lg:col-span-2 card-modern p-6 md:p-8 relative">
-          <div className="flex flex-col gap-3 mb-6">
-            <div className="flex items-center gap-2 text-sm text-dark-600">
-              <div className="w-3 h-3 rounded-full bg-gradient-accent"></div>
-              <span>Conclusões</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-display font-bold text-dark-900 mb-1">
-                Treinos concluídos por dia
-              </h3>
-              <p className="text-sm text-dark-500">Últimos 7 dias — alunos que finalizaram o treino</p>
-            </div>
-          </div>
-          
-          <div className="relative h-64">
-            {/* Grid lines */}
-            <div className="absolute inset-0 flex flex-col justify-between">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="border-t border-dark-100"></div>
-              ))}
-            </div>
-            
-            {/* Bars: últimos 7 dias corridos (uma barra por data) */}
-            <div className="relative h-full flex items-end justify-around gap-2 md:gap-4 px-2 min-h-0">
-              {(() => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const last7Dates: Date[] = [];
-                for (let i = 6; i >= 0; i--) {
-                  const d = new Date(today);
-                  d.setDate(d.getDate() - i);
-                  last7Dates.push(d);
-                }
+      {/* Resumo da semana, Quem treina hoje, Top 3 */}
+      {(() => {
+        const now = new Date();
+        const todayKey = toDateKeyBR(now);
+        const thisWeekKeys: string[] = [];
+        const lastWeekKeys: string[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          thisWeekKeys.push(toDateKeyBR(d));
+        }
+        for (let i = 13; i >= 7; i--) {
+          const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          lastWeekKeys.push(toDateKeyBR(d));
+        }
+        const keyToLog = (log: RecentLogItem) =>
+          typeof log.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(log.date.trim()) ? log.date.trim() : toDateKeyBR(log.date);
+        const thisWeekCount = recentLogs.filter((l) => thisWeekKeys.includes(keyToLog(l))).length;
+        const lastWeekCount = recentLogs.filter((l) => lastWeekKeys.includes(keyToLog(l))).length;
+        const diff = thisWeekCount - lastWeekCount;
+        const todayDayOfWeek = DAYS_OF_WEEK[new Date(todayKey + 'T12:00:00').getDay()];
+        const workoutsToday = workouts.filter((w) => w.dayOfWeek === todayDayOfWeek);
+        const studentIdsToday = [...new Set(workoutsToday.map((w) => w.studentId))];
+        const workoutIdsToday = new Set(workoutsToday.map((w) => w.id));
+        const completedTodayByStudent = new Set<string>();
+        recentLogs.forEach((log) => {
+          if (keyToLog(log) === todayKey && workoutIdsToday.has(log.workout.id)) completedTodayByStudent.add(log.student.id);
+        });
+        const whoTrainsToday = studentIdsToday.map((id) => {
+          const student = students.find((s) => s.id === id);
+          return { id, name: student?.name ?? 'Aluno', phone: student?.phone, completed: completedTodayByStudent.has(id) };
+        });
+        const thisWeekByStudent: { [id: string]: number } = {};
+        recentLogs.forEach((log) => {
+          if (!thisWeekKeys.includes(keyToLog(log))) return;
+          const id = log.student.id;
+          thisWeekByStudent[id] = (thisWeekByStudent[id] ?? 0) + 1;
+        });
+        const top3 = Object.entries(thisWeekByStudent)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([id, count]) => ({ id, count, name: students.find((s) => s.id === id)?.name ?? recentLogs.find((l) => l.student.id === id)?.student?.name ?? 'Aluno' }));
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
+            {/* 1. Resumo da semana + comparação */}
+            <ResumoSemanaCard thisWeekCount={thisWeekCount} diff={diff} />
 
-                const dateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-                const countByDate: { [key: string]: number } = {};
-                last7Dates.forEach((d) => { countByDate[dateKey(d)] = 0; });
-
-                recentLogs.forEach((log) => {
-                  const d = new Date(log.date);
-                  d.setHours(0, 0, 0, 0);
-                  const key = dateKey(d);
-                  if (countByDate[key] !== undefined) countByDate[key]++;
-                });
-
-                const maxCount = Math.max(...Object.values(countByDate), 1);
-
-                return last7Dates.map((d) => {
-                  const key = dateKey(d);
-                  const count = countByDate[key] ?? 0;
-                  const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                  const barHeight = Math.max(percentage, count === 0 ? 0 : 5);
-                  const label = d.toLocaleDateString('pt-BR', { day: 'numeric', month: '2-digit' });
-                  const isToday = dateKey(d) === dateKey(today);
-                  return (
-                    <div key={key} className="flex-1 flex flex-col items-center gap-3 min-h-0">
-                      <div className="flex-1 w-full min-h-0 flex flex-col justify-end relative group">
-                        <div
-                          className="w-full bg-gradient-accent rounded-t-lg transition-all duration-500 hover:opacity-80 cursor-pointer min-h-[2px]"
-                          style={{ height: `${barHeight}%` }}
-                        >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
-                            {count} {count === 1 ? 'conclusão' : 'conclusões'}
-                          </div>
-                        </div>
+            {/* 2. Quem treina hoje */}
+            <div className="card-modern p-6 md:p-8">
+              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Quem treina hoje</h3>
+              <p className="text-sm text-dark-500 mb-4">Status e lembrete por WhatsApp</p>
+              {whoTrainsToday.length === 0 ? (
+                <p className="text-dark-500 text-sm">Nenhum aluno com treino no dia de hoje.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {whoTrainsToday.map(({ id, name, phone, completed }) => (
+                    <li key={id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-dark-50 border border-dark-100">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${completed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        <span className="font-medium text-dark-900 truncate">{name}</span>
                       </div>
-                      <span className={`text-xs md:text-sm font-medium flex-shrink-0 ${isToday ? 'text-accent-600 font-semibold' : 'text-dark-600'}`}>
-                        {label}{isToday ? ' (hoje)' : ''}
-                      </span>
-                    </div>
-                  );
-                });
-              })()}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-xs font-medium ${completed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {completed ? 'Concluído' : 'Pendente'}
+                        </span>
+                        {!completed && phone && (
+                          <a
+                            href={`https://wa.me/55${phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                            title="Enviar lembrete no WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 3. Top 3 alunos em destaque */}
+            <div className="card-modern p-6 md:p-8">
+              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Alunos em destaque</h3>
+              <p className="text-sm text-dark-500 mb-4">Top 3 esta semana (mais conclusões)</p>
+              {top3.length === 0 ? (
+                <p className="text-dark-500 text-sm">Nenhuma conclusão nesta semana ainda.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {top3.map(({ id, name, count }, i) => (
+                    <li key={id} className="flex items-center gap-3 p-3 rounded-xl bg-dark-50 border border-dark-100">
+                      <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <span className="font-medium text-dark-900 truncate flex-1">{name}</span>
+                      <span className="text-sm font-semibold text-accent-600 flex-shrink-0">{count} {count === 1 ? 'treino' : 'treinos'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-          
-          {recentLogs.length === 0 && (
-            <div className="absolute inset-6 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
-              <div className="text-center">
-                <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500 font-medium">Nenhuma conclusão nos últimos 7 dias</p>
-              </div>
-            </div>
-          )}
-        </div>
+        );
+      })()}
 
-        {/* Cards de Resumo */}
+      {/* Cards de Resumo */}
         <div className="flex flex-col gap-4">
           <div className="card-modern p-4 md:p-6">
             <div className="flex items-center justify-between mb-3">
@@ -321,10 +404,9 @@ function DashboardHome() {
           </div>
 
         </div>
-      </div>
 
-      <div className="card-modern p-6 md:p-8">
-        <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-4">
+      <div className="card-modern p-8 md:p-10 mt-8">
+        <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-6">
           Atividades Recentes
         </h3>
         {(() => {
@@ -337,11 +419,11 @@ function DashboardHome() {
             <p className="text-sm mt-1">Quando seus alunos finalizarem treinos, aparecerão aqui</p>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {logsLast24h.map((log) => (
               <li
                 key={log.id}
-                className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100"
+                className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100"
               >
                 <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-5 h-5" />
@@ -1054,9 +1136,6 @@ function TreinosPage() {
                     }`}>
                       {day.label}
                     </div>
-                    {day.workout && selectedDay !== day.value && (
-                      <div className="mt-1 w-1 h-1 bg-green-500 rounded-full mx-auto"></div>
-                    )}
                   </div>
                 </button>
               ))}

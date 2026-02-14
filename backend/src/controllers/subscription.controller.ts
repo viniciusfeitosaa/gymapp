@@ -2,41 +2,44 @@ import { Response } from 'express';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-const ABACATEPAY_CUSTOMER_URL = 'https://api.abacatepay.com/v1/customer/create';
-const ABACATEPAY_BILLING_URL = 'https://api.abacatepay.com/v1/billing/create';
-const PRO_PLAN_PRICE_CENTS = 2990; // R$ 29,90
+const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL || 'https://api.asaas.com';
+const ASAAS_CHECKOUT_BASE = process.env.ASAAS_CHECKOUT_BASE || 'https://www.asaas.com';
+const PRO_PLAN_VALUE = 29.9; // R$ 29,90/mês
 const UNLIMITED_STUDENTS = 999;
 
-function formatCpf(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 11);
-  if (digits.length >= 11) {
-    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-  }
-  return raw;
+function getAsaasHeaders(): Record<string, string> {
+  let apiKey = process.env.ASAAS_API_KEY || '';
+  apiKey = apiKey.replace(/^["']|["']$/g, '').trim(); // remove aspas se vieram do .env
+  if (!apiKey) throw new Error('ASAAS_API_KEY não configurada');
+  return {
+    'Content-Type': 'application/json',
+    'User-Agent': 'GymCode/1.0 (Node.js; production)',
+    'access_token': apiKey,
+  };
 }
 
-function formatCellphone(phone: string | null): string {
-  const digits = phone ? String(phone).replace(/\D/g, '').slice(-11) : '11999999999';
-  if (digits.length === 11) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  }
-  return digits;
+function formatCpfToDigits(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 11);
+}
+
+function formatPhoneToDigits(phone: string | null): string {
+  if (!phone) return '';
+  return String(phone).replace(/\D/g, '').slice(-11);
 }
 
 export class SubscriptionController {
-  // Criar link de checkout AbacatePay (Plano Pro - R$ 29,90/mês)
+  // Criar link de checkout Asaas (Plano Pro - R$ 29,90/mês)
   async createCheckout(req: AuthRequest, res: Response) {
     try {
       const personalId = req.userId!;
-      const apiKey = process.env.ABACATEPAY_API_KEY;
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-      if (!apiKey) {
+      const rawKey = process.env.ASAAS_API_KEY || '';
+      if (!rawKey.trim()) {
         return res.status(500).json({ error: 'Pagamentos não configurados. Contate o suporte.' });
       }
+      // Log apenas para debug (comprimento da chave; não exibe o valor)
+      console.log('[Asaas] Checkout: API key carregada, tamanho=', rawKey.replace(/^["']|["']$/g, '').trim().length);
 
       const personal = await prisma.personalTrainer.findUnique({
         where: { id: personalId },
@@ -46,7 +49,7 @@ export class SubscriptionController {
         return res.status(404).json({ error: 'Personal não encontrado' });
       }
 
-      const rawCpf = personal.taxId?.replace(/\D/g, '') ?? '';
+      const rawCpf = formatCpfToDigits(personal.taxId ?? '');
       if (rawCpf.length < 11) {
         return res.status(400).json({
           error: 'Para assinar o plano Pro, cadastre seu CPF nas informações da conta abaixo.',
@@ -54,90 +57,78 @@ export class SubscriptionController {
         });
       }
 
-      const returnUrl = `${frontendUrl}/personal/perfil`;
       const completionUrl = `${frontendUrl}/personal/perfil?subscription=success`;
+      const headers = getAsaasHeaders();
 
-      const taxId = formatCpf(rawCpf);
-      const cellphone = formatCellphone(personal.phone);
-
-      const customerPayload = {
+      // 1) Criar cliente no Asaas
+      const customerBody = {
         name: personal.name,
+        cpfCnpj: rawCpf,
         email: personal.email,
-        taxId,
-        cellphone,
+        mobilePhone: formatPhoneToDigits(personal.phone) || '11999999999',
+        externalReference: personalId,
       };
 
-      // 1) Criar cliente na AbacatePay para obter customerId
-      const customerRes = await fetch(ABACATEPAY_CUSTOMER_URL, {
+      const customerRes = await fetch(`${ASAAS_BASE_URL}/v3/customers`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(customerPayload),
+        headers,
+        body: JSON.stringify(customerBody),
       });
 
-      const customerData: any = await customerRes.json().catch(() => ({}));
+      const customerData: { id?: string; errors?: { description: string; code?: string }[] } = await customerRes.json().catch(() => ({}));
 
       if (!customerRes.ok) {
-        console.error('AbacatePay create customer:', customerRes.status, JSON.stringify(customerData));
-        const msg = customerData?.error ?? (typeof customerData?.error === 'string' ? customerData.error : null);
-        return res.status(502).json({
-          error: msg || 'Não foi possível validar seus dados no gateway. Verifique CPF e telefone.',
-        });
+        const msg = customerData?.errors?.[0]?.description || 'Não foi possível validar seus dados no gateway. Verifique CPF e telefone.';
+        console.error('[Asaas] create customer falhou:', customerRes.status, JSON.stringify(customerData));
+        return res.status(502).json({ error: msg, details: customerData?.errors });
       }
 
-      const customerId = customerData?.data?.id ?? customerData?.id;
+      const customerId = customerData?.id;
       if (!customerId || typeof customerId !== 'string') {
-        console.error('AbacatePay customer response sem id:', customerData);
+        console.error('Asaas customer response sem id:', customerData);
         return res.status(502).json({ error: 'Resposta inválida do gateway de pagamento.' });
       }
 
-      // 2) Criar cobrança usando customerId
-      const billingBody = {
-        frequency: 'ONE_TIME',
-        methods: ['PIX', 'CARD'],
-        products: [
-          {
-            externalId: 'gymcode-pro-monthly',
-            name: 'Plano Pro - Gym Code',
-            description: 'Alunos ilimitados. Acesso completo por 1 mês.',
-            quantity: 1,
-            price: PRO_PLAN_PRICE_CENTS,
-          },
-        ],
-        returnUrl,
-        completionUrl,
-        customerId,
-        externalId: personalId,
-        allowCoupons: false,
+      // 2) Criar assinatura mensal (gera checkout para pagamento)
+      const nextDue = new Date();
+      nextDue.setDate(nextDue.getDate() + 1);
+      const nextDueStr = nextDue.toISOString().slice(0, 10); // YYYY-MM-DD
+
+      const subscriptionBody = {
+        customer: customerId,
+        billingType: 'UNDEFINED' as const,
+        value: PRO_PLAN_VALUE,
+        nextDueDate: nextDueStr,
+        cycle: 'MONTHLY' as const,
+        description: 'Plano Pro - Gym Code (alunos ilimitados)',
+        externalReference: personalId,
+        callback: {
+          successUrl: completionUrl,
+          autoRedirect: true,
+        },
       };
 
-      const billingRes = await fetch(ABACATEPAY_BILLING_URL, {
+      const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(billingBody),
+        headers,
+        body: JSON.stringify(subscriptionBody),
       });
 
-      const billingData: any = await billingRes.json().catch(() => ({}));
+      const subData: { checkoutSession?: string; id?: string; errors?: { description: string; code?: string }[] } = await subRes.json().catch(() => ({}));
 
-      if (!billingRes.ok) {
-        console.error('AbacatePay create billing:', billingRes.status, JSON.stringify(billingData));
-        const msg = billingData?.error ?? (typeof billingData?.error === 'string' ? billingData.error : null);
-        return res.status(502).json({
-          error: msg || 'Erro ao gerar link de pagamento. Tente novamente.',
-        });
+      if (!subRes.ok) {
+        const msg = subData?.errors?.[0]?.description || 'Erro ao gerar link de pagamento. Tente novamente.';
+        console.error('[Asaas] create subscription falhou:', subRes.status, JSON.stringify(subData));
+        return res.status(502).json({ error: msg, details: subData?.errors });
       }
 
-      const url = billingData?.data?.url ?? billingData?.url;
-      if (!url || typeof url !== 'string') {
-        console.error('AbacatePay response sem url:', billingData);
+      const checkoutSession = subData?.checkoutSession ?? subData?.id;
+      if (!checkoutSession || typeof checkoutSession !== 'string') {
+        console.error('Asaas subscription response sem checkoutSession:', subData);
         return res.status(502).json({ error: 'Resposta inválida do gateway de pagamento.' });
       }
 
+      const url = `${ASAAS_CHECKOUT_BASE}/checkoutSession/show?id=${checkoutSession}`;
       res.json({ url });
     } catch (error) {
       console.error('Create checkout error:', error);
@@ -145,33 +136,45 @@ export class SubscriptionController {
     }
   }
 
-  // Webhook AbacatePay: quando o pagamento é confirmado (billing.paid)
-  async webhookAbacatePay(req: AuthRequest, res: Response) {
+  // Webhook Asaas: PAYMENT_RECEIVED — ativa Plano Pro (maxStudentsAllowed = ilimitado)
+  async webhookAsaas(req: AuthRequest, res: Response) {
     try {
-      const secret = req.query.webhookSecret;
-      const expectedSecret = process.env.ABACATEPAY_WEBHOOK_SECRET;
-      if (expectedSecret && secret !== expectedSecret) {
-        return res.status(401).json({ error: 'Invalid webhook secret' });
+      const event = req.body?.event;
+      const payment = req.body?.payment;
+
+      if (event !== 'PAYMENT_RECEIVED' || !payment?.id) {
+        return res.status(200).json({ received: true });
       }
 
-      const event = req.body?.event;
-      const payload = req.body?.data;
+      const subscriptionId = payment.subscription;
+      if (!subscriptionId) {
+        return res.status(200).json({ received: true });
+      }
 
-      if (event === 'billing.paid' && payload?.billing) {
-        const billing = payload.billing;
-        const personalId = billing.externalId;
-        if (personalId) {
-          await prisma.personalTrainer.update({
-            where: { id: personalId },
-            data: { maxStudentsAllowed: UNLIMITED_STUDENTS },
-          });
-          console.log(`[Webhook] Plano Pro ativado para personal ${personalId}`);
-        }
+      const headers = getAsaasHeaders();
+      const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subscriptionId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!subRes.ok) {
+        console.error('Asaas get subscription:', subRes.status);
+        return res.status(200).json({ received: true });
+      }
+
+      const subData: { externalReference?: string } = await subRes.json().catch(() => ({}));
+      const personalId = subData?.externalReference;
+      if (personalId) {
+        await prisma.personalTrainer.update({
+          where: { id: personalId },
+          data: { maxStudentsAllowed: UNLIMITED_STUDENTS },
+        });
+        console.log(`[Webhook Asaas] Plano Pro ativado para personal ${personalId}`);
       }
 
       res.status(200).json({ received: true });
     } catch (error) {
-      console.error('Webhook AbacatePay error:', error);
+      console.error('Webhook Asaas error:', error);
       res.status(500).json({ error: 'Webhook error' });
     }
   }

@@ -4,7 +4,7 @@ import { SubscriptionController } from '../controllers/subscription.controller';
 const router = Router();
 const subscriptionController = new SubscriptionController();
 
-// AbacatePay envia billing.paid etc. (validar webhookSecret na query)
-router.post('/abacatepay', subscriptionController.webhookAbacatePay.bind(subscriptionController));
+// Asaas envia PAYMENT_RECEIVED etc.
+router.post('/asaas', subscriptionController.webhookAsaas.bind(subscriptionController));
 
 export { router as webhooksRoutes };

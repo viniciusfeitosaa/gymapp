@@ -18,7 +18,7 @@ model PersonalTrainer {
   email     String   @unique
   password  String
   phone     String?
-  taxId     String?   // CPF para pagamentos (AbacatePay)
+  taxId     String?   // CPF para pagamentos (Asaas)
   cref      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
