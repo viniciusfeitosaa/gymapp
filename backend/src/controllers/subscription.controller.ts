@@ -57,78 +57,70 @@ export class SubscriptionController {
         });
       }
 
-      const completionUrl = `${frontendUrl}/personal/perfil?subscription=success`;
+      const successUrl = `${frontendUrl}/personal/perfil?subscription=success`;
+      const cancelUrl = `${frontendUrl}/personal/perfil`;
+      const expiredUrl = `${frontendUrl}/personal/perfil`;
       const headers = getAsaasHeaders();
 
-      // 1) Criar cliente no Asaas
-      const customerBody = {
-        name: personal.name,
-        cpfCnpj: rawCpf,
-        email: personal.email,
-        mobilePhone: formatPhoneToDigits(personal.phone) || '11999999999',
-        externalReference: personalId,
-      };
-
-      const customerRes = await fetch(`${ASAAS_BASE_URL}/v3/customers`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(customerBody),
-      });
-
-      const customerData = (await customerRes.json().catch(() => ({}))) as { id?: string; errors?: { description: string; code?: string }[] };
-
-      if (!customerRes.ok) {
-        const msg = customerData?.errors?.[0]?.description || 'Não foi possível validar seus dados no gateway. Verifique CPF e telefone.';
-        console.error('[Asaas] create customer falhou:', customerRes.status, JSON.stringify(customerData));
-        return res.status(502).json({ error: msg, details: customerData?.errors });
-      }
-
-      const customerId = customerData?.id;
-      if (!customerId || typeof customerId !== 'string') {
-        console.error('Asaas customer response sem id:', customerData);
-        return res.status(502).json({ error: 'Resposta inválida do gateway de pagamento.' });
-      }
-
-      // 2) Criar assinatura mensal (gera checkout para pagamento)
+      // Próxima data de vencimento (amanhã)
       const nextDue = new Date();
       nextDue.setDate(nextDue.getDate() + 1);
       const nextDueStr = nextDue.toISOString().slice(0, 10); // YYYY-MM-DD
+      const nextDueFull = `${nextDueStr}T12:00:00`;
 
-      const subscriptionBody = {
-        customer: customerId,
-        billingType: 'UNDEFINED' as const,
-        value: PRO_PLAN_VALUE,
-        nextDueDate: nextDueStr,
-        cycle: 'MONTHLY' as const,
-        description: 'Plano Pro - Gym Code (alunos ilimitados)',
+      // Criar sessão de checkout (POST /v3/checkouts) — retorna ID UUID para a URL da página de pagamento
+      const checkoutBody = {
+        billingTypes: ['CREDIT_CARD', 'PIX'],
+        chargeTypes: ['RECURRENT'],
+        minutesToExpire: 100,
         externalReference: personalId,
         callback: {
-          successUrl: completionUrl,
-          autoRedirect: true,
+          successUrl,
+          cancelUrl,
+          expiredUrl,
         },
+        customerData: {
+          name: personal.name,
+          cpfCnpj: rawCpf,
+          email: personal.email,
+          phone: formatPhoneToDigits(personal.phone) || '11999999999',
+        },
+        subscription: {
+          cycle: 'MONTHLY',
+          nextDueDate: nextDueFull,
+        },
+        items: [
+          {
+            name: 'Plano Pro',
+            description: 'Plano Pro - Gym Code (alunos ilimitados)',
+            quantity: 1,
+            value: PRO_PLAN_VALUE,
+            imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          },
+        ],
       };
 
-      const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions`, {
+      const checkoutRes = await fetch(`${ASAAS_BASE_URL}/v3/checkouts`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(subscriptionBody),
+        body: JSON.stringify(checkoutBody),
       });
 
-      const subData = (await subRes.json().catch(() => ({}))) as { checkoutSession?: string; id?: string; errors?: { description: string; code?: string }[] };
+      const checkoutData = (await checkoutRes.json().catch(() => ({}))) as { id?: string; errors?: { description: string; code?: string }[] };
 
-      if (!subRes.ok) {
-        const msg = subData?.errors?.[0]?.description || 'Erro ao gerar link de pagamento. Tente novamente.';
-        console.error('[Asaas] create subscription falhou:', subRes.status, JSON.stringify(subData));
-        return res.status(502).json({ error: msg, details: subData?.errors });
+      if (!checkoutRes.ok) {
+        const msg = checkoutData?.errors?.[0]?.description || 'Erro ao gerar link de pagamento. Tente novamente.';
+        console.error('[Asaas] create checkout falhou:', checkoutRes.status, JSON.stringify(checkoutData));
+        return res.status(502).json({ error: msg, details: checkoutData?.errors });
       }
 
-      const checkoutSession = subData?.checkoutSession ?? subData?.id;
-      if (!checkoutSession || typeof checkoutSession !== 'string') {
-        console.error('Asaas subscription response sem checkoutSession:', subData);
+      const checkoutId = checkoutData?.id;
+      if (!checkoutId || typeof checkoutId !== 'string') {
+        console.error('Asaas checkout response sem id:', checkoutData);
         return res.status(502).json({ error: 'Resposta inválida do gateway de pagamento.' });
       }
 
-      const url = `${ASAAS_CHECKOUT_BASE}/checkoutSession/show?id=${checkoutSession}`;
+      const url = `${ASAAS_CHECKOUT_BASE}/checkoutSession/show?id=${checkoutId}`;
       res.json({ url });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -141,30 +133,26 @@ export class SubscriptionController {
   async webhookAsaas(req: AuthRequest, res: Response) {
     try {
       const event = req.body?.event;
-      const payment = req.body?.payment;
+      const payment = req.body?.payment as { id?: string; subscription?: string; externalReference?: string } | undefined;
 
       if (event !== 'PAYMENT_RECEIVED' || !payment?.id) {
         return res.status(200).json({ received: true });
       }
 
-      const subscriptionId = payment.subscription;
-      if (!subscriptionId) {
-        return res.status(200).json({ received: true });
+      let personalId: string | undefined = payment.externalReference;
+
+      if (!personalId && payment.subscription) {
+        const headers = getAsaasHeaders();
+        const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${payment.subscription}`, {
+          method: 'GET',
+          headers,
+        });
+        if (subRes.ok) {
+          const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
+          personalId = subData?.externalReference;
+        }
       }
 
-      const headers = getAsaasHeaders();
-      const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subscriptionId}`, {
-        method: 'GET',
-        headers,
-      });
-
-      if (!subRes.ok) {
-        console.error('Asaas get subscription:', subRes.status);
-        return res.status(200).json({ received: true });
-      }
-
-      const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
-      const personalId = subData?.externalReference;
       if (personalId) {
         await prisma.personalTrainer.update({
           where: { id: personalId },
