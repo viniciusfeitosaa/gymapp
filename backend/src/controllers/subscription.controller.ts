@@ -84,6 +84,10 @@ export class SubscriptionController {
           cpfCnpj: rawCpf,
           email: personal.email,
           phone: formatPhoneToDigits(personal.phone) || '11999999999',
+          address: 'A definir',
+          addressNumber: 'S/N',
+          province: 'Centro',
+          postalCode: '00000000',
         },
         subscription: {
           cycle: 'MONTHLY',
