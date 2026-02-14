@@ -274,7 +274,7 @@ export default function StudentDashboard() {
           />
         )}
         {currentPath === 'treinos' && (
-          <StudentTreinosPage refetchLogsRef={refetchLogsRef} />
+          <StudentTreinosPage onStartFocusMode={setFocusWorkout} refetchLogsRef={refetchLogsRef} />
         )}
         {currentPath === 'perfil' && <StudentPerfilPage />}
       </main>
@@ -320,6 +320,23 @@ interface WorkoutLogItem {
   date: string;
   workoutId?: string;
   workout?: { id: string; name: string; dayOfWeek: string };
+}
+
+/** Semana atual: segunda a domingo. Retorna só logs desta semana para "concluído" zerar a cada semana. */
+function getLogsFromCurrentWeek(logs: WorkoutLogItem[]): WorkoutLogItem[] {
+  const now = new Date();
+  const day = now.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
+  const diff = day === 0 ? 6 : day - 1; // dias para voltar à segunda
+  const start = new Date(now);
+  start.setDate(now.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return logs.filter((l) => {
+    const d = new Date(l.date);
+    return d >= start && d <= end;
+  });
 }
 
 function StudentDashboardHome({
@@ -386,7 +403,8 @@ function StudentDashboardHome({
     }
   };
 
-  const completedWorkoutIds = logs.map((l) => l.workout?.id).filter(Boolean) as string[];
+  const logsThisWeek = getLogsFromCurrentWeek(logs);
+  const completedWorkoutIds = logsThisWeek.map((l) => l.workout?.id).filter(Boolean) as string[];
   const todayCompleted = todayWorkout?.id && completedWorkoutIds.includes(todayWorkout.id);
 
   const confettiFiredRef = useRef(false);
@@ -685,8 +703,10 @@ function StudentDashboardHome({
 }
 
 function StudentTreinosPage({
+  onStartFocusMode,
   refetchLogsRef,
 }: {
+  onStartFocusMode: (w: Workout) => void;
   refetchLogsRef: MutableRefObject<() => void>;
 }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -744,7 +764,8 @@ function StudentTreinosPage({
     workout: (workouts || []).find(w => w.dayOfWeek === day.value)
   }));
 
-  const completedWorkoutIds = logs.map((l) => l.workout?.id ?? l.workoutId).filter(Boolean) as string[];
+  const logsThisWeek = getLogsFromCurrentWeek(logs);
+  const completedWorkoutIds = logsThisWeek.map((l) => l.workout?.id ?? l.workoutId).filter(Boolean) as string[];
 
   if (loading) {
     return (
@@ -770,35 +791,43 @@ function StudentTreinosPage({
           Selecione o Dia
         </h3>
         <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-          {workoutsByDay.map((day) => (
-            <button
-              key={day.value}
-              onClick={() => setSelectedDay(day.value)}
-              className={`p-2 rounded-lg transition-all ${
-                selectedDay === day.value
-                  ? 'bg-gradient-accent text-white shadow-strong scale-105'
-                  : day.workout
-                  ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200'
-                  : 'bg-dark-50 hover:bg-dark-100 border-2 border-dashed border-dark-200'
-              }`}
-            >
-              <div className="text-center">
-                <div className={`text-sm font-bold mb-0.5 ${
-                  selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-700' : 'text-dark-400'
-                }`}>
-                  {day.short}
+          {workoutsByDay.map((day) => {
+            const isCompleted = day.workout && completedWorkoutIds.includes(day.workout.id);
+            return (
+              <button
+                key={day.value}
+                onClick={() => setSelectedDay(day.value)}
+                className={`p-2 rounded-lg transition-all ${
+                  selectedDay === day.value
+                    ? 'bg-gradient-accent text-white shadow-strong scale-105'
+                    : day.workout
+                    ? isCompleted
+                      ? 'bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300'
+                      : 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200'
+                    : 'bg-dark-50 hover:bg-dark-100 border-2 border-dashed border-dark-200'
+                }`}
+              >
+                <div className="text-center w-full">
+                  <div className={`flex items-center mb-0.5 w-full ${
+                    selectedDay === day.value ? 'text-white' : day.workout ? (isCompleted ? 'text-emerald-700' : 'text-blue-700') : 'text-dark-400'
+                  }`}>
+                    {day.workout && isCompleted ? (
+                      <CheckCircle className={`w-3.5 h-3.5 flex-shrink-0 ${selectedDay === day.value ? 'text-white' : 'text-emerald-600'}`} />
+                    ) : (
+                      <span className="w-3.5 flex-shrink-0" aria-hidden />
+                    )}
+                    <span className="flex-1 text-center text-sm font-bold">{day.short}</span>
+                    <span className="w-3.5 flex-shrink-0" aria-hidden />
+                  </div>
+                  <div className={`text-[10px] font-semibold ${
+                    selectedDay === day.value ? 'text-white' : day.workout ? (isCompleted ? 'text-emerald-600' : 'text-blue-600') : 'text-dark-400'
+                  }`}>
+                    {day.label}
+                  </div>
                 </div>
-                <div className={`text-[10px] font-semibold ${
-                  selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-600' : 'text-dark-400'
-                }`}>
-                  {day.label}
-                </div>
-                {day.workout && selectedDay !== day.value && (
-                  <div className="mt-1 w-1 h-1 bg-green-500 rounded-full mx-auto"></div>
-                )}
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -811,6 +840,7 @@ function StudentTreinosPage({
           <WorkoutDetailCard
             workout={dayData.workout}
             dayLabel={dayData.label}
+            onStartFocusMode={onStartFocusMode}
             isCompleted={completedWorkoutIds.includes(dayData.workout.id)}
           />
         ) : (
@@ -834,10 +864,12 @@ function StudentTreinosPage({
 function WorkoutDetailCard({
   workout,
   dayLabel,
+  onStartFocusMode,
   isCompleted,
 }: {
   workout: Workout;
   dayLabel: string;
+  onStartFocusMode: (w: Workout) => void;
   isCompleted?: boolean;
 }) {
   const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
@@ -855,9 +887,18 @@ function WorkoutDetailCard({
       )}
       <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-xs text-blue-600 mb-1.5">
-            <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="font-semibold truncate">{dayLabel}</span>
+          <div className="flex items-center justify-between gap-2 text-xs text-blue-600 mb-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="font-semibold truncate">{dayLabel}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onStartFocusMode(workout)}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-semibold transition-colors shadow-medium"
+            >
+              Iniciar
+            </button>
           </div>
           <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 truncate" title={workout.name}>
             {workout.name}

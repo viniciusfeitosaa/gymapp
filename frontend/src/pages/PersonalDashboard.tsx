@@ -1236,6 +1236,7 @@ function TreinosPage() {
       {showAddModal && (
         <AddWorkoutModal
           students={students}
+          workouts={workouts}
           preSelectedStudentId={selectedStudent}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
@@ -1625,11 +1626,13 @@ function DeleteWorkoutModal({
 
 function AddWorkoutModal({ 
   students, 
+  workouts,
   preSelectedStudentId,
   onClose, 
   onSuccess 
 }: { 
   students: Student[]; 
+  workouts: Workout[];
   preSelectedStudentId?: string;
   onClose: () => void; 
   onSuccess: () => void;
@@ -1640,7 +1643,16 @@ function AddWorkoutModal({
     daysOfWeek: [] as string[], // Mudado para array para múltiplos dias
     description: '',
   });
+
+  // Dias que já têm treino para o aluno selecionado (para indicar no grid)
+  const daysWithExistingWorkout = formData.studentId
+    ? workouts
+        .filter((w) => w.studentId === formData.studentId)
+        .map((w) => w.dayOfWeek)
+    : [];
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [expandedExerciseIndex, setExpandedExerciseIndex] = useState<number | null>(null);
+  const [exerciseToDeleteIndex, setExerciseToDeleteIndex] = useState<number | null>(null);
   const [savedExercises, setSavedExercises] = useState<Exercise[]>([]);
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
   const [error, setError] = useState('');
@@ -1665,13 +1677,29 @@ function AddWorkoutModal({
   ];
 
   const toggleDay = (day: string) => {
+    const alreadyAllocated = daysWithExistingWorkout.includes(day);
+    setFormData(prev => {
+      if (prev.daysOfWeek.includes(day)) {
+        return { ...prev, daysOfWeek: prev.daysOfWeek.filter(d => d !== day) };
+      }
+      if (alreadyAllocated) return prev; // não permite selecionar dia já alocado
+      return { ...prev, daysOfWeek: [...prev.daysOfWeek, day] };
+    });
+  };
+
+  // Ao trocar de aluno, remove da seleção os dias que já têm treino para o novo aluno
+  useEffect(() => {
+    if (!formData.studentId) return;
+    const allocated = workouts
+      .filter((w) => w.studentId === formData.studentId)
+      .map((w) => w.dayOfWeek);
+    if (allocated.length === 0) return;
     setFormData(prev => ({
       ...prev,
-      daysOfWeek: prev.daysOfWeek.includes(day)
-        ? prev.daysOfWeek.filter(d => d !== day)
-        : [...prev.daysOfWeek, day]
+      daysOfWeek: prev.daysOfWeek.filter(d => !allocated.includes(d)),
     }));
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- só reagir à troca de aluno
+  }, [formData.studentId]);
 
   const addExercise = () => {
     setExercises([
@@ -1692,6 +1720,9 @@ function AddWorkoutModal({
 
   const removeExercise = (index: number) => {
     setExercises(exercises.filter((_, i) => i !== index));
+    setExerciseToDeleteIndex(null);
+    if (expandedExerciseIndex === index) setExpandedExerciseIndex(null);
+    else if (expandedExerciseIndex !== null && expandedExerciseIndex > index) setExpandedExerciseIndex(expandedExerciseIndex - 1);
   };
 
   const saveExercise = (exercise: Exercise) => {
@@ -1792,21 +1823,38 @@ function AddWorkoutModal({
               <label className="block text-sm font-semibold text-dark-700 mb-3">
                 Dias da Semana * (selecione um ou mais)
               </label>
+              {formData.studentId && daysWithExistingWorkout.length > 0 && (
+                <p className="text-xs text-dark-500 mb-2">
+                  Dias em azul já possuem treino para este aluno.
+                </p>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {daysOfWeek.map((day) => (
-                  <button
-                    key={day.value}
-                    type="button"
-                    onClick={() => toggleDay(day.value)}
-                    className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
-                      formData.daysOfWeek.includes(day.value)
-                        ? 'bg-gradient-accent text-white shadow-medium'
-                        : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
-                    }`}
-                  >
-                    {day.label}
-                  </button>
-                ))}
+                {daysOfWeek.map((day) => {
+                  const hasExisting = daysWithExistingWorkout.includes(day.value);
+                  const isSelected = formData.daysOfWeek.includes(day.value);
+                  const disabled = hasExisting;
+                  return (
+                    <button
+                      key={day.value}
+                      type="button"
+                      onClick={() => toggleDay(day.value)}
+                      disabled={disabled}
+                      title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
+                      className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
+                        disabled
+                          ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
+                          : isSelected
+                            ? 'bg-gradient-accent text-white shadow-medium'
+                            : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
+                      }`}
+                    >
+                      <span>{day.label}</span>
+                      {hasExisting && (
+                        <span className="text-[10px] font-medium opacity-90">Já alocado</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               {formData.daysOfWeek.length === 0 && (
                 <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
@@ -1881,138 +1929,193 @@ function AddWorkoutModal({
               </div>
             ) : (
               <div className="space-y-4">
-                {exercises.map((exercise, index) => (
-                  <div key={index} className="bg-dark-50 rounded-xl p-4 relative">
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveExercise(exercise)}
-                        disabled={!exercise.name || !exercise.sets || !exercise.reps}
-                        className="p-1.5 text-green-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Salvar na biblioteca"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeExercise(index)}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                {exercises.map((exercise, index) => {
+                  const isExpanded = expandedExerciseIndex === index;
+                  const isConfirmingDelete = exerciseToDeleteIndex === index;
+                  return (
+                    <div key={index} className="bg-dark-50 rounded-xl p-4 relative border-2 border-transparent">
+                      {isConfirmingDelete ? (
+                        <div className="py-2">
+                          <p className="text-dark-700 font-medium mb-4">
+                            Tem certeza que deseja excluir o exercício <strong>{exercise.name || `Exercício ${index + 1}`}</strong>?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExerciseToDeleteIndex(null)}
+                              className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeExercise(index)}
+                              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </div>
+                      ) : !isExpanded ? (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-dark-900 truncate">
+                                {exercise.name || `Exercício ${index + 1}`}
+                              </p>
+                              <p className="text-sm text-dark-500 mt-0.5">
+                                {exercise.sets} séries × {exercise.reps} reps
+                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => saveExercise(exercise)}
+                                disabled={!exercise.name || !exercise.sets || !exercise.reps}
+                                className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Salvar na biblioteca"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedExerciseIndex(index)}
+                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
+                                title="Editar exercício"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExerciseToDeleteIndex(index)}
+                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+                                title="Excluir exercício"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="absolute top-3 right-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedExerciseIndex(null)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => saveExercise(exercise)}
+                              disabled={!exercise.name || !exercise.sets || !exercise.reps}
+                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Salvar na biblioteca"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExerciseToDeleteIndex(index)}
+                              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+                              title="Excluir exercício"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-32">
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Nome do Exercício *</label>
+                              <input
+                                type="text"
+                                required
+                                value={exercise.name}
+                                onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: Supino Reto"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Séries *</label>
+                              <input
+                                type="number"
+                                required
+                                min={1}
+                                value={exercise.sets}
+                                onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
+                                className="input-modern"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Repetições *</label>
+                              <input
+                                type="text"
+                                required
+                                value={exercise.reps}
+                                onChange={(e) => updateExercise(index, 'reps', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 12 ou 10-12"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Descanso</label>
+                              <input
+                                type="text"
+                                value={exercise.rest}
+                                onChange={(e) => updateExercise(index, 'rest', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 60s ou 1min"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso</label>
+                              <input
+                                type="text"
+                                value={exercise.weight}
+                                onChange={(e) => updateExercise(index, 'weight', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 20kg"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">URL do Vídeo (YouTube)</label>
+                              <input
+                                type="url"
+                                value={exercise.videoUrl}
+                                onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
+                                className="input-modern"
+                                placeholder="https://youtube.com/watch?v=..."
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
+                              <input
+                                type="url"
+                                value={exercise.imageUrl}
+                                onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
+                                className="input-modern"
+                                placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                              />
+                              <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
+                              <textarea
+                                value={exercise.notes}
+                                onChange={(e) => updateExercise(index, 'notes', e.target.value)}
+                                className="input-modern"
+                                rows={2}
+                                placeholder="Dicas de execução..."
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-16">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Nome do Exercício *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={exercise.name}
-                          onChange={(e) => updateExercise(index, 'name', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: Supino Reto"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Séries *
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          min="1"
-                          value={exercise.sets}
-                          onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
-                          className="input-modern"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Repetições *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={exercise.reps}
-                          onChange={(e) => updateExercise(index, 'reps', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 12 ou 10-12"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Descanso
-                        </label>
-                        <input
-                          type="text"
-                          value={exercise.rest}
-                          onChange={(e) => updateExercise(index, 'rest', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 60s ou 1min"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Peso
-                        </label>
-                        <input
-                          type="text"
-                          value={exercise.weight}
-                          onChange={(e) => updateExercise(index, 'weight', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 20kg"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          URL do Vídeo (YouTube)
-                        </label>
-                        <input
-                          type="url"
-                          value={exercise.videoUrl}
-                          onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
-                          className="input-modern"
-                          placeholder="https://youtube.com/watch?v=..."
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Foto do exercício (URL)
-                        </label>
-                        <input
-                          type="url"
-                          value={exercise.imageUrl}
-                          onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
-                          className="input-modern"
-                          placeholder="https://exemplo.com/imagem-exercicio.jpg"
-                        />
-                        <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Observações
-                        </label>
-                        <textarea
-                          value={exercise.notes}
-                          onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                          className="input-modern"
-                          rows={2}
-                          placeholder="Dicas de execução..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2124,6 +2227,8 @@ function EditWorkoutModal({
     dayOfWeek: workout.dayOfWeek,
     description: workout.description || '',
   });
+  const [expandedExerciseIndex, setExpandedExerciseIndex] = useState<number | null>(null);
+  const [exerciseToDeleteIndex, setExerciseToDeleteIndex] = useState<number | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>(
     workout.exercises?.map(ex => ({
       name: ex.name,
@@ -2169,6 +2274,9 @@ function EditWorkoutModal({
 
   const removeExercise = (index: number) => {
     setExercises(exercises.filter((_, i) => i !== index));
+    setExerciseToDeleteIndex(null);
+    if (expandedExerciseIndex === index) setExpandedExerciseIndex(null);
+    else if (expandedExerciseIndex !== null && expandedExerciseIndex > index) setExpandedExerciseIndex(expandedExerciseIndex - 1);
   };
 
   const updateExercise = (index: number, field: keyof Exercise, value: any) => {
@@ -2227,7 +2335,7 @@ function EditWorkoutModal({
           )}
 
           <div className="grid grid-cols-1 gap-4">
-            <div>
+            <div className="hidden" aria-hidden="true">
               <label className="block text-sm font-semibold text-dark-700 mb-2">
                 Aluno *
               </label>
@@ -2240,7 +2348,7 @@ function EditWorkoutModal({
               />
             </div>
 
-            <div>
+            <div className="hidden" aria-hidden="true">
               <label className="block text-sm font-semibold text-dark-700 mb-3">
                 Dia da Semana *
               </label>
@@ -2313,127 +2421,175 @@ function EditWorkoutModal({
               </div>
             ) : (
               <div className="space-y-4">
-                {exercises.map((exercise, index) => (
-                  <div key={index} className="bg-dark-50 rounded-xl p-4 relative">
-                    <button
-                      type="button"
-                      onClick={() => removeExercise(index)}
-                      className="absolute top-3 right-3 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-8">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Nome do Exercício *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={exercise.name}
-                          onChange={(e) => updateExercise(index, 'name', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: Supino Reto"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Séries *
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          min="1"
-                          value={exercise.sets}
-                          onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
-                          className="input-modern"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Repetições *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={exercise.reps}
-                          onChange={(e) => updateExercise(index, 'reps', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 12 ou 10-12"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Descanso
-                        </label>
-                        <input
-                          type="text"
-                          value={exercise.rest}
-                          onChange={(e) => updateExercise(index, 'rest', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 60s ou 1min"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Peso
-                        </label>
-                        <input
-                          type="text"
-                          value={exercise.weight}
-                          onChange={(e) => updateExercise(index, 'weight', e.target.value)}
-                          className="input-modern"
-                          placeholder="Ex: 20kg"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          URL do Vídeo (YouTube)
-                        </label>
-                        <input
-                          type="url"
-                          value={exercise.videoUrl}
-                          onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
-                          className="input-modern"
-                          placeholder="https://youtube.com/watch?v=..."
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Foto do exercício (URL)
-                        </label>
-                        <input
-                          type="url"
-                          value={exercise.imageUrl}
-                          onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
-                          className="input-modern"
-                          placeholder="https://exemplo.com/imagem-exercicio.jpg"
-                        />
-                        <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-dark-700 mb-2">
-                          Observações
-                        </label>
-                        <textarea
-                          value={exercise.notes}
-                          onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                          className="input-modern"
-                          rows={2}
-                          placeholder="Dicas de execução..."
-                        />
-                      </div>
+                {exercises.map((exercise, index) => {
+                  const isExpanded = expandedExerciseIndex === index;
+                  const isConfirmingDelete = exerciseToDeleteIndex === index;
+                  return (
+                    <div key={index} className="bg-dark-50 rounded-xl p-4 relative border-2 border-transparent">
+                      {isConfirmingDelete ? (
+                        <div className="py-2">
+                          <p className="text-dark-700 font-medium mb-4">
+                            Tem certeza que deseja excluir o exercício <strong>{exercise.name || `Exercício ${index + 1}`}</strong>?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExerciseToDeleteIndex(null)}
+                              className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeExercise(index)}
+                              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </div>
+                      ) : !isExpanded ? (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-dark-900 truncate">
+                                {exercise.name || `Exercício ${index + 1}`}
+                              </p>
+                              <p className="text-sm text-dark-500 mt-0.5">
+                                {exercise.sets} séries × {exercise.reps} reps
+                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedExerciseIndex(index)}
+                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
+                                title="Editar exercício"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExerciseToDeleteIndex(index)}
+                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+                                title="Excluir exercício"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="absolute top-3 right-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedExerciseIndex(null)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExerciseToDeleteIndex(index)}
+                              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+                              title="Excluir exercício"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-24">
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Nome do Exercício *</label>
+                              <input
+                                type="text"
+                                required
+                                value={exercise.name}
+                                onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: Supino Reto"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Séries *</label>
+                              <input
+                                type="number"
+                                required
+                                min={1}
+                                value={exercise.sets}
+                                onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
+                                className="input-modern"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Repetições *</label>
+                              <input
+                                type="text"
+                                required
+                                value={exercise.reps}
+                                onChange={(e) => updateExercise(index, 'reps', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 12 ou 10-12"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Descanso</label>
+                              <input
+                                type="text"
+                                value={exercise.rest}
+                                onChange={(e) => updateExercise(index, 'rest', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 60s ou 1min"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso</label>
+                              <input
+                                type="text"
+                                value={exercise.weight}
+                                onChange={(e) => updateExercise(index, 'weight', e.target.value)}
+                                className="input-modern"
+                                placeholder="Ex: 20kg"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">URL do Vídeo (YouTube)</label>
+                              <input
+                                type="url"
+                                value={exercise.videoUrl}
+                                onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
+                                className="input-modern"
+                                placeholder="https://youtube.com/watch?v=..."
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
+                              <input
+                                type="url"
+                                value={exercise.imageUrl}
+                                onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
+                                className="input-modern"
+                                placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                              />
+                              <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
+                              <textarea
+                                value={exercise.notes}
+                                onChange={(e) => updateExercise(index, 'notes', e.target.value)}
+                                className="input-modern"
+                                rows={2}
+                                placeholder="Dicas de execução..."
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
