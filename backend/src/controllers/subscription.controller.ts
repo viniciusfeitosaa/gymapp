@@ -70,7 +70,7 @@ export class SubscriptionController {
 
       // Criar sessão de checkout (POST /v3/checkouts) — retorna ID UUID para a URL da página de pagamento
       const checkoutBody = {
-        billingTypes: ['CREDIT_CARD', 'PIX'],
+        billingTypes: ['CREDIT_CARD'],
         chargeTypes: ['RECURRENT'],
         minutesToExpire: 100,
         externalReference: personalId,
