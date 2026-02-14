@@ -75,7 +75,7 @@ export class SubscriptionController {
         body: JSON.stringify(customerBody),
       });
 
-      const customerData: { id?: string; errors?: { description: string; code?: string }[] } = await customerRes.json().catch(() => ({}));
+      const customerData = (await customerRes.json().catch(() => ({}))) as { id?: string; errors?: { description: string; code?: string }[] };
 
       if (!customerRes.ok) {
         const msg = customerData?.errors?.[0]?.description || 'Não foi possível validar seus dados no gateway. Verifique CPF e telefone.';
@@ -114,7 +114,7 @@ export class SubscriptionController {
         body: JSON.stringify(subscriptionBody),
       });
 
-      const subData: { checkoutSession?: string; id?: string; errors?: { description: string; code?: string }[] } = await subRes.json().catch(() => ({}));
+      const subData = (await subRes.json().catch(() => ({}))) as { checkoutSession?: string; id?: string; errors?: { description: string; code?: string }[] };
 
       if (!subRes.ok) {
         const msg = subData?.errors?.[0]?.description || 'Erro ao gerar link de pagamento. Tente novamente.';
@@ -162,7 +162,7 @@ export class SubscriptionController {
         return res.status(200).json({ received: true });
       }
 
-      const subData: { externalReference?: string } = await subRes.json().catch(() => ({}));
+      const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
       const personalId = subData?.externalReference;
       if (personalId) {
         await prisma.personalTrainer.update({
