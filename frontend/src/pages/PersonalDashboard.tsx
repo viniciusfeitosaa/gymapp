@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import confetti from 'canvas-confetti';
 import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle, TrendingUp, TrendingDown, MessageCircle } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
 
@@ -168,30 +167,8 @@ function toDateKeyBR(date: Date | string): string {
 const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
 function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff: number }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const firedRef = useRef(false);
-
-  useEffect(() => {
-    if (diff <= 0 || firedRef.current) return;
-    firedRef.current = true;
-    const colors = ['#10b981', '#059669', '#34d399', '#f97316', '#fbbf24', '#3b82f6'];
-    const t = setTimeout(() => {
-      try {
-        // Sem canvas customizado para evitar DataCloneError (postMessage/Worker em build de produção)
-        confetti({ particleCount: 80, spread: 100, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.9 });
-        setTimeout(() => {
-          confetti({ particleCount: 40, spread: 120, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.7 });
-        }, 150);
-      } catch {
-        // ignora falha de confetti
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [diff]);
-
   return (
-    <div ref={cardRef} className="card-modern p-6 md:p-8 relative overflow-hidden">
-      <div className="relative z-10">
+    <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-emerald-50 to-teal-50/80 border border-emerald-100/80 shadow-sm">
         <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Resumo da semana</h3>
         <p className="text-sm text-dark-500 mb-4">Treinos concluídos esta semana</p>
         <p className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">{thisWeekCount}</p>
@@ -204,7 +181,6 @@ function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff
             {diff > 0 ? 'Em alta' : 'Em baixa'}
           </span>
         )}
-      </div>
     </div>
   );
 }
@@ -309,7 +285,7 @@ function DashboardHome() {
             <ResumoSemanaCard thisWeekCount={thisWeekCount} diff={diff} />
 
             {/* 2. Quem treina hoje */}
-            <div className="card-modern p-6 md:p-8">
+            <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-sky-50 to-blue-50/80 border border-sky-100/80 shadow-sm">
               <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Quem treina hoje</h3>
               <p className="text-sm text-dark-500 mb-4">Status e lembrete por WhatsApp</p>
               {whoTrainsToday.length === 0 ? (
@@ -317,7 +293,7 @@ function DashboardHome() {
               ) : (
                 <ul className="space-y-3">
                   {whoTrainsToday.map(({ id, name, phone, completed }) => (
-                    <li key={id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-dark-50 border border-dark-100">
+                    <li key={id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/70 backdrop-blur-sm border border-sky-200/60">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${completed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                         <span className="font-medium text-dark-900 truncate">{name}</span>
@@ -345,7 +321,7 @@ function DashboardHome() {
             </div>
 
             {/* 3. Top 3 alunos em destaque */}
-            <div className="card-modern p-6 md:p-8">
+            <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-100/80 shadow-sm">
               <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Alunos em destaque</h3>
               <p className="text-sm text-dark-500 mb-4">Top 3 esta semana (mais conclusões)</p>
               {top3.length === 0 ? (
@@ -353,7 +329,7 @@ function DashboardHome() {
               ) : (
                 <ul className="space-y-3">
                   {top3.map(({ id, name, count }, i) => (
-                    <li key={id} className="flex items-center gap-3 p-3 rounded-xl bg-dark-50 border border-dark-100">
+                    <li key={id} className="flex items-center gap-3 p-3 rounded-xl bg-white/70 backdrop-blur-sm border border-amber-200/60">
                       <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
                         {i + 1}
                       </div>
@@ -465,7 +441,7 @@ function AlunosPage() {
       const list = Array.isArray(data) ? data : (data?.students ?? []);
       setStudents(list);
       if (data?.subscription) setSubscription(data.subscription);
-      else setSubscription({ maxStudentsAllowed: 1, currentCount: list.length, atLimit: list.length >= 1, canAddMore: list.length < 1 });
+      else setSubscription({ maxStudentsAllowed: 2, currentCount: list.length, atLimit: list.length >= 2, canAddMore: list.length < 2 });
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
     } finally {
@@ -1456,7 +1432,7 @@ function PerfilPage() {
                 </div>
                 <ul className="space-y-2 text-sm text-dark-600 mb-4">
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> 1 aluno
+                    <span className="text-emerald-500">✓</span> 2 alunos
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-500">✓</span> Fichas de treino

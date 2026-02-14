@@ -40,7 +40,7 @@ export class StudentController {
       const data = createStudentSchema.parse(req.body);
       const personalId = req.userId!;
 
-      let maxStudentsAllowed = 1;
+      let maxStudentsAllowed = 2;
       try {
         const personal = await prisma.personalTrainer.findUnique({
           where: { id: personalId },
