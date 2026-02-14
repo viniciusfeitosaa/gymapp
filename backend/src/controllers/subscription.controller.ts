@@ -131,8 +131,9 @@ export class SubscriptionController {
       const url = `${ASAAS_CHECKOUT_BASE}/checkoutSession/show?id=${checkoutSession}`;
       res.json({ url });
     } catch (error) {
-      console.error('Create checkout error:', error);
-      res.status(500).json({ error: 'Erro ao criar checkout' });
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error('[Asaas] Create checkout error:', err.message, err.stack);
+      res.status(500).json({ error: 'Erro ao criar checkout. Tente novamente ou contate o suporte.' });
     }
   }
 

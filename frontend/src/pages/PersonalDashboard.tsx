@@ -169,41 +169,28 @@ const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'F
 
 function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff: number }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const firedRef = useRef(false);
 
   useEffect(() => {
-    if (diff <= 0 || firedRef.current || !cardRef.current || !canvasRef.current) return;
+    if (diff <= 0 || firedRef.current) return;
     firedRef.current = true;
-    const card = cardRef.current;
-    const canvas = canvasRef.current;
-    const rect = card.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
     const colors = ['#10b981', '#059669', '#34d399', '#f97316', '#fbbf24', '#3b82f6'];
     const t = setTimeout(() => {
-      confetti({
-        canvas,
-        particleCount: 80,
-        spread: 100,
-        origin: { x: 0.5, y: 0.5 },
-        colors,
-        scalar: 0.9,
-      });
-      setTimeout(() => {
-        confetti({ canvas, particleCount: 40, spread: 120, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.7 });
-      }, 150);
+      try {
+        // Sem canvas customizado para evitar DataCloneError (postMessage/Worker em build de produção)
+        confetti({ particleCount: 80, spread: 100, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.9 });
+        setTimeout(() => {
+          confetti({ particleCount: 40, spread: 120, origin: { x: 0.5, y: 0.5 }, colors, scalar: 0.7 });
+        }, 150);
+      } catch {
+        // ignora falha de confetti
+      }
     }, 400);
     return () => clearTimeout(t);
   }, [diff]);
 
   return (
     <div ref={cardRef} className="card-modern p-6 md:p-8 relative overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ left: 0, top: 0 }}
-      />
       <div className="relative z-10">
         <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Resumo da semana</h3>
         <p className="text-sm text-dark-500 mb-4">Treinos concluídos esta semana</p>
