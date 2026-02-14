@@ -87,7 +87,7 @@ export class SubscriptionController {
           address: 'A definir',
           addressNumber: 'S/N',
           province: 'Centro',
-          postalCode: '00000000',
+          postalCode: '01310100',
         },
         subscription: {
           cycle: 'MONTHLY',
