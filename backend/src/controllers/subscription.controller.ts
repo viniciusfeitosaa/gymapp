@@ -219,7 +219,7 @@ export class SubscriptionController {
         return res.status(400).json({ error: 'Você não possui assinatura ativa para cancelar.' });
       }
 
-      let subscriptionId = personal.asaasSubscriptionId;
+      let subscriptionId: string | null = personal.asaasSubscriptionId;
       if (!subscriptionId) {
         const headers = getAsaasHeaders();
         const listRes = await fetch(
@@ -231,7 +231,7 @@ export class SubscriptionController {
           return res.status(502).json({ error: 'Não foi possível localizar sua assinatura. Contate o suporte.' });
         }
         const listData = (await listRes.json().catch(() => ({}))) as { data?: { id?: string }[] };
-        subscriptionId = listData?.data?.[0]?.id;
+        subscriptionId = listData?.data?.[0]?.id ?? null;
       }
       if (!subscriptionId) {
         return res.status(400).json({ error: 'Assinatura não encontrada na Asaas. Seu plano já pode ter sido cancelado.' });
