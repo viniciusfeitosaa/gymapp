@@ -1347,7 +1347,10 @@ function PerfilPage() {
   const [showPlans, setShowPlans] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const [editing, setEditing] = useState(false);
+  const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [form, setForm] = useState({
@@ -1417,6 +1420,21 @@ function PerfilPage() {
       if (code === 'CPF_REQUIRED') setShowPlans(true);
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura? Você voltará ao plano gratuito (até 2 alunos) e não será mais cobrado.')) return;
+    setCancelError('');
+    setCancelLoading(true);
+    try {
+      const { data } = await api.post<{ maxStudentsAllowed: number }>('/subscription/cancel');
+      updateUser({ maxStudentsAllowed: data?.maxStudentsAllowed ?? 2 });
+      setCancelError('');
+    } catch (err: any) {
+      setCancelError(err.response?.data?.error || 'Erro ao cancelar. Tente novamente.');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -1517,6 +1535,20 @@ function PerfilPage() {
                 </button>
               </div>
             </div>
+            {isPro && (
+              <div className="mt-6 pt-6 border-t border-dark-200">
+                <p className="text-dark-600 text-sm mb-2">Você está no plano Pro.</p>
+                {cancelError && <p className="text-red-600 text-xs mb-2">{cancelError}</p>}
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  disabled={cancelLoading}
+                  className="text-sm text-dark-500 hover:text-red-600 underline disabled:opacity-70"
+                >
+                  {cancelLoading ? 'Cancelando...' : 'Cancelar assinatura'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

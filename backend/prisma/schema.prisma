@@ -30,7 +30,8 @@ model PersonalTrainer {
   updatedAt DateTime @updatedAt
 
   // Assinatura: plano gratuito = 2 alunos; assinante = mais alunos (maxStudentsAllowed)
-  maxStudentsAllowed Int @default(2)
+  maxStudentsAllowed    Int     @default(2)
+  asaasSubscriptionId  String? // ID da assinatura na Asaas (para cancelamento pelo app)
 
   // Relações
   students  Student[]

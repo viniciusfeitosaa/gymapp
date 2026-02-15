@@ -96,7 +96,7 @@ export class StudentController {
         orderBy: { createdAt: 'desc' },
       });
 
-      let maxAllowed = 1;
+      let maxAllowed = 2;
       try {
         const personal = await prisma.personalTrainer.findUnique({
           where: { id: personalId },

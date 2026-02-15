@@ -6,6 +6,7 @@ const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL || 'https://api.asaas.com';
 const ASAAS_CHECKOUT_BASE = process.env.ASAAS_CHECKOUT_BASE || 'https://www.asaas.com';
 const PRO_PLAN_VALUE = 29.9; // R$ 29,90/mês
 const UNLIMITED_STUDENTS = 999;
+const FREE_PLAN_STUDENTS = 2;
 
 function getAsaasHeaders(): Record<string, string> {
   let apiKey = process.env.ASAAS_API_KEY || '';
@@ -134,42 +135,128 @@ export class SubscriptionController {
     }
   }
 
-  // Webhook Asaas: PAYMENT_RECEIVED — ativa Plano Pro (maxStudentsAllowed = ilimitado)
+  // Webhook Asaas: PAYMENT_RECEIVED ativa Pro; inadimplência/cancelamento rebaixam para gratuito
   async webhookAsaas(req: AuthRequest, res: Response) {
     try {
-      const event = req.body?.event;
+      const event = req.body?.event as string | undefined;
       const payment = req.body?.payment as { id?: string; subscription?: string; externalReference?: string } | undefined;
+      const subscription = req.body?.subscription as { id?: string; externalReference?: string } | undefined;
 
-      if (event !== 'PAYMENT_RECEIVED' || !payment?.id) {
+      const eventsWeHandle = [
+        'PAYMENT_RECEIVED',
+        'PAYMENT_OVERDUE',
+        'SUBSCRIPTION_INACTIVATED',
+        'SUBSCRIPTION_DELETED',
+      ];
+      if (!event || !eventsWeHandle.includes(event)) {
         return res.status(200).json({ received: true });
       }
 
-      let personalId: string | undefined = payment.externalReference;
+      const personalId = await this.resolvePersonalIdFromWebhook(payment, subscription);
 
-      if (!personalId && payment.subscription) {
-        const headers = getAsaasHeaders();
-        const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${payment.subscription}`, {
-          method: 'GET',
-          headers,
-        });
-        if (subRes.ok) {
-          const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
-          personalId = subData?.externalReference;
-        }
+      if (!personalId) {
+        return res.status(200).json({ received: true });
       }
 
-      if (personalId) {
+      if (event === 'PAYMENT_RECEIVED') {
+        const subscriptionId = payment?.subscription && typeof payment.subscription === 'string' ? payment.subscription : null;
         await prisma.personalTrainer.update({
           where: { id: personalId },
-          data: { maxStudentsAllowed: UNLIMITED_STUDENTS },
+          data: {
+            maxStudentsAllowed: UNLIMITED_STUDENTS,
+            ...(subscriptionId && { asaasSubscriptionId: subscriptionId }),
+          },
         });
         console.log(`[Webhook Asaas] Plano Pro ativado para personal ${personalId}`);
+      } else {
+        // PAYMENT_OVERDUE | SUBSCRIPTION_INACTIVATED | SUBSCRIPTION_DELETED → rebaixa para plano gratuito
+        await prisma.personalTrainer.update({
+          where: { id: personalId },
+          data: { maxStudentsAllowed: FREE_PLAN_STUDENTS, asaasSubscriptionId: null },
+        });
+        console.log(`[Webhook Asaas] Plano rebaixado para gratuito (${FREE_PLAN_STUDENTS} alunos) para personal ${personalId} (evento: ${event})`);
       }
 
       res.status(200).json({ received: true });
     } catch (error) {
       console.error('Webhook Asaas error:', error);
       res.status(500).json({ error: 'Webhook error' });
+    }
+  }
+
+  /** Obtém o ID do personal a partir do payload do webhook (payment ou subscription). */
+  private async resolvePersonalIdFromWebhook(
+    payment: { id?: string; subscription?: string; externalReference?: string } | undefined,
+    subscription: { id?: string; externalReference?: string } | undefined
+  ): Promise<string | undefined> {
+    if (payment?.externalReference) return payment.externalReference;
+    const subId = payment?.subscription || subscription?.id;
+    if (subscription?.externalReference) return subscription.externalReference;
+    if (!subId) return undefined;
+
+    const headers = getAsaasHeaders();
+    const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subId}`, {
+      method: 'GET',
+      headers,
+    });
+    if (!subRes.ok) return undefined;
+    const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
+    return subData?.externalReference;
+  }
+
+  // Cancelar assinatura pelo app (assinante acessa em Perfil → Assinatura)
+  async cancelSubscription(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+      const personal = await prisma.personalTrainer.findUnique({
+        where: { id: personalId },
+        select: { asaasSubscriptionId: true, maxStudentsAllowed: true },
+      });
+      if (!personal) {
+        return res.status(404).json({ error: 'Personal não encontrado' });
+      }
+      if (personal.maxStudentsAllowed <= FREE_PLAN_STUDENTS) {
+        return res.status(400).json({ error: 'Você não possui assinatura ativa para cancelar.' });
+      }
+
+      let subscriptionId = personal.asaasSubscriptionId;
+      if (!subscriptionId) {
+        const headers = getAsaasHeaders();
+        const listRes = await fetch(
+          `${ASAAS_BASE_URL}/v3/subscriptions?externalReference=${encodeURIComponent(personalId)}&status=ACTIVE&limit=1`,
+          { method: 'GET', headers }
+        );
+        if (!listRes.ok) {
+          console.error('[Asaas] List subscriptions failed:', listRes.status);
+          return res.status(502).json({ error: 'Não foi possível localizar sua assinatura. Contate o suporte.' });
+        }
+        const listData = (await listRes.json().catch(() => ({}))) as { data?: { id?: string }[] };
+        subscriptionId = listData?.data?.[0]?.id;
+      }
+      if (!subscriptionId) {
+        return res.status(400).json({ error: 'Assinatura não encontrada na Asaas. Seu plano já pode ter sido cancelado.' });
+      }
+
+      const headers = getAsaasHeaders();
+      const delRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${subscriptionId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!delRes.ok) {
+        const errBody = await delRes.json().catch(() => ({}));
+        console.error('[Asaas] Delete subscription failed:', delRes.status, errBody);
+        return res.status(502).json({ error: 'Não foi possível cancelar na Asaas. Tente novamente ou contate o suporte.' });
+      }
+
+      await prisma.personalTrainer.update({
+        where: { id: personalId },
+        data: { maxStudentsAllowed: FREE_PLAN_STUDENTS, asaasSubscriptionId: null },
+      });
+      console.log(`[Subscription] Assinatura cancelada pelo personal ${personalId}`);
+      res.json({ success: true, maxStudentsAllowed: FREE_PLAN_STUDENTS });
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      res.status(500).json({ error: 'Erro ao cancelar assinatura.' });
     }
   }
 }

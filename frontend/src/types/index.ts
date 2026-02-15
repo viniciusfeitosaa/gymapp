@@ -4,6 +4,7 @@ export interface User {
   email?: string;
   phone?: string;
   taxId?: string;
+  maxStudentsAllowed?: number; // 2 = gratuito, 999 = Pro (para exibir cancelar assinatura)
   address?: string;
   addressNumber?: string;
   complement?: string;

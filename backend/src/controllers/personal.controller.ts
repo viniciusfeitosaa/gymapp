@@ -33,7 +33,7 @@ export class PersonalController {
       const personal = await prisma.personalTrainer.update({
         where: { id: personalId },
         data,
-        select: { id: true, name: true, email: true, phone: true, taxId: true, cref: true, address: true, addressNumber: true, complement: true, province: true, postalCode: true },
+        select: { id: true, name: true, email: true, phone: true, taxId: true, cref: true, maxStudentsAllowed: true, address: true, addressNumber: true, complement: true, province: true, postalCode: true },
       });
 
       res.json(personal);
