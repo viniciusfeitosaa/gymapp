@@ -946,6 +946,7 @@ function TreinosPage() {
   const [selectedStudent, setSelectedStudent] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalPreselectedDay, setAddModalPreselectedDay] = useState<string | null>(null);
   const [workoutToEdit, setWorkoutToEdit] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
@@ -1061,7 +1062,10 @@ function TreinosPage() {
                 />
               </div>
               <button 
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setAddModalPreselectedDay(null);
+                  setShowAddModal(true);
+                }}
                 className="btn-primary inline-flex items-center gap-2 self-end"
               >
                 <Plus className="w-4 h-4" />
@@ -1261,7 +1265,10 @@ function TreinosPage() {
                       Crie um treino para {dayData.label} clicando no botão abaixo
                     </p>
                     <button
-                      onClick={() => setShowAddModal(true)}
+                      onClick={() => {
+                        setAddModalPreselectedDay(dayData.value);
+                        setShowAddModal(true);
+                      }}
                       className="btn-primary inline-flex items-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
@@ -1280,9 +1287,14 @@ function TreinosPage() {
           students={students}
           workouts={workouts}
           preSelectedStudentId={selectedStudent}
-          onClose={() => setShowAddModal(false)}
+          preSelectedDayOfWeek={addModalPreselectedDay ?? undefined}
+          onClose={() => {
+            setShowAddModal(false);
+            setAddModalPreselectedDay(null);
+          }}
           onSuccess={() => {
             setShowAddModal(false);
+            setAddModalPreselectedDay(null);
             loadData();
           }}
         />
@@ -1321,6 +1333,13 @@ function formatCpfDisplay(value: string | undefined): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}`;
 }
 
+function formatCepDisplay(value: string | undefined): string {
+  if (!value) return '';
+  const d = value.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
 function PerfilPage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -1335,14 +1354,24 @@ function PerfilPage() {
     name: user?.name ?? '',
     phone: user?.phone ?? '',
     taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '',
+    address: user?.address ?? '',
+    addressNumber: user?.addressNumber ?? '',
+    complement: user?.complement ?? '',
+    province: user?.province ?? '',
+    postalCode: user?.postalCode ? formatCepDisplay(user.postalCode) : '',
   });
   useEffect(() => {
     setForm({
       name: user?.name ?? '',
       phone: user?.phone ?? '',
       taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '',
+      address: user?.address ?? '',
+      addressNumber: user?.addressNumber ?? '',
+      complement: user?.complement ?? '',
+      province: user?.province ?? '',
+      postalCode: user?.postalCode ? formatCepDisplay(user.postalCode) : '',
     });
-  }, [user?.name, user?.phone, user?.taxId]);
+  }, [user?.name, user?.phone, user?.taxId, user?.address, user?.addressNumber, user?.complement, user?.province, user?.postalCode]);
 
   const subscriptionSuccess = new URLSearchParams(location.search).get('subscription') === 'success';
 
@@ -1354,6 +1383,11 @@ function PerfilPage() {
         name: form.name.trim() || undefined,
         phone: form.phone.trim() || null,
         taxId: form.taxId.replace(/\D/g, '') || null,
+        address: form.address.trim() || null,
+        addressNumber: form.addressNumber.trim() || null,
+        complement: form.complement.trim() || null,
+        province: form.province.trim() || null,
+        postalCode: form.postalCode.replace(/\D/g, '') || null,
       });
       updateUser(res.data);
       setEditing(false);
@@ -1545,6 +1579,64 @@ function PerfilPage() {
                     className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                   />
                 </div>
+                <div className="border-t border-dark-100 pt-4 mt-4">
+                  <p className="text-sm font-semibold text-dark-700 mb-3">Endereço (usado na Asaas para cobrança)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="text-sm text-dark-500 mb-1 block">CEP</label>
+                      <input
+                        type="text"
+                        value={form.postalCode}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                          setForm((f) => ({ ...f, postalCode: formatCepDisplay(v) }));
+                        }}
+                        placeholder="00000-000"
+                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-dark-500 mb-1 block">Logradouro</label>
+                      <input
+                        type="text"
+                        value={form.address}
+                        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                        placeholder="Rua, avenida..."
+                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-dark-500 mb-1 block">Número</label>
+                      <input
+                        type="text"
+                        value={form.addressNumber}
+                        onChange={(e) => setForm((f) => ({ ...f, addressNumber: e.target.value }))}
+                        placeholder="Nº ou S/N"
+                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-dark-500 mb-1 block">Complemento</label>
+                      <input
+                        type="text"
+                        value={form.complement}
+                        onChange={(e) => setForm((f) => ({ ...f, complement: e.target.value }))}
+                        placeholder="Apto, bloco..."
+                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-dark-500 mb-1 block">Bairro</label>
+                      <input
+                        type="text"
+                        value={form.province}
+                        onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
+                        placeholder="Bairro"
+                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
@@ -1556,7 +1648,7 @@ function PerfilPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setEditing(false); setForm({ name: user?.name ?? '', phone: user?.phone ?? '', taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '' }); }}
+                    onClick={() => { setEditing(false); setForm({ name: user?.name ?? '', phone: user?.phone ?? '', taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '', address: user?.address ?? '', addressNumber: user?.addressNumber ?? '', complement: user?.complement ?? '', province: user?.province ?? '', postalCode: user?.postalCode ? formatCepDisplay(user.postalCode) : '' }); }}
                     className="px-4 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                   >
                     Cancelar
@@ -1589,13 +1681,22 @@ function PerfilPage() {
                     )}
                   </>
                 )}
+                {(user?.address || user?.postalCode) && (
+                  <div className="bg-dark-50 rounded-lg p-4">
+                    <p className="text-sm text-dark-500 mb-1">Endereço</p>
+                    <p className="text-dark-900 font-semibold">
+                      {[user.address, user.addressNumber && `nº ${user.addressNumber}`, user.complement, user.province].filter(Boolean).join(', ')}
+                      {user.postalCode && ` — CEP ${formatCepDisplay(user.postalCode)}`}
+                    </p>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm hover:bg-dark-50"
                 >
                   <Edit2 className="w-4 h-4" />
-                  Editar perfil e CPF
+                  Editar perfil e endereço
                 </button>
               </div>
             )}
@@ -1670,19 +1771,21 @@ function AddWorkoutModal({
   students, 
   workouts,
   preSelectedStudentId,
+  preSelectedDayOfWeek,
   onClose, 
   onSuccess 
 }: { 
   students: Student[]; 
   workouts: Workout[];
   preSelectedStudentId?: string;
+  preSelectedDayOfWeek?: string;
   onClose: () => void; 
   onSuccess: () => void;
 }) {
   const [formData, setFormData] = useState({
     studentId: preSelectedStudentId || '',
     name: '',
-    daysOfWeek: [] as string[], // Mudado para array para múltiplos dias
+    daysOfWeek: (preSelectedDayOfWeek ? [preSelectedDayOfWeek] : []) as string[],
     description: '',
   });
 
@@ -1847,67 +1950,69 @@ function AddWorkoutModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Aluno *
-              </label>
-              <CustomSelect
-                value={formData.studentId}
-                onChange={(studentId) => setFormData({ ...formData, studentId })}
-                options={students.map((s) => ({ value: s.id, label: s.name }))}
-                placeholder="Selecione um aluno"
-                aria-label="Aluno"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-3">
-                Dias da Semana * (selecione um ou mais)
-              </label>
-              {formData.studentId && daysWithExistingWorkout.length > 0 && (
-                <p className="text-xs text-dark-500 mb-2">
-                  Dias em azul já possuem treino para este aluno.
-                </p>
-              )}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {daysOfWeek.map((day) => {
-                  const hasExisting = daysWithExistingWorkout.includes(day.value);
-                  const isSelected = formData.daysOfWeek.includes(day.value);
-                  const disabled = hasExisting;
-                  return (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => toggleDay(day.value)}
-                      disabled={disabled}
-                      title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
-                      className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
-                        disabled
-                          ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
-                          : isSelected
-                            ? 'bg-gradient-accent text-white shadow-medium'
-                            : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
-                      }`}
-                    >
-                      <span>{day.label}</span>
-                      {hasExisting && (
-                        <span className="text-[10px] font-medium opacity-90">Já alocado</span>
-                      )}
-                    </button>
-                  );
-                })}
+          {!preSelectedDayOfWeek && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-dark-700 mb-2">
+                  Aluno *
+                </label>
+                <CustomSelect
+                  value={formData.studentId}
+                  onChange={(studentId) => setFormData({ ...formData, studentId })}
+                  options={students.map((s) => ({ value: s.id, label: s.name }))}
+                  placeholder="Selecione um aluno"
+                  aria-label="Aluno"
+                />
               </div>
-              {formData.daysOfWeek.length === 0 && (
-                <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
-              )}
-              {formData.daysOfWeek.length > 1 && (
-                <p className="text-xs text-green-600 mt-2">
-                  ✓ Este treino será replicado para {formData.daysOfWeek.length} dias
-                </p>
-              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-dark-700 mb-3">
+                  Dias da Semana * (selecione um ou mais)
+                </label>
+                {formData.studentId && daysWithExistingWorkout.length > 0 && (
+                  <p className="text-xs text-dark-500 mb-2">
+                    Dias em azul já possuem treino para este aluno.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {daysOfWeek.map((day) => {
+                    const hasExisting = daysWithExistingWorkout.includes(day.value);
+                    const isSelected = formData.daysOfWeek.includes(day.value);
+                    const disabled = hasExisting;
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => toggleDay(day.value)}
+                        disabled={disabled}
+                        title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
+                        className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
+                          disabled
+                            ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
+                            : isSelected
+                              ? 'bg-gradient-accent text-white shadow-medium'
+                              : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
+                        }`}
+                      >
+                        <span>{day.label}</span>
+                        {hasExisting && (
+                          <span className="text-[10px] font-medium opacity-90">Já alocado</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formData.daysOfWeek.length === 0 && (
+                  <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
+                )}
+                {formData.daysOfWeek.length > 1 && (
+                  <p className="text-xs text-green-600 mt-2">
+                    ✓ Este treino será replicado para {formData.daysOfWeek.length} dias
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">

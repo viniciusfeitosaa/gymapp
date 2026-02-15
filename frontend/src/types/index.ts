@@ -4,6 +4,11 @@ export interface User {
   email?: string;
   phone?: string;
   taxId?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
+  postalCode?: string;
   accessCode?: string;
   personalTrainer?: {
     id: string;

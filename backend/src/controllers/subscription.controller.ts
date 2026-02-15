@@ -43,7 +43,7 @@ export class SubscriptionController {
 
       const personal = await prisma.personalTrainer.findUnique({
         where: { id: personalId },
-        select: { name: true, email: true, phone: true, taxId: true },
+        select: { name: true, email: true, phone: true, taxId: true, address: true, addressNumber: true, complement: true, province: true, postalCode: true },
       });
       if (!personal) {
         return res.status(404).json({ error: 'Personal não encontrado' });
@@ -84,10 +84,11 @@ export class SubscriptionController {
           cpfCnpj: rawCpf,
           email: personal.email,
           phone: formatPhoneToDigits(personal.phone) || '11999999999',
-          address: 'A definir',
-          addressNumber: 'S/N',
-          province: 'Centro',
-          postalCode: '01310100',
+          address: personal.address?.trim() || 'A definir',
+          addressNumber: personal.addressNumber?.trim() || 'S/N',
+          complement: personal.complement?.trim() || undefined,
+          province: personal.province?.trim() || 'Centro',
+          postalCode: (personal.postalCode?.replace(/\D/g, '') || '01310100').slice(0, 8),
         },
         subscription: {
           cycle: 'MONTHLY',

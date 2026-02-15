@@ -20,6 +20,12 @@ model PersonalTrainer {
   phone     String?
   taxId     String?   // CPF para pagamentos (Asaas)
   cref      String?
+  // Endereço (para Asaas / cobrança)
+  address      String?
+  addressNumber String?
+  complement   String?
+  province     String?  // Bairro
+  postalCode   String?  // CEP
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
