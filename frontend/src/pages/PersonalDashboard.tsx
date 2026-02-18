@@ -1376,7 +1376,48 @@ function PerfilPage() {
     });
   }, [user?.name, user?.phone, user?.taxId, user?.address, user?.addressNumber, user?.complement, user?.province, user?.postalCode]);
 
-  const subscriptionSuccess = new URLSearchParams(location.search).get('subscription') === 'success';
+  const subscriptionSuccessFromUrl = new URLSearchParams(location.search).get('subscription') === 'success';
+  // Estado após voltar do checkout: 'pro' = pago e ativado, 'pending' = aguardando confirmação
+  const [subscriptionReturnStatus, setSubscriptionReturnStatus] = useState<'pro' | 'pending' | null>(null);
+
+  // Ao voltar do checkout com ?subscription=success, consultar status real (webhook pode ainda não ter processado)
+  useEffect(() => {
+    if (!subscriptionSuccessFromUrl) return;
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const check = (): Promise<boolean> =>
+      api
+        .get<{ subscription?: { maxStudentsAllowed: number } }>('/students')
+        .then((res) => {
+          if (cancelled) return false;
+          const maxAllowed = res.data?.subscription?.maxStudentsAllowed ?? 2;
+          const isPro = maxAllowed > 2;
+          setSubscriptionReturnStatus((prev) => (prev === 'pro' ? 'pro' : isPro ? 'pro' : 'pending'));
+          if (isPro) updateUser({ maxStudentsAllowed: maxAllowed });
+          window.history.replaceState({}, '', location.pathname);
+          return isPro;
+        })
+        .catch(() => {
+          if (!cancelled) setSubscriptionReturnStatus((prev) => prev ?? 'pending');
+          window.history.replaceState({}, '', location.pathname);
+          return false;
+        });
+
+    check().then((isPro) => {
+      if (cancelled || isPro) return;
+      intervalId = setInterval(() => {
+        check().then((ok) => {
+          if (ok && intervalId) clearInterval(intervalId);
+        });
+      }, 5000);
+    });
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [subscriptionSuccessFromUrl]);
 
   const handleSaveProfile = async () => {
     setProfileError('');
@@ -1447,9 +1488,28 @@ function PerfilPage() {
         <p className="text-dark-500 text-sm md:text-lg">Gerencie suas informações pessoais</p>
       </div>
 
-      {subscriptionSuccess && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
-          Pagamento recebido! Seu plano Pro foi ativado — você já pode cadastrar alunos ilimitados.
+      {(subscriptionSuccessFromUrl || subscriptionReturnStatus) && (
+        <div
+          className={`mb-6 p-4 rounded-xl border text-sm font-medium ${
+            subscriptionReturnStatus === 'pro'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : subscriptionReturnStatus === 'pending'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-dark-50 border-dark-200 text-dark-600'
+          }`}
+        >
+          {subscriptionReturnStatus === 'pro' && (
+            <>Pagamento confirmado! Seu plano Pro foi ativado — você já pode cadastrar alunos ilimitados.</>
+          )}
+          {subscriptionReturnStatus === 'pending' && (
+            <>
+              Aguardando confirmação do pagamento. Se você já realizou o pagamento, o plano Pro será ativado em
+              instantes. Atualize a página em alguns segundos ou confira o status no seu e-mail/Asaas.
+            </>
+          )}
+          {subscriptionReturnStatus === null && subscriptionSuccessFromUrl && (
+            <>Verificando status do pagamento...</>
+          )}
         </div>
       )}
 

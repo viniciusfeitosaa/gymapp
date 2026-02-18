@@ -63,9 +63,8 @@ export class SubscriptionController {
       const expiredUrl = `${frontendUrl}/personal/perfil`;
       const headers = getAsaasHeaders();
 
-      // Próxima data de vencimento (amanhã)
+      // Primeira cobrança: hoje, para que a Asaas tente debitar na hora (evita ficar só validação R$ 0)
       const nextDue = new Date();
-      nextDue.setDate(nextDue.getDate() + 1);
       const nextDueStr = nextDue.toISOString().slice(0, 10); // YYYY-MM-DD
       const nextDueFull = `${nextDueStr}T12:00:00`;
 
