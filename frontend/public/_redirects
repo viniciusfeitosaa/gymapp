@@ -1,2 +1,7 @@
-# SPA fallback: todas as rotas servem index.html para o React Router
-/*    /index.html   200
+# SPA fallback: rotas do app servem index.html (React Router).
+# Não usar /* aqui para que /landing/* seja servido como arquivo estático (iframe da landing).
+/           /index.html   200
+/login      /index.html   200
+/register   /index.html   200
+/personal/* /index.html   200
+/student/*  /index.html   200
