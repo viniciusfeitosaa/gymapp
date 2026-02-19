@@ -1,14 +1,17 @@
+import { useEffect } from 'react';
+
 /**
- * Exibe a landing page estática (em public/landing/) na rota /.
- * Sem necessidade de DNS ou servidor separado.
+ * Redireciona para a landing estática em tela cheia.
+ * Evita iframe para não conflitar com X-Frame-Options (ex.: Cloudflare) que bloqueia exibição em frame.
  */
 export default function LandingPage() {
+  useEffect(() => {
+    window.location.replace('/landing/index.html');
+  }, []);
+
   return (
-    <iframe
-      src="/landing/index.html"
-      title="Gym Code - Página inicial"
-      className="fixed inset-0 w-full h-full border-0 block"
-      style={{ display: 'block' }}
-    />
+    <div className="min-h-screen flex items-center justify-center bg-dark-900">
+      <div className="animate-spin w-10 h-10 border-2 border-accent-500 border-t-transparent rounded-full" />
+    </div>
   );
 }
