@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown } from 'lucide-react';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2 } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
 import { GymCodeIcon } from '../components/GymCodeIcon';
 
@@ -433,6 +433,7 @@ function AlunosPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Carregar alunos
@@ -539,6 +540,7 @@ function AlunosPage() {
               <StudentCard 
                 key={student.id} 
                 student={student} 
+                onEdit={() => setStudentToEdit(student)}
                 onDelete={() => setStudentToDelete(student)}
               />
             ))}
@@ -557,6 +559,18 @@ function AlunosPage() {
         />
       )}
 
+      {/* Modal de Editar Aluno */}
+      {studentToEdit && (
+        <EditStudentModal
+          student={studentToEdit}
+          onClose={() => setStudentToEdit(null)}
+          onSuccess={() => {
+            setStudentToEdit(null);
+            loadStudents();
+          }}
+        />
+      )}
+
       {/* Modal de Confirmar Exclusão */}
       {studentToDelete && (
         <DeleteConfirmModal
@@ -570,7 +584,7 @@ function AlunosPage() {
   );
 }
 
-function StudentCard({ student, onDelete }: { student: Student; onDelete: () => void }) {
+function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: () => void; onDelete: () => void }) {
   const [codeCopied, setCodeCopied] = useState(false);
 
   const copyCode = () => {
@@ -579,38 +593,63 @@ function StudentCard({ student, onDelete }: { student: Student; onDelete: () => 
     setTimeout(() => setCodeCopied(false), 2000);
   };
 
+  const shareLoginLink = () => {
+    const url = `${window.location.origin}/login?code=${encodeURIComponent(student.accessCode)}&tipo=aluno`;
+    const text = `Olá ${student.name.split(' ')[0]}! Acesse sua área de treinos no Gym Code. Use este link para entrar com seu código já preenchido: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  };
+
   return (
-    <div className="card-modern p-4 md:p-6 hover:shadow-strong transition-all duration-300 relative">
-      <button
-        onClick={onDelete}
-        className="absolute top-3 right-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        title="Excluir aluno"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
-      
-      <div className="flex items-start justify-between mb-4 pr-8">
-        <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-accent rounded-xl flex items-center justify-center text-white font-bold text-lg md:text-xl">
+    <div className="card-modern p-4 md:p-6 hover:shadow-strong transition-all duration-300 flex flex-col">
+      {/* Avatar + ações em uma barra compacta */}
+      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-dark-100">
+        <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-accent rounded-lg flex items-center justify-center text-white font-bold text-sm md:text-base shrink-0">
           {student.name.charAt(0).toUpperCase()}
         </div>
-        <button 
-          onClick={copyCode}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-50 text-accent-700 rounded-lg hover:bg-accent-100 transition-colors text-sm font-semibold"
-        >
-          {codeCopied ? (
-            <>
-              <Check className="w-4 h-4" />
-              Copiado!
-            </>
-          ) : (
-            <>
-              <Copy className="w-4 h-4" />
-              {student.accessCode}
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={copyCode}
+            className="flex items-center gap-1 px-2 py-1 bg-accent-50 text-accent-700 rounded-md hover:bg-accent-100 transition-colors text-xs font-semibold"
+            title="Copiar código de acesso"
+          >
+            {codeCopied ? (
+              <>
+                <Check className="w-3 h-3" />
+                Copiado!
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3" />
+                {student.accessCode}
+              </>
+            )}
+          </button>
+          <button
+            onClick={onEdit}
+            className="p-1.5 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+            title="Editar informações do aluno"
+          >
+            <Pen className="w-3 h-3" />
+          </button>
+          <button
+            onClick={shareLoginLink}
+            className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+            title="Compartilhar link de login por WhatsApp"
+          >
+            <Share2 className="w-3 h-3" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+            title="Excluir aluno"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
       </div>
-      <h4 className="text-lg font-bold text-dark-900 mb-2">{student.name}</h4>
+
+      {/* Dados do aluno */}
+      <h4 className="text-base font-bold text-dark-900 mb-2 truncate" title={student.name}>{student.name}</h4>
       {student.email && (
         <p className="text-sm text-dark-500 mb-1">{student.email}</p>
       )}
@@ -618,19 +657,19 @@ function StudentCard({ student, onDelete }: { student: Student; onDelete: () => 
         <p className="text-sm text-dark-500 mb-3">{student.phone}</p>
       )}
       {student.trainingDays && student.trainingDays.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
+        <div className="flex flex-wrap gap-1 mt-3">
           {student.trainingDays.map((day) => {
             const dayLabels: { [key: string]: string } = {
-              MONDAY: 'Segunda',
-              TUESDAY: 'Terça',
-              WEDNESDAY: 'Quarta',
-              THURSDAY: 'Quinta',
-              FRIDAY: 'Sexta',
-              SATURDAY: 'Sábado',
-              SUNDAY: 'Domingo',
+              MONDAY: 'Seg',
+              TUESDAY: 'Ter',
+              WEDNESDAY: 'Qua',
+              THURSDAY: 'Qui',
+              FRIDAY: 'Sex',
+              SATURDAY: 'Sáb',
+              SUNDAY: 'Dom',
             };
             return (
-              <span key={day} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded">
+              <span key={day} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded leading-tight">
                 {dayLabels[day] || day}
               </span>
             );
@@ -728,9 +767,9 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 navigator.clipboard.writeText(newStudent.accessCode);
                 onSuccess();
               }}
-              className="btn-primary w-full mb-3"
+              className="btn-primary w-full mb-3 inline-flex items-center justify-center gap-2"
             >
-              <Copy className="w-5 h-5 mr-2" />
+              <Copy className="w-5 h-5 shrink-0" />
               Copiar Código e Fechar
             </button>
             <button
@@ -886,6 +925,122 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             >
               {loading ? 'Criando...' : 'Criar Aluno'}
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditStudentModal({ student, onClose, onSuccess }: { student: Student; onClose: () => void; onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    name: student.name,
+    email: student.email || '',
+    phone: student.phone || '',
+    birthDate: '',
+    weight: student.weight != null ? String(student.weight) : '',
+    height: student.height != null ? String(student.height) : '',
+    trainingDays: student.trainingDays || [],
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const daysOfWeek = [
+    { value: 'MONDAY', label: 'Segunda' },
+    { value: 'TUESDAY', label: 'Terça' },
+    { value: 'WEDNESDAY', label: 'Quarta' },
+    { value: 'THURSDAY', label: 'Quinta' },
+    { value: 'FRIDAY', label: 'Sexta' },
+    { value: 'SATURDAY', label: 'Sábado' },
+    { value: 'SUNDAY', label: 'Domingo' },
+  ];
+
+  const toggleDay = (day: string) => {
+    setFormData(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.includes(day)
+        ? prev.trainingDays.filter(d => d !== day)
+        : [...prev.trainingDays, day]
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        birthDate: formData.birthDate || undefined,
+        weight: formData.weight ? parseFloat(formData.weight) : undefined,
+        height: formData.height ? parseFloat(formData.height) : undefined,
+        trainingDays: formData.trainingDays,
+      };
+      await api.put(`/students/${student.id}`, payload);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Erro ao atualizar aluno');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 md:p-8 my-8">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-display font-bold text-dark-900">Editar Aluno</h3>
+          <button onClick={onClose} className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-2">Nome Completo *</label>
+            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ex: João Silva" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">Email</label>
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-modern" placeholder="email@exemplo.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">Telefone</label>
+              <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="(11) 99999-9999" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">Data de Nascimento</label>
+              <input type="date" value={formData.birthDate} onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })} className="input-modern" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso (kg)</label>
+              <input type="number" step="0.1" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} className="input-modern" placeholder="75.5" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">Altura (cm)</label>
+              <input type="number" step="0.1" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} className="input-modern" placeholder="175" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-3">Dias de Treino</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {daysOfWeek.map((day) => (
+                <button key={day.value} type="button" onClick={() => toggleDay(day.value)} className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${formData.trainingDays.includes(day.value) ? 'bg-gradient-accent text-white shadow-medium' : 'bg-dark-50 text-dark-600 hover:bg-dark-100'}`}>
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors">Cancelar</button>
+            <button type="submit" disabled={loading || !formData.name} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Salvando...' : 'Salvar alterações'}</button>
           </div>
         </form>
       </div>

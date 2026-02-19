@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Lock, Sparkles } from 'lucide-react';
 import { GymCodeIcon } from '../components/GymCodeIcon';
@@ -10,6 +10,7 @@ const STUDENT_BLOCKED_UNTIL_KEY = 'studentLoginBlockedUntil';
 const MAX_STUDENT_ATTEMPTS = 2;
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams();
   const [userType, setUserType] = useState<'personal' | 'student' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +22,16 @@ export default function LoginPage() {
 
   const { login, loginStudent } = useAuth();
   const navigate = useNavigate();
+
+  // Link compartilhado: /login?code=Z0707&tipo=aluno — abre direto na área do aluno com código preenchido
+  useEffect(() => {
+    const code = searchParams.get('code');
+    const tipo = searchParams.get('tipo');
+    if (code && (tipo === 'aluno' || /^[A-Z0-9]{5}$/i.test(code))) {
+      setUserType('student');
+      setAccessCode(code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5));
+    }
+  }, [searchParams]);
 
   const isStudentBlocked =
     studentBlockedUntil !== null && Date.now() < studentBlockedUntil;
