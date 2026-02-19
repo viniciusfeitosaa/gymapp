@@ -1,4 +1,4 @@
-/* Gym Code - Landing Page */
+/* Gym Code - Landing Page (public/landing) */
 :root {
   --accent-500: #f97316;
   --accent-600: #ea580c;
@@ -7,6 +7,7 @@
   --dark-100: #f1f5f9;
   --dark-200: #e2e8f0;
   --dark-500: #64748b;
+  --dark-600: #475569;
   --dark-700: #334155;
   --white: #ffffff;
   --gradient-accent: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
@@ -46,7 +47,6 @@ body {
   padding: 0 1.5rem;
 }
 
-/* Header */
 .header {
   position: sticky;
   top: 0;
@@ -162,7 +162,6 @@ body {
   padding: 0.5rem 0;
 }
 
-/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -218,7 +217,6 @@ body {
   font-size: 1rem;
 }
 
-/* Hero */
 .hero {
   background: var(--gradient-dark);
   color: var(--white);
@@ -358,7 +356,6 @@ body {
   text-align: center;
 }
 
-/* Sections */
 .section {
   padding: 4rem 0;
 }
@@ -385,7 +382,6 @@ body {
   margin-right: auto;
 }
 
-/* Steps */
 .steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -430,7 +426,6 @@ body {
   margin: 0;
 }
 
-/* Features */
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -470,7 +465,6 @@ body {
   margin: 0;
 }
 
-/* Audience */
 .audience {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -512,7 +506,6 @@ body {
   margin-bottom: 0.35rem;
 }
 
-/* CTA */
 .cta-section {
   background: var(--gradient-dark);
   color: var(--white);
@@ -560,7 +553,6 @@ body {
   text-decoration: underline;
 }
 
-/* Footer */
 .footer {
   background: var(--dark-900);
   color: var(--dark-300);
@@ -614,21 +606,17 @@ body {
   opacity: 1;
 }
 
-/* Desktop */
 @media (min-width: 768px) {
   .nav {
     display: flex;
   }
-
   .menu-toggle {
     display: none;
   }
-
   .hero-inner {
     grid-template-columns: 1fr 1fr;
     padding: 2rem 0 4rem;
   }
-
   .hero {
     padding: 4rem 0 5rem;
   }

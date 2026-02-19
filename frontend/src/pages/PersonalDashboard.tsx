@@ -594,9 +594,11 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
   };
 
   const shareLoginLink = () => {
-    const url = `${window.location.origin}/login?code=${encodeURIComponent(student.accessCode)}&tipo=aluno`;
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+    const url = `${baseUrl.replace(/\/$/, '')}/login?code=${encodeURIComponent(student.accessCode)}&tipo=aluno`;
     const text = `Olá ${student.name.split(' ')[0]}! Acesse sua área de treinos no Gym Code. Use este link para entrar com seu código já preenchido: ${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -1784,47 +1786,49 @@ function PerfilPage() {
                 <p className="text-xs text-dark-500">Ideal para começar</p>
               </div>
 
-              {/* Plano Pago - destaque */}
-              <div className="rounded-xl border-2 border-accent-300 bg-gradient-to-br from-accent-50 to-white p-5 relative shadow-medium">
-                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-accent-500 text-white text-xs font-semibold">
-                  Recomendado
-                </div>
-                <div className="flex items-center justify-between mb-3 mt-6">
-                  <h5 className="font-display font-bold text-dark-900 flex items-center gap-2 text-xl">
-                    <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6" /></span>
-                    Pro
-                  </h5>
-                  <div className="text-right flex items-baseline justify-end gap-1">
-                    <span className="text-lg font-display font-bold text-accent-600">R$ 29,90</span>
-                    <span className="text-dark-500 text-xs">/mês</span>
+              {/* Plano Pago - só exibe se ainda não for Pro (evita assinar de novo por engano) */}
+              {!isPro && (
+                <div className="rounded-xl border-2 border-accent-300 bg-gradient-to-br from-accent-50 to-white p-5 relative shadow-medium">
+                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-accent-500 text-white text-xs font-semibold">
+                    Recomendado
                   </div>
+                  <div className="flex items-center justify-between mb-3 mt-6">
+                    <h5 className="font-display font-bold text-dark-900 flex items-center gap-2 text-xl">
+                      <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6" /></span>
+                      Pro
+                    </h5>
+                    <div className="text-right flex items-baseline justify-end gap-1">
+                      <span className="text-lg font-display font-bold text-accent-600">R$ 29,90</span>
+                      <span className="text-dark-500 text-xs">/mês</span>
+                    </div>
+                  </div>
+                  <ul className="space-y-2 text-sm text-dark-700 mb-4">
+                    <li className="flex items-center gap-2 font-semibold text-accent-700">
+                      <span>✓</span> Alunos ilimitados
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-500">✓</span> Tudo do plano Gratuito
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-500">✓</span> Fichas e exercícios sem limite
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-emerald-500">✓</span> Suporte prioritário
+                    </li>
+                  </ul>
+                  {checkoutError && (
+                    <p className="text-red-600 text-xs mb-2">{checkoutError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleAssinarPro}
+                    disabled={checkoutLoading}
+                    className="w-full py-2.5 rounded-xl bg-gradient-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {checkoutLoading ? 'Gerando link...' : 'Assinar por R$ 29,90'}
+                  </button>
                 </div>
-                <ul className="space-y-2 text-sm text-dark-700 mb-4">
-                  <li className="flex items-center gap-2 font-semibold text-accent-700">
-                    <span>✓</span> Alunos ilimitados
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Tudo do plano Gratuito
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Fichas e exercícios sem limite
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Suporte prioritário
-                  </li>
-                </ul>
-                {checkoutError && (
-                  <p className="text-red-600 text-xs mb-2">{checkoutError}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={handleAssinarPro}
-                  disabled={checkoutLoading}
-                  className="w-full py-2.5 rounded-xl bg-gradient-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {checkoutLoading ? 'Gerando link...' : 'Assinar por R$ 29,90'}
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -1841,30 +1845,30 @@ function PerfilPage() {
         </div>
       )}
 
-      <div className="card-modern p-6 md:p-8">
-        <div className="flex items-center gap-6 mb-8">
+      <div className="card-modern p-5 md:p-6">
+        <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-accent rounded-2xl flex items-center justify-center text-white font-bold text-3xl md:text-4xl shadow-medium">
+            <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-accent rounded-xl flex items-center justify-center text-white font-bold text-2xl md:text-3xl shadow-medium">
               {user?.name?.charAt(0)}
             </div>
             {isPro && (
-              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title="Plano Pro">
-                <Crown className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title="Plano Pro">
+                <Crown className="w-3 h-3 md:w-4 md:h-4" />
               </span>
             )}
           </div>
           <div>
-            <h3 className="text-2xl font-display font-bold text-dark-900 mb-1 flex items-center gap-2">
+            <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 flex items-center gap-2">
               {user?.name}
               {isPro && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">Pro</span>}
             </h3>
-            <p className="text-dark-500">{user?.email}</p>
+            <p className="text-dark-500 text-sm">{user?.email}</p>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
-            <h4 className="text-lg font-display font-bold text-dark-900 mb-4">
+            <h4 className="text-base font-display font-bold text-dark-900 mb-3">
               Informações da Conta
             </h4>
             {profileError && (
@@ -2023,21 +2027,21 @@ function PerfilPage() {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm hover:bg-dark-50"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-200 text-dark-700 font-medium text-sm hover:bg-dark-50"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-3 h-3" />
                   Editar perfil e endereço
                 </button>
               </div>
             )}
           </div>
 
-          <div className="pt-6 border-t">
+          <div className="pt-5 border-t">
             <button
               onClick={handleLogout}
-              className="w-full md:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
+              className="w-full md:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
               Sair da Conta
             </button>
           </div>

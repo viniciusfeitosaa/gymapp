@@ -126,6 +126,14 @@ export default function LoginPage() {
                 <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-accent-400" />
                 <p className="text-slate-400 text-xs md:text-sm">Escolha seu perfil para continuar</p>
               </div>
+              <div className="mt-4 flex justify-center">
+                <Link
+                  to="/"
+                  className="text-xs md:text-sm text-accent-400 hover:text-accent-300 font-medium transition-colors inline-flex items-center gap-1"
+                >
+                  ← Voltar para a página inicial
+                </Link>
+              </div>
             </div>
 
             <div className="space-y-3 md:space-y-4">
