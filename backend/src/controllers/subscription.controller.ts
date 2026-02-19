@@ -134,7 +134,7 @@ export class SubscriptionController {
     }
   }
 
-  // Webhook Asaas: PAYMENT_RECEIVED ativa Pro; inadimplência/cancelamento rebaixam para gratuito
+  // Webhook Asaas: PAYMENT_CONFIRMED ou PAYMENT_RECEIVED ativam Pro; inadimplência/cancelamento rebaixam
   async webhookAsaas(req: AuthRequest, res: Response) {
     try {
       const event = req.body?.event as string | undefined;
@@ -142,6 +142,7 @@ export class SubscriptionController {
       const subscription = req.body?.subscription as { id?: string; externalReference?: string } | undefined;
 
       const eventsWeHandle = [
+        'PAYMENT_CONFIRMED',  // Cartão: pagamento aprovado (RECEIVED só vem ~30 dias depois)
         'PAYMENT_RECEIVED',
         'PAYMENT_OVERDUE',
         'SUBSCRIPTION_INACTIVATED',
@@ -157,7 +158,8 @@ export class SubscriptionController {
         return res.status(200).json({ received: true });
       }
 
-      if (event === 'PAYMENT_RECEIVED') {
+      const isPaymentOk = event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED';
+      if (isPaymentOk) {
         const subscriptionId = payment?.subscription && typeof payment.subscription === 'string' ? payment.subscription : null;
         await prisma.personalTrainer.update({
           where: { id: personalId },
@@ -166,7 +168,7 @@ export class SubscriptionController {
             ...(subscriptionId && { asaasSubscriptionId: subscriptionId }),
           },
         });
-        console.log(`[Webhook Asaas] Plano Pro ativado para personal ${personalId}`);
+        console.log(`[Webhook Asaas] Plano Pro ativado para personal ${personalId} (evento: ${event})`);
       } else {
         // PAYMENT_OVERDUE | SUBSCRIPTION_INACTIVATED | SUBSCRIPTION_DELETED → rebaixa para plano gratuito
         await prisma.personalTrainer.update({
