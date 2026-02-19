@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
+import { GymCodeIcon } from '../components/GymCodeIcon';
 
 interface Exercise {
   id?: string;
@@ -213,7 +214,7 @@ export default function StudentDashboard() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center shadow-medium">
-                <Dumbbell className="w-6 h-6 text-white" />
+                <GymCodeIcon size={24} className="text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">

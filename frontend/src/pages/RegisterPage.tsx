@@ -1,9 +1,30 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { Dumbbell, User, Mail, Lock, Phone, FileText, CheckCircle2 } from 'lucide-react';
+import { User, Mail, Lock, Phone, FileText, CheckCircle2, MapPin, ChevronRight } from 'lucide-react';
+import { GymCodeIcon } from '../components/GymCodeIcon';
+
+const formatCep = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+};
+
+const fetchAddressByCep = async (cep: string): Promise<{ logradouro?: string; bairro?: string } | null> => {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await res.json();
+    if (data.erro) return null;
+    return { logradouro: data.logradouro || '', bairro: data.bairro || '' };
+  } catch {
+    return null;
+  }
+};
 
 export default function RegisterPage() {
+  const [step, setStep] = useState<0 | 1>(0);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -11,30 +32,58 @@ export default function RegisterPage() {
     confirmPassword: '',
     phone: '',
     cref: '',
+    address: '',
+    addressNumber: '',
+    complement: '',
+    province: '',
+    postalCode: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  const handleCepBlur = async () => {
+    const digits = formData.postalCode.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const data = await fetchAddressByCep(digits);
+      if (data) {
+        setFormData((prev) => ({
+          ...prev,
+          address: data.logradouro ?? prev.address,
+          province: data.bairro ?? prev.province,
+        }));
+      }
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleStep1 = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+    setStep(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -44,6 +93,11 @@ export default function RegisterPage() {
         password: formData.password,
         phone: formData.phone || undefined,
         cref: formData.cref || undefined,
+        address: formData.address.trim() || undefined,
+        addressNumber: formData.addressNumber.trim() || undefined,
+        complement: formData.complement.trim() || undefined,
+        province: formData.province.trim() || undefined,
+        postalCode: formData.postalCode.replace(/\D/g, '') || undefined,
       });
 
       alert('Cadastro realizado com sucesso! Faça login para continuar.');
@@ -68,13 +122,13 @@ export default function RegisterPage() {
         <div className="glass-effect rounded-3xl shadow-strong p-10 border border-white/10">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-accent rounded-2xl mb-5 shadow-medium">
-              <Dumbbell className="w-8 h-8 text-white" />
+              <GymCodeIcon size={32} className="text-white" />
             </div>
             <h1 className="text-3xl font-display font-bold text-white mb-2">Cadastro Personal</h1>
-            <p className="text-slate-300">Crie sua conta no Gym Code</p>
+            <p className="text-slate-300">{step === 0 ? 'Crie sua conta no Gym Code' : 'Seu endereço (para futuras cobranças)'}</p>
           </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={step === 0 ? handleStep1 : handleSubmit} className="space-y-5">
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl backdrop-blur-sm text-sm">
               {error}
@@ -191,6 +245,88 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {step === 1 && (
+            <>
+              <div className="border-t border-dark-600/50 pt-5 mt-2">
+                <p className="text-sm font-semibold text-dark-200 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Endereço
+                </p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-semibold text-dark-200 mb-2">CEP</label>
+                      <input
+                        type="text"
+                        name="postalCode"
+                        value={formatCep(formData.postalCode)}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value.replace(/\D/g, '') })}
+                        onBlur={handleCepBlur}
+                        className="w-full px-4 py-3 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                        placeholder="00000-000"
+                        maxLength={9}
+                      />
+                      {cepLoading && <p className="text-xs text-slate-400 mt-1">Buscando endereço...</p>}
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-semibold text-dark-200 mb-2">Rua / Logradouro</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                        placeholder="Nome da rua"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-dark-200 mb-2">Número</label>
+                      <input
+                        type="text"
+                        name="addressNumber"
+                        value={formData.addressNumber}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                        placeholder="Nº"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-dark-200 mb-2">Complemento</label>
+                      <input
+                        type="text"
+                        name="complement"
+                        value={formData.complement}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                        placeholder="Apto, bloco..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-dark-200 mb-2">Bairro</label>
+                      <input
+                        type="text"
+                        name="province"
+                        value={formData.province}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                        placeholder="Bairro"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                className="text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                ← Voltar
+              </button>
+            </>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -200,6 +336,11 @@ export default function RegisterPage() {
               <span className="flex items-center justify-center gap-2">
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 Cadastrando...
+              </span>
+            ) : step === 0 ? (
+              <span className="flex items-center justify-center gap-2">
+                Continuar
+                <ChevronRight className="w-5 h-5" />
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">

@@ -11,6 +11,11 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
   phone: z.string().optional(),
   cref: z.string().optional(),
+  address: z.string().optional(),
+  addressNumber: z.string().optional(),
+  complement: z.string().optional(),
+  province: z.string().optional(),
+  postalCode: z.string().optional(),
 });
 
 const loginPersonalSchema = z.object({
@@ -98,6 +103,11 @@ export class AuthController {
           email: data.email,
           password: hashedPassword,
           phone: data.phone,
+          address: data.address || null,
+          addressNumber: data.addressNumber || null,
+          complement: data.complement || null,
+          province: data.province || null,
+          postalCode: data.postalCode ? data.postalCode.replace(/\D/g, '').slice(0, 8) : null,
           cref: data.cref,
         },
         select: {

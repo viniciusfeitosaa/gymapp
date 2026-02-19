@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Dumbbell, User, Lock, Sparkles } from 'lucide-react';
+import { User, Lock, Sparkles } from 'lucide-react';
+import { GymCodeIcon } from '../components/GymCodeIcon';
 
 const STUDENT_LOCKOUT_MINUTES = 5;
 const STUDENT_LOCKOUT_MS = STUDENT_LOCKOUT_MINUTES * 60 * 1000;
@@ -104,7 +105,7 @@ export default function LoginPage() {
           <div className="glass-effect rounded-2xl md:rounded-3xl shadow-strong p-6 md:p-10 border border-white/10">
             <div className="text-center mb-6 md:mb-10">
               <div className="inline-flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-gradient-accent rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-medium">
-                <Dumbbell className="w-7 h-7 md:w-10 md:h-10 text-white" />
+                <GymCodeIcon size={40} className="text-white md:w-10 md:h-10" />
               </div>
               <h1 className="text-2xl md:text-4xl font-display font-bold text-white mb-2 md:mb-3">
                 Gym<span className="bg-gradient-accent bg-clip-text text-transparent">Code</span>
@@ -140,7 +141,7 @@ export default function LoginPage() {
               >
                 <div className="flex items-center gap-3 md:gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 rounded-lg md:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Dumbbell className="w-5 h-5 md:w-6 md:h-6" />
+                    <GymCodeIcon size={24} className="text-white" />
                   </div>
                   <div className="text-left">
                     <div className="text-sm md:text-base">Aluno</div>
@@ -169,7 +170,7 @@ export default function LoginPage() {
         <div className="glass-effect rounded-2xl md:rounded-3xl shadow-strong p-6 md:p-10 border border-white/10">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-accent rounded-xl md:rounded-2xl mb-4 md:mb-5 shadow-medium">
-              <Dumbbell className="w-6 h-6 md:w-8 md:h-8 text-white" />
+              <GymCodeIcon size={32} className="text-white" />
             </div>
             <h1 className="text-xl md:text-3xl font-display font-bold text-white mb-2">
               {userType === 'personal' ? 'Área do Personal' : 'Área do Aluno'}

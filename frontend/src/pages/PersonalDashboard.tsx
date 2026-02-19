@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle, TrendingUp, TrendingDown, MessageCircle } from 'lucide-react';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
+import { GymCodeIcon } from '../components/GymCodeIcon';
 
 interface Student {
   id: string;
@@ -65,7 +66,7 @@ export default function PersonalDashboard() {
           <div className="flex justify-between items-center h-14 md:h-20">
             <div className="flex items-center gap-2 md:gap-4">
               <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-accent rounded-lg md:rounded-xl flex items-center justify-center shadow-medium">
-                <Dumbbell className="w-4 h-4 md:w-7 md:h-7 text-white" />
+                <GymCodeIcon size={28} className="text-white" />
               </div>
               <div>
                 <h1 className="text-lg md:text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
@@ -187,6 +188,7 @@ function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff
 
 function DashboardHome() {
   const { user } = useAuth();
+  const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const [students, setStudents] = useState<Student[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [recentLogs, setRecentLogs] = useState<RecentLogItem[]>([]);
@@ -232,8 +234,9 @@ function DashboardHome() {
   return (
     <div className="w-full">
       <div className="mb-6 md:mb-8">
-        <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2">
+        <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2 flex items-center gap-2">
           Olá, {user?.name?.split(' ')[0]}!
+          {isPro && <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6 md:w-8 md:h-8" /></span>}
         </h2>
         <p className="text-dark-500 text-sm md:text-lg">Bem-vindo ao seu painel de controle</p>
       </div>
@@ -1340,6 +1343,40 @@ function formatCepDisplay(value: string | undefined): string {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
+/** Bloco isolado: status "Plano Pro ativo" + link para cancelar assinatura */
+function ProPlanActiveBlock({
+  cancelError,
+  cancelLoading,
+  onCancel,
+  standalone,
+}: {
+  cancelError: string;
+  cancelLoading: boolean;
+  onCancel: () => void;
+  standalone?: boolean;
+}) {
+  return (
+    <div className={standalone ? '' : 'mt-6 pt-6 border-t border-amber-200/60'}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600">
+          <Crown className="w-4 h-4" />
+        </span>
+        <span className="font-display font-bold text-amber-800">Plano Pro ativo</span>
+      </div>
+      <p className="text-amber-700/90 text-sm mb-3">Você tem acesso a alunos ilimitados e todos os benefícios do plano.</p>
+      {cancelError && <p className="text-red-600 text-xs mb-2">{cancelError}</p>}
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={cancelLoading}
+        className="text-sm text-dark-500 hover:text-red-600 underline disabled:opacity-70"
+      >
+        {cancelLoading ? 'Cancelando...' : 'Cancelar assinatura'}
+      </button>
+    </div>
+  );
+}
+
 function PerfilPage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -1576,7 +1613,7 @@ function PerfilPage() {
               <div className="rounded-xl border-2 border-dark-200 bg-dark-50/50 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <h5 className="font-display font-bold text-dark-900">Gratuito</h5>
-                  <span className="text-2xl font-display font-bold text-dark-900">R$ 0</span>
+                  <span className="text-lg font-display font-bold text-dark-900">R$ 0</span>
                 </div>
                 <ul className="space-y-2 text-sm text-dark-600 mb-4">
                   <li className="flex items-center gap-2">
@@ -1598,10 +1635,13 @@ function PerfilPage() {
                   Recomendado
                 </div>
                 <div className="flex items-center justify-between mb-3 mt-6">
-                  <h5 className="font-display font-bold text-dark-900">Pro</h5>
-                  <div className="text-right">
-                    <span className="text-2xl font-display font-bold text-accent-600">R$ 29,90</span>
-                    <span className="text-dark-500 text-sm block">/mês</span>
+                  <h5 className="font-display font-bold text-dark-900 flex items-center gap-2 text-xl">
+                    <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6" /></span>
+                    Pro
+                  </h5>
+                  <div className="text-right flex items-baseline justify-end gap-1">
+                    <span className="text-lg font-display font-bold text-accent-600">R$ 29,90</span>
+                    <span className="text-dark-500 text-xs">/mês</span>
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm text-dark-700 mb-4">
@@ -1631,31 +1671,38 @@ function PerfilPage() {
                 </button>
               </div>
             </div>
-            {isPro && (
-              <div className="mt-6 pt-6 border-t border-dark-200">
-                <p className="text-dark-600 text-sm mb-2">Você está no plano Pro.</p>
-                {cancelError && <p className="text-red-600 text-xs mb-2">{cancelError}</p>}
-                <button
-                  type="button"
-                  onClick={handleCancelSubscription}
-                  disabled={cancelLoading}
-                  className="text-sm text-dark-500 hover:text-red-600 underline disabled:opacity-70"
-                >
-                  {cancelLoading ? 'Cancelando...' : 'Cancelar assinatura'}
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
 
+      {isPro && (
+        <div className="card-modern p-6 md:p-8 mb-6">
+          <ProPlanActiveBlock
+            cancelError={cancelError}
+            cancelLoading={cancelLoading}
+            onCancel={handleCancelSubscription}
+            standalone
+          />
+        </div>
+      )}
+
       <div className="card-modern p-6 md:p-8">
         <div className="flex items-center gap-6 mb-8">
-          <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-accent rounded-2xl flex items-center justify-center text-white font-bold text-3xl md:text-4xl shadow-medium">
-            {user?.name?.charAt(0)}
+          <div className="relative">
+            <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-accent rounded-2xl flex items-center justify-center text-white font-bold text-3xl md:text-4xl shadow-medium">
+              {user?.name?.charAt(0)}
+            </div>
+            {isPro && (
+              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title="Plano Pro">
+                <Crown className="w-4 h-4 md:w-5 md:h-5" />
+              </span>
+            )}
           </div>
           <div>
-            <h3 className="text-2xl font-display font-bold text-dark-900 mb-1">{user?.name}</h3>
+            <h3 className="text-2xl font-display font-bold text-dark-900 mb-1 flex items-center gap-2">
+              {user?.name}
+              {isPro && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">Pro</span>}
+            </h3>
             <p className="text-dark-500">{user?.email}</p>
           </div>
         </div>
