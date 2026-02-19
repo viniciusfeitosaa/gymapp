@@ -597,7 +597,12 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
     const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     const url = `${baseUrl.replace(/\/$/, '')}/login?code=${encodeURIComponent(student.accessCode)}&tipo=aluno`;
     const text = `Olá ${student.name.split(' ')[0]}! Acesse sua área de treinos no Gym Code. Use este link para entrar com seu código já preenchido: ${url}`;
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    const onlyDigits = student.phone?.replace(/\D/g, '') ?? '';
+    const phoneWithCountry = onlyDigits.startsWith('55') ? onlyDigits : `55${onlyDigits}`;
+    const hasValidPhone = phoneWithCountry.length >= 12; // 55 + DDD + número
+    const whatsappUrl = hasValidPhone
+      ? `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
