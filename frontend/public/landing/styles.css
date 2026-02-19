@@ -426,6 +426,108 @@ body {
   margin: 0;
 }
 
+/* Planos e preços */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.pricing-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-soft);
+  border: 2px solid var(--dark-200);
+  position: relative;
+}
+
+.pricing-card-featured {
+  border-color: var(--accent-500);
+  background: linear-gradient(to bottom, rgba(255, 247, 237, 0.5), var(--white));
+  box-shadow: var(--shadow-medium);
+}
+
+.pricing-badge {
+  position: absolute;
+  top: -10px;
+  right: 1rem;
+  background: var(--gradient-accent);
+  color: var(--white);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.pricing-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--dark-900);
+  margin: 0 0 0.75rem;
+}
+
+.pricing-card-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pricing-crown {
+  color: var(--accent-600);
+  flex-shrink: 0;
+}
+
+.pricing-card-price {
+  margin-bottom: 1rem;
+}
+
+.pricing-amount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--dark-900);
+}
+
+.pricing-card-featured .pricing-amount {
+  color: var(--accent-600);
+}
+
+.pricing-period {
+  font-size: 0.9rem;
+  color: var(--dark-500);
+  font-weight: 500;
+}
+
+.pricing-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--dark-700);
+}
+
+.pricing-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pricing-check {
+  color: var(--accent-500);
+  font-weight: 700;
+}
+
+.pricing-note {
+  font-size: 0.85rem;
+  color: var(--dark-500);
+  margin: 0;
+}
+
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
