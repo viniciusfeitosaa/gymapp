@@ -238,7 +238,62 @@ export class SubscriptionController {
     return subData?.externalReference ?? undefined;
   }
 
-  // Vincular assinatura já paga no Asaas ao personal (quando o webhook não conseguiu identificar)
+  // Sincronizar plano com Asaas pelo e-mail do usuário (sem precisar de ID) — chamado ao voltar do pagamento
+  async syncSubscription(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+      const personal = await prisma.personalTrainer.findUnique({
+        where: { id: personalId },
+        select: { email: true, maxStudentsAllowed: true },
+      });
+      if (!personal?.email) {
+        return res.json({ activated: false });
+      }
+      if (personal.maxStudentsAllowed > FREE_PLAN_STUDENTS) {
+        return res.json({ activated: true, maxStudentsAllowed: personal.maxStudentsAllowed });
+      }
+
+      const headers = getAsaasHeaders();
+      const email = encodeURIComponent(personal.email.trim());
+      const custRes = await fetch(`${ASAAS_BASE_URL}/v3/customers?email=${email}&limit=1`, {
+        method: 'GET',
+        headers,
+      });
+      if (!custRes.ok) {
+        return res.json({ activated: false });
+      }
+      const custData = (await custRes.json().catch(() => ({}))) as { data?: { id?: string }[] };
+      const customerId = custData?.data?.[0]?.id;
+      if (!customerId) {
+        return res.json({ activated: false });
+      }
+
+      const subRes = await fetch(
+        `${ASAAS_BASE_URL}/v3/subscriptions?customer=${encodeURIComponent(customerId)}&status=ACTIVE&limit=1`,
+        { method: 'GET', headers }
+      );
+      if (!subRes.ok) {
+        return res.json({ activated: false });
+      }
+      const subData = (await subRes.json().catch(() => ({}))) as { data?: { id?: string }[] };
+      const subscriptionId = subData?.data?.[0]?.id;
+      if (!subscriptionId) {
+        return res.json({ activated: false });
+      }
+
+      await prisma.personalTrainer.update({
+        where: { id: personalId },
+        data: { maxStudentsAllowed: UNLIMITED_STUDENTS, asaasSubscriptionId: subscriptionId },
+      });
+      console.log(`[Subscription] Plano Pro ativado por sync (email) para personal ${personalId}`);
+      res.json({ activated: true, maxStudentsAllowed: UNLIMITED_STUDENTS });
+    } catch (error) {
+      console.error('Sync subscription error:', error);
+      res.status(500).json({ error: 'Erro ao sincronizar assinatura.' });
+    }
+  }
+
+  // Vincular assinatura por ID (uso interno/suporte; usuário não precisa)
   async linkSubscription(req: AuthRequest, res: Response) {
     try {
       const personalId = req.userId!;
