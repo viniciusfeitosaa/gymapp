@@ -1349,6 +1349,9 @@ function PerfilPage() {
   const [checkoutError, setCheckoutError] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  const [linkSubscriptionId, setLinkSubscriptionId] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState('');
   const [editing, setEditing] = useState(false);
   const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const [saving, setSaving] = useState(false);
@@ -1479,6 +1482,27 @@ function PerfilPage() {
     }
   };
 
+  const handleLinkSubscription = async () => {
+    const id = linkSubscriptionId.trim();
+    if (!id) {
+      setLinkError('Informe o ID da assinatura.');
+      return;
+    }
+    setLinkError('');
+    setLinkLoading(true);
+    try {
+      const { data } = await api.post<{ maxStudentsAllowed: number }>('/subscription/link', {
+        asaasSubscriptionId: id,
+      });
+      updateUser({ maxStudentsAllowed: data?.maxStudentsAllowed ?? 999 });
+      setLinkSubscriptionId('');
+    } catch (err: any) {
+      setLinkError(err.response?.data?.error || 'Erro ao vincular. Verifique o ID no painel Asaas.');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="mb-6 md:mb-8">
@@ -1595,6 +1619,30 @@ function PerfilPage() {
                 </button>
               </div>
             </div>
+            {!isPro && (
+              <div className="mt-6 pt-6 border-t border-dark-200">
+                <p className="text-dark-600 text-sm mb-2">Pagou no Asaas mas o plano não ativou?</p>
+                <p className="text-dark-500 text-xs mb-2">Copie o ID da assinatura no painel Asaas (assinatura ativa) e cole abaixo para vincular.</p>
+                {linkError && <p className="text-red-600 text-xs mb-2">{linkError}</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={linkSubscriptionId}
+                    onChange={(e) => setLinkSubscriptionId(e.target.value)}
+                    placeholder="Ex: sub_xxxxxxxx"
+                    className="flex-1 min-w-[180px] rounded-lg border border-dark-200 px-3 py-2 text-sm text-dark-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleLinkSubscription}
+                    disabled={linkLoading}
+                    className="rounded-lg bg-dark-200 px-4 py-2 text-sm font-medium text-dark-800 hover:bg-dark-300 disabled:opacity-70"
+                  >
+                    {linkLoading ? 'Vinculando...' : 'Vincular assinatura'}
+                  </button>
+                </div>
+              </div>
+            )}
             {isPro && (
               <div className="mt-6 pt-6 border-t border-dark-200">
                 <p className="text-dark-600 text-sm mb-2">Você está no plano Pro.</p>

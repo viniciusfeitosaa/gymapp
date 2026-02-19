@@ -9,5 +9,7 @@ const subscriptionController = new SubscriptionController();
 router.post('/create-checkout', authenticatePersonal, subscriptionController.createCheckout.bind(subscriptionController));
 // Personal: cancelar assinatura (acesso em Perfil → Assinatura)
 router.post('/cancel', authenticatePersonal, subscriptionController.cancelSubscription.bind(subscriptionController));
+// Personal: vincular assinatura já paga no Asaas (quando o webhook não ativou o Pro)
+router.post('/link', authenticatePersonal, subscriptionController.linkSubscription.bind(subscriptionController));
 
 export { router as subscriptionRoutes };

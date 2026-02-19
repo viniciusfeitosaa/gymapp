@@ -93,6 +93,7 @@ export class SubscriptionController {
         subscription: {
           cycle: 'MONTHLY',
           nextDueDate: nextDueFull,
+          externalReference: personalId, // para o webhook identificar o personal ao receber PAYMENT_CONFIRMED
         },
         items: [
           {
@@ -137,9 +138,21 @@ export class SubscriptionController {
   // Webhook Asaas: PAYMENT_CONFIRMED ou PAYMENT_RECEIVED ativam Pro; inadimplência/cancelamento rebaixam
   async webhookAsaas(req: AuthRequest, res: Response) {
     try {
-      const event = req.body?.event as string | undefined;
-      const payment = req.body?.payment as { id?: string; subscription?: string; externalReference?: string } | undefined;
-      const subscription = req.body?.subscription as { id?: string; externalReference?: string } | undefined;
+      // Asaas pode enviar JSON direto ou em um campo (ex.: body.payload); evita quebrar se payload for string
+      let rawBody = req.body;
+      if (req.body?.payload != null) {
+        try {
+          rawBody = typeof req.body.payload === 'string' ? JSON.parse(req.body.payload) : req.body.payload;
+        } catch {
+          rawBody = req.body;
+        }
+      }
+      const event = rawBody?.event as string | undefined;
+      const payment = rawBody?.payment as { id?: string; subscription?: string | { id?: string }; externalReference?: string } | undefined;
+      const subscription = rawBody?.subscription as { id?: string; externalReference?: string } | undefined;
+
+      // Log para diagnóstico (sem dados sensíveis)
+      console.log('[Webhook Asaas] Evento:', event, '| payment.id:', payment?.id, '| payment.subscription:', payment?.subscription, '| payment.externalReference:', payment?.externalReference ?? '(vazio)', '| subscription.id:', subscription?.id, '| subscription.externalReference:', subscription?.externalReference ?? '(vazio)');
 
       const eventsWeHandle = [
         'PAYMENT_CONFIRMED',  // Cartão: pagamento aprovado (RECEIVED só vem ~30 dias depois)
@@ -155,6 +168,7 @@ export class SubscriptionController {
       const personalId = await this.resolvePersonalIdFromWebhook(payment, subscription);
 
       if (!personalId) {
+        console.warn('[Webhook Asaas] personalId não encontrado — event:', event, 'payment.id:', payment?.id);
         return res.status(200).json({ received: true });
       }
 
@@ -187,12 +201,31 @@ export class SubscriptionController {
 
   /** Obtém o ID do personal a partir do payload do webhook (payment ou subscription). */
   private async resolvePersonalIdFromWebhook(
-    payment: { id?: string; subscription?: string; externalReference?: string } | undefined,
+    payment: { id?: string; subscription?: string | { id?: string }; externalReference?: string } | undefined,
     subscription: { id?: string; externalReference?: string } | undefined
   ): Promise<string | undefined> {
     if (payment?.externalReference) return payment.externalReference;
-    const subId = payment?.subscription || subscription?.id;
     if (subscription?.externalReference) return subscription.externalReference;
+
+    // payment.subscription pode vir como string (id) ou objeto { id: "..." }
+    let subId: string | undefined =
+      typeof payment?.subscription === 'string'
+        ? payment.subscription
+        : payment?.subscription?.id ?? subscription?.id;
+
+    if (!subId && payment?.id) {
+      try {
+        const headers = getAsaasHeaders();
+        const payRes = await fetch(`${ASAAS_BASE_URL}/v3/payments/${payment.id}`, { method: 'GET', headers });
+        if (payRes.ok) {
+          const payData = (await payRes.json().catch(() => ({}))) as { subscription?: string };
+          subId = payData?.subscription;
+        }
+      } catch {
+        // ignora
+      }
+    }
+
     if (!subId) return undefined;
 
     const headers = getAsaasHeaders();
@@ -202,7 +235,43 @@ export class SubscriptionController {
     });
     if (!subRes.ok) return undefined;
     const subData = (await subRes.json().catch(() => ({}))) as { externalReference?: string };
-    return subData?.externalReference;
+    return subData?.externalReference ?? undefined;
+  }
+
+  // Vincular assinatura já paga no Asaas ao personal (quando o webhook não conseguiu identificar)
+  async linkSubscription(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+      const asaasSubscriptionId = (req.body?.asaasSubscriptionId ?? req.body?.subscriptionId ?? '').toString().trim();
+      if (!asaasSubscriptionId) {
+        return res.status(400).json({ error: 'Envie o ID da assinatura (asaasSubscriptionId).' });
+      }
+
+      const headers = getAsaasHeaders();
+      const subRes = await fetch(`${ASAAS_BASE_URL}/v3/subscriptions/${asaasSubscriptionId}`, {
+        method: 'GET',
+        headers,
+      });
+      if (!subRes.ok) {
+        const err = await subRes.json().catch(() => ({}));
+        console.warn('[Asaas] GET subscription falhou:', subRes.status, err);
+        return res.status(400).json({ error: 'Assinatura não encontrada na Asaas. Verifique o ID.' });
+      }
+      const sub = (await subRes.json()) as { status?: string };
+      if (sub?.status !== 'ACTIVE') {
+        return res.status(400).json({ error: 'Assinatura não está ativa na Asaas.' });
+      }
+
+      await prisma.personalTrainer.update({
+        where: { id: personalId },
+        data: { maxStudentsAllowed: UNLIMITED_STUDENTS, asaasSubscriptionId: asaasSubscriptionId },
+      });
+      console.log(`[Subscription] Assinatura ${asaasSubscriptionId} vinculada ao personal ${personalId}`);
+      res.json({ success: true, maxStudentsAllowed: UNLIMITED_STUDENTS });
+    } catch (error) {
+      console.error('Link subscription error:', error);
+      res.status(500).json({ error: 'Erro ao vincular assinatura.' });
+    }
   }
 
   // Cancelar assinatura pelo app (assinante acessa em Perfil → Assinatura)
