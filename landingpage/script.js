@@ -70,4 +70,41 @@
     heroSecondaryCta.textContent = variants[variant].secondaryCta;
     document.documentElement.setAttribute('data-hero-variant', variant);
   }
+
+  var appExperienceCarousel = document.querySelector('[data-carousel="app-experience"]');
+  if (appExperienceCarousel) {
+    var slides = Array.prototype.slice.call(appExperienceCarousel.querySelectorAll('.app-experience-slide'));
+    var dots = Array.prototype.slice.call(appExperienceCarousel.querySelectorAll('.app-experience-dot'));
+    var prevButton = appExperienceCarousel.querySelector('.app-experience-prev');
+    var nextButton = appExperienceCarousel.querySelector('.app-experience-next');
+    var currentIndex = 0;
+
+    var setActiveSlide = function (newIndex) {
+      currentIndex = (newIndex + slides.length) % slides.length;
+      slides.forEach(function (slide, index) {
+        slide.classList.toggle('is-active', index === currentIndex);
+      });
+      dots.forEach(function (dot, index) {
+        dot.classList.toggle('is-active', index === currentIndex);
+      });
+    };
+
+    if (slides.length > 1) {
+      if (prevButton && nextButton) {
+        prevButton.addEventListener('click', function () {
+          setActiveSlide(currentIndex - 1);
+        });
+
+        nextButton.addEventListener('click', function () {
+          setActiveSlide(currentIndex + 1);
+        });
+      }
+
+      dots.forEach(function (dot, index) {
+        dot.addEventListener('click', function () {
+          setActiveSlide(index);
+        });
+      });
+    }
+  }
 })();
