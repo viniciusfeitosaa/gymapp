@@ -75,8 +75,6 @@
   if (appExperienceCarousel) {
     var slides = Array.prototype.slice.call(appExperienceCarousel.querySelectorAll('.app-experience-slide'));
     var dots = Array.prototype.slice.call(appExperienceCarousel.querySelectorAll('.app-experience-dot'));
-    var prevButton = appExperienceCarousel.querySelector('.app-experience-prev');
-    var nextButton = appExperienceCarousel.querySelector('.app-experience-next');
     var currentIndex = 0;
 
     var setActiveSlide = function (newIndex) {
@@ -90,21 +88,9 @@
     };
 
     if (slides.length > 1) {
-      if (prevButton && nextButton) {
-        prevButton.addEventListener('click', function () {
-          setActiveSlide(currentIndex - 1);
-        });
-
-        nextButton.addEventListener('click', function () {
-          setActiveSlide(currentIndex + 1);
-        });
-      }
-
-      dots.forEach(function (dot, index) {
-        dot.addEventListener('click', function () {
-          setActiveSlide(index);
-        });
-      });
+      window.setInterval(function () {
+        setActiveSlide(currentIndex + 1);
+      }, 3500);
     }
   }
 })();

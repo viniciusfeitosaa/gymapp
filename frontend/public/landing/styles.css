@@ -459,9 +459,14 @@ body {
   height: 8px;
 }
 
+.results-grid::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.6);
+  border-radius: 9999px;
+}
+
 .results-grid::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.28);
-  border-radius: 999px;
+  background: rgba(234, 88, 12, 0.35);
+  border-radius: 9999px;
 }
 
 .result-card {
@@ -673,11 +678,16 @@ body {
   }
 
   .steps::-webkit-scrollbar {
-    height: 6px;
+    height: 8px;
+  }
+
+  .steps::-webkit-scrollbar-track {
+    background: rgba(226, 232, 240, 0.6);
+    border-radius: 9999px;
   }
 
   .steps::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.35);
+    background: rgba(234, 88, 12, 0.35);
     border-radius: 9999px;
   }
 
