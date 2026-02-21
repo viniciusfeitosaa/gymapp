@@ -410,11 +410,24 @@ body {
 
 /* Results */
 .results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: flex;
   gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
   max-width: 940px;
   margin: 0 auto;
+  padding-bottom: 0.35rem;
+}
+
+.results-grid::-webkit-scrollbar {
+  height: 8px;
+}
+
+.results-grid::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.28);
+  border-radius: 999px;
 }
 
 .result-card {
@@ -423,6 +436,8 @@ body {
   border-radius: var(--radius-lg);
   padding: 1.25rem;
   box-shadow: var(--shadow-soft);
+  flex: 0 0 min(82vw, 300px);
+  scroll-snap-align: start;
 }
 
 .result-label {
@@ -455,6 +470,59 @@ body {
   color: var(--accent-600);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.app-preview-section {
+  background: linear-gradient(to bottom, rgba(255, 247, 237, 0.2), var(--white));
+}
+
+.app-preview-device {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.app-preview-device-image {
+  width: min(420px, 92vw);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 22px 34px rgba(2, 6, 23, 0.28));
+}
+
+.app-experience-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.app-experience-card {
+  background: var(--white);
+  border: 1px solid var(--dark-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 1.25rem;
+}
+
+.app-experience-card h3 {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-display);
+  font-size: 1.03rem;
+  font-weight: 600;
+  color: var(--dark-900);
+}
+
+.app-experience-card p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--dark-600);
+}
+
+@media (min-width: 900px) {
+  .result-card {
+    flex-basis: calc((100% - 2rem) / 3);
+  }
 }
 
 /* Steps */
