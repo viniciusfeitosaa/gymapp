@@ -969,6 +969,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     { value: 'SATURDAY', label: 'Sábado' },
     { value: 'SUNDAY', label: 'Domingo' },
   ];
+  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
 
   const toggleDay = (day: string) => {
     setFormData(prev => ({
@@ -1220,6 +1221,7 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
     { value: 'SATURDAY', label: 'Sábado' },
     { value: 'SUNDAY', label: 'Domingo' },
   ];
+  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
 
   const toggleDay = (day: string) => {
     setFormData(prev => ({
@@ -2423,6 +2425,7 @@ function AddWorkoutModal({
   const [exerciseToDeleteIndex, setExerciseToDeleteIndex] = useState<number | null>(null);
   const [savedExercises, setSavedExercises] = useState<Exercise[]>([]);
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
+  const [showWorkoutLibrary, setShowWorkoutLibrary] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -2443,6 +2446,7 @@ function AddWorkoutModal({
     { value: 'SATURDAY', label: 'Sábado' },
     { value: 'SUNDAY', label: 'Domingo' },
   ];
+  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
 
   const toggleDay = (day: string) => {
     const alreadyAllocated = daysWithExistingWorkout.includes(day);
@@ -2508,6 +2512,36 @@ function AddWorkoutModal({
       },
     ]);
     setShowExerciseLibrary(false);
+  };
+
+  const workoutTemplates = workouts
+    .filter((w) => w.exercises && w.exercises.length > 0)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const applyWorkoutTemplate = (template: Workout) => {
+    setFormData((prev) => ({
+      ...prev,
+      name: template.name || prev.name,
+      description: template.description || '',
+    }));
+
+    setExercises(
+      (template.exercises || []).map((ex, index) => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        rest: ex.rest || '',
+        weight: ex.weight || '',
+        notes: ex.notes || '',
+        videoUrl: ex.videoUrl || '',
+        imageUrl: ex.imageUrl || '',
+        order: index,
+      }))
+    );
+
+    setExpandedExerciseIndex(null);
+    setExerciseToDeleteIndex(null);
+    setShowWorkoutLibrary(false);
   };
 
   const updateExercise = (index: number, field: keyof Exercise, value: any) => {
@@ -2668,6 +2702,16 @@ function AddWorkoutModal({
                 Exercícios ({exercises.length})
               </h4>
               <div className="flex gap-2">
+                {workoutTemplates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowWorkoutLibrary(true)}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-sm rounded-lg hover:bg-indigo-100 transition-colors inline-flex items-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Biblioteca de Treinos ({workoutTemplates.length})
+                  </button>
+                )}
                 {savedExercises.length > 0 && (
                   <button
                     type="button"
@@ -2979,6 +3023,60 @@ function AddWorkoutModal({
                 <p className="text-sm text-dark-400 mt-1">
                   Clique no ícone de salvar ao criar exercícios
                 </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal da Biblioteca de Treinos */}
+      {showWorkoutLibrary && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-2xl shadow-strong max-w-3xl w-full p-6 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-display font-bold text-dark-900">
+                Biblioteca de Treinos
+              </h3>
+              <button
+                onClick={() => setShowWorkoutLibrary(false)}
+                className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-dark-500 mb-4">
+              Selecione um treino já criado para reutilizar exercícios e ganhar tempo.
+            </p>
+
+            <div className="space-y-3">
+              {workoutTemplates.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => applyWorkoutTemplate(template)}
+                  className="w-full text-left bg-gradient-to-br from-dark-50 to-dark-100 rounded-lg p-4 hover:shadow-medium transition-all border-2 border-transparent hover:border-accent-500"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-dark-900 truncate">{template.name}</h4>
+                      <p className="text-xs text-dark-500 mt-1">
+                        {template.exercises.length} exercícios • {dayLabelByValue[template.dayOfWeek] || template.dayOfWeek}
+                      </p>
+                      {template.student?.name && (
+                        <p className="text-xs text-dark-500 mt-1 truncate">Aluno: {template.student.name}</p>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-accent-600 shrink-0">Usar treino</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {workoutTemplates.length === 0 && (
+              <div className="text-center py-8">
+                <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
+                <p className="text-dark-500">Nenhum treino disponível ainda</p>
               </div>
             )}
           </div>
