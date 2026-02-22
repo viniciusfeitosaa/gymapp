@@ -5,6 +5,154 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
 export class WorkoutController {
+  // Buscar sugestões de imagens por termo (Pexels com fallback Wikimedia Commons)
+  async getImageSuggestions(req: AuthRequest, res: Response) {
+    try {
+      const rawQuery = String(req.query.q || '').trim();
+      const maxResults = Math.min(12, Math.max(1, Number(req.query.maxResults) || 8));
+
+      if (!rawQuery) {
+        return res.status(400).json({ error: 'Parâmetro q é obrigatório' });
+      }
+
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+
+      // 1) Preferência: Pexels (uso comercial-friendly) se houver chave
+      if (pexelsApiKey) {
+        const params = new URLSearchParams({
+          query: `${rawQuery} gym exercise`,
+          per_page: String(maxResults),
+          orientation: 'landscape',
+          size: 'medium',
+        });
+
+        const response = await fetch(`https://api.pexels.com/v1/search?${params.toString()}`, {
+          headers: {
+            Authorization: pexelsApiKey,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json() as any;
+          const images = (data.photos || []).map((p: any) => ({
+            id: String(p.id),
+            title: p.alt || 'Imagem de exercício',
+            imageUrl: p?.src?.large2x || p?.src?.large || p?.src?.original || '',
+            thumbUrl: p?.src?.medium || p?.src?.small || '',
+            source: 'pexels',
+            author: p?.photographer || 'Pexels',
+          })).filter((i: any) => i.imageUrl && i.thumbUrl);
+
+          return res.json({ images });
+        }
+      }
+
+      // 2) Fallback sem chave: Wikimedia Commons
+      const wikiParams = new URLSearchParams({
+        action: 'query',
+        generator: 'search',
+        gsrsearch: `${rawQuery} exercise gym`,
+        gsrnamespace: '6', // File namespace
+        gsrlimit: String(maxResults),
+        prop: 'imageinfo',
+        iiprop: 'url',
+        iiurlwidth: '640',
+        format: 'json',
+      });
+
+      const wikiResponse = await fetch(`https://commons.wikimedia.org/w/api.php?${wikiParams.toString()}`);
+      if (!wikiResponse.ok) {
+        const text = await wikiResponse.text();
+        return res.status(wikiResponse.status).json({
+          error: 'Falha ao buscar imagens',
+          details: text,
+        });
+      }
+
+      const wikiData = await wikiResponse.json() as any;
+      const pages = Object.values(wikiData?.query?.pages || {}) as any[];
+      const images = pages.map((page: any) => {
+        const info = page?.imageinfo?.[0];
+        return {
+          id: String(page.pageid),
+          title: String(page.title || 'Imagem'),
+          imageUrl: String(info?.url || ''),
+          thumbUrl: String(info?.thumburl || info?.url || ''),
+          source: 'wikimedia',
+          author: 'Wikimedia Commons',
+        };
+      }).filter((i) => i.imageUrl && i.thumbUrl);
+
+      res.json({ images });
+    } catch (error) {
+      console.error('Get image suggestions error:', error);
+      res.status(500).json({ error: 'Erro ao buscar sugestões de imagem' });
+    }
+  }
+
+  // Buscar sugestões de vídeos no YouTube (API v3)
+  async getYoutubeSuggestions(req: AuthRequest, res: Response) {
+    try {
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      const rawQuery = String(req.query.q || '').trim();
+      const maxResults = Math.min(10, Math.max(1, Number(req.query.maxResults) || 8));
+
+      if (!rawQuery) {
+        return res.status(400).json({ error: 'Parâmetro q é obrigatório' });
+      }
+
+      if (!apiKey) {
+        return res.status(503).json({
+          error: 'YOUTUBE_API_KEY não configurada no servidor',
+        });
+      }
+
+      const q = `${rawQuery} como fazer academia`;
+      const params = new URLSearchParams({
+        key: apiKey,
+        part: 'snippet',
+        q,
+        type: 'video',
+        maxResults: String(maxResults),
+        videoEmbeddable: 'true',
+        safeSearch: 'moderate',
+        relevanceLanguage: 'pt',
+      });
+
+      const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);
+      if (!response.ok) {
+        const text = await response.text();
+        return res.status(response.status).json({
+          error: 'Falha ao consultar YouTube API',
+          details: text,
+        });
+      }
+
+      const data = await response.json() as any;
+      const videos = (data.items || []).map((item: any) => {
+        const videoId = item?.id?.videoId;
+        const snippet = item?.snippet || {};
+        return {
+          id: videoId,
+          title: snippet.title || 'Vídeo',
+          channelTitle: snippet.channelTitle || 'Canal',
+          thumbnailUrl:
+            snippet?.thumbnails?.medium?.url ||
+            snippet?.thumbnails?.high?.url ||
+            snippet?.thumbnails?.default?.url ||
+            '',
+          watchUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : '',
+          embedUrl: videoId ? `https://www.youtube.com/embed/${videoId}` : '',
+        };
+      }).filter((v: any) => v.id);
+
+      res.json({ videos });
+    } catch (error) {
+      console.error('Get YouTube suggestions error:', error);
+      res.status(500).json({ error: 'Erro ao buscar sugestões de vídeo' });
+    }
+  }
+
   // Criar treino (Personal)
   async createWorkout(req: AuthRequest, res: Response) {
     try {

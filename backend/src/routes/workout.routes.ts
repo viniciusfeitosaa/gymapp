@@ -7,6 +7,8 @@ const workoutController = new WorkoutController();
 
 // Rotas do Personal
 router.get('/', authenticatePersonal, workoutController.getAllWorkouts.bind(workoutController));
+router.get('/youtube/suggestions', authenticatePersonal, workoutController.getYoutubeSuggestions.bind(workoutController));
+router.get('/image/suggestions', authenticatePersonal, workoutController.getImageSuggestions.bind(workoutController));
 router.post('/', authenticatePersonal, workoutController.createWorkout.bind(workoutController));
 router.get('/student/:studentId', authenticatePersonal, workoutController.getStudentWorkouts.bind(workoutController));
 router.put('/:id', authenticatePersonal, workoutController.updateWorkout.bind(workoutController));

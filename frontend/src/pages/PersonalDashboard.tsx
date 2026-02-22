@@ -44,6 +44,265 @@ interface Workout {
   createdAt: string;
 }
 
+type SuggestedExerciseImage = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  thumbUrl: string;
+  source: string;
+  author?: string;
+};
+
+type SuggestedExerciseVideo = {
+  id: string;
+  title: string;
+  channelTitle: string;
+  videoUrl: string;
+  embedUrl: string;
+  thumbUrl: string;
+};
+
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const IMAGE_SUGGESTIONS_CACHE = new Map<string, SuggestedExerciseImage[]>();
+
+const buildImageSearchTerm = (exerciseName: string) => {
+  const normalized = exerciseName.replace(/[–—]/g, '-').trim();
+  return `${normalized} execução correta academia`;
+};
+
+const YOUTUBE_SUGGESTIONS_CACHE = new Map<string, SuggestedExerciseVideo[]>();
+
+const buildYoutubeSearchTerm = (exerciseName: string) => {
+  const normalized = exerciseName.replace(/[–—]/g, '-').trim();
+  return `${normalized} como fazer execução correta`;
+};
+
+const getYoutubeVideoId = (url?: string) => {
+  if (!url) return null;
+  const match = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return match?.[1] || null;
+};
+
+function ExerciseVideoSuggestions({
+  exerciseName,
+  selectedVideoUrl,
+  onSelect,
+}: {
+  exerciseName: string;
+  selectedVideoUrl?: string;
+  onSelect: (url: string) => void;
+}) {
+  const [videos, setVideos] = useState<SuggestedExerciseVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const trimmed = exerciseName.trim();
+    if (!trimmed) {
+      setVideos([]);
+      setError('');
+      return;
+    }
+
+    const query = buildYoutubeSearchTerm(trimmed);
+    const cacheKey = normalizeText(query);
+    const cached = YOUTUBE_SUGGESTIONS_CACHE.get(cacheKey);
+    if (cached) {
+      setVideos(cached);
+      setError('');
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const { data } = await api.get('/workouts/youtube/suggestions', {
+          params: { q: query, maxResults: 8 },
+        });
+        const list = Array.isArray(data?.videos) ? data.videos : [];
+        const mapped: SuggestedExerciseVideo[] = list.map((item: any) => ({
+          id: String(item.id),
+          title: String(item.title || 'Vídeo'),
+          channelTitle: String(item.channelTitle || 'Canal'),
+          videoUrl: String(item.watchUrl || ''),
+          embedUrl: String(item.embedUrl || ''),
+          thumbUrl: String(item.thumbnailUrl || ''),
+        }));
+        YOUTUBE_SUGGESTIONS_CACHE.set(cacheKey, mapped);
+        setVideos(mapped);
+      } catch (err) {
+        setVideos([]);
+        setError('Não foi possível carregar sugestões do YouTube agora.');
+      } finally {
+        setLoading(false);
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [exerciseName]);
+
+  if (!exerciseName.trim()) return null;
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-dark-500 mb-2">Sugestões do YouTube para este exercício:</p>
+      {loading && <p className="text-xs text-dark-400 mb-2">Buscando vídeos...</p>}
+      {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+      {!loading && videos.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
+          {videos.map((item) => {
+            const isSelected = selectedVideoUrl === item.videoUrl;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item.videoUrl)}
+                className={`min-w-[180px] rounded-xl border-2 bg-white overflow-hidden text-left snap-start transition-all ${
+                  isSelected
+                    ? 'border-accent-500 shadow-medium'
+                    : 'border-dark-200 hover:border-accent-300'
+                }`}
+              >
+                <img
+                  src={item.thumbUrl}
+                  alt={item.title}
+                  className="w-full h-24 object-cover"
+                  loading="lazy"
+                />
+                <div className="px-2 py-1.5">
+                  <p className="text-[11px] font-semibold text-dark-700 leading-tight">{item.title}</p>
+                  <p className="text-[10px] text-dark-500 mt-0.5 truncate">{item.channelTitle}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!loading && !error && videos.length === 0 && (
+        <p className="text-[11px] text-dark-400">Sem sugestões no momento para este termo.</p>
+      )}
+      <p className="text-[11px] text-dark-400 mt-2">
+        Clique em um vídeo para preencher automaticamente o campo acima.
+      </p>
+    </div>
+  );
+}
+
+function ExerciseImageSuggestions({
+  exerciseName,
+  selectedImageUrl,
+  onSelect,
+}: {
+  exerciseName: string;
+  selectedImageUrl?: string;
+  onSelect: (url: string) => void;
+}) {
+  const [images, setImages] = useState<SuggestedExerciseImage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const trimmed = exerciseName.trim();
+    if (!trimmed) {
+      setImages([]);
+      setError('');
+      return;
+    }
+
+    const query = buildImageSearchTerm(trimmed);
+    const cacheKey = normalizeText(query);
+    const cached = IMAGE_SUGGESTIONS_CACHE.get(cacheKey);
+    if (cached) {
+      setImages(cached);
+      setError('');
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const { data } = await api.get('/workouts/image/suggestions', {
+          params: { q: query, maxResults: 8 },
+        });
+        const list = Array.isArray(data?.images) ? data.images : [];
+        const mapped: SuggestedExerciseImage[] = list.map((item: any) => ({
+          id: String(item.id),
+          title: String(item.title || 'Imagem'),
+          imageUrl: String(item.imageUrl || ''),
+          thumbUrl: String(item.thumbUrl || ''),
+          source: String(item.source || 'source'),
+          author: String(item.author || ''),
+        })).filter((i) => i.imageUrl && i.thumbUrl);
+        IMAGE_SUGGESTIONS_CACHE.set(cacheKey, mapped);
+        setImages(mapped);
+      } catch (err) {
+        setImages([]);
+        setError('Não foi possível carregar sugestões de imagens agora.');
+      } finally {
+        setLoading(false);
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [exerciseName]);
+
+  if (!exerciseName.trim()) return null;
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-dark-500 mb-2">Sugestões de imagens para este exercício:</p>
+      {loading && <p className="text-xs text-dark-400 mb-2">Buscando imagens...</p>}
+      {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+      {!loading && images.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
+          {images.map((item) => {
+            const isSelected = selectedImageUrl === item.imageUrl;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item.imageUrl)}
+                className={`min-w-[180px] rounded-xl border-2 bg-white overflow-hidden text-left snap-start transition-all ${
+                  isSelected
+                    ? 'border-accent-500 shadow-medium'
+                    : 'border-dark-200 hover:border-accent-300'
+                }`}
+              >
+                <img
+                  src={item.thumbUrl}
+                  alt={item.title}
+                  className="w-full h-24 object-cover"
+                  loading="lazy"
+                />
+                <div className="px-2 py-1.5">
+                  <p className="text-[11px] font-semibold text-dark-700 leading-tight">{item.title}</p>
+                  <p className="text-[10px] text-dark-500 mt-0.5 truncate">
+                    {item.author ? `${item.author} · ${item.source}` : item.source}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!loading && !error && images.length === 0 && (
+        <p className="text-[11px] text-dark-400">Sem sugestões no momento para este termo.</p>
+      )}
+      <p className="text-[11px] text-dark-400 mt-2">
+        Clique em uma imagem para preencher automaticamente o campo acima.
+      </p>
+    </div>
+  );
+}
+
 export default function PersonalDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -1398,17 +1657,42 @@ function TreinosPage() {
                                     </p>
                                   )}
                                   {exercise.videoUrl && (
-                                    <a
-                                      href={exercise.videoUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 mt-3 text-sm text-accent-600 hover:text-accent-700 font-semibold"
-                                    >
-                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                      </svg>
-                                      Ver vídeo no YouTube
-                                    </a>
+                                    <>
+                                      {getYoutubeVideoId(exercise.videoUrl) ? (
+                                        <div className="mt-3 rounded-xl overflow-hidden border border-dark-200 bg-white">
+                                          <div className="aspect-video">
+                                            <iframe
+                                              src={`https://www.youtube.com/embed/${getYoutubeVideoId(exercise.videoUrl)}`}
+                                              title={`Demonstração: ${exercise.name}`}
+                                              className="w-full h-full"
+                                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                              referrerPolicy="strict-origin-when-cross-origin"
+                                              allowFullScreen
+                                            />
+                                          </div>
+                                          <a
+                                            href={exercise.videoUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:text-accent-700 font-semibold"
+                                          >
+                                            Ver no YouTube
+                                          </a>
+                                        </div>
+                                      ) : (
+                                        <a
+                                          href={exercise.videoUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-2 mt-3 text-sm text-accent-600 hover:text-accent-700 font-semibold"
+                                        >
+                                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                          </svg>
+                                          Ver vídeo no YouTube
+                                        </a>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -2289,69 +2573,67 @@ function AddWorkoutModal({
             </div>
           )}
 
-          {!preSelectedDayOfWeek && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-dark-700 mb-2">
-                  Aluno *
-                </label>
-                <CustomSelect
-                  value={formData.studentId}
-                  onChange={(studentId) => setFormData({ ...formData, studentId })}
-                  options={students.map((s) => ({ value: s.id, label: s.name }))}
-                  placeholder="Selecione um aluno"
-                  aria-label="Aluno"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-dark-700 mb-3">
-                  Dias da Semana * (selecione um ou mais)
-                </label>
-                {formData.studentId && daysWithExistingWorkout.length > 0 && (
-                  <p className="text-xs text-dark-500 mb-2">
-                    Dias em azul já possuem treino para este aluno.
-                  </p>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {daysOfWeek.map((day) => {
-                    const hasExisting = daysWithExistingWorkout.includes(day.value);
-                    const isSelected = formData.daysOfWeek.includes(day.value);
-                    const disabled = hasExisting;
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => toggleDay(day.value)}
-                        disabled={disabled}
-                        title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
-                        className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
-                          disabled
-                            ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
-                            : isSelected
-                              ? 'bg-gradient-accent text-white shadow-medium'
-                              : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
-                        }`}
-                      >
-                        <span>{day.label}</span>
-                        {hasExisting && (
-                          <span className="text-[10px] font-medium opacity-90">Já alocado</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {formData.daysOfWeek.length === 0 && (
-                  <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
-                )}
-                {formData.daysOfWeek.length > 1 && (
-                  <p className="text-xs text-green-600 mt-2">
-                    ✓ Este treino será replicado para {formData.daysOfWeek.length} dias
-                  </p>
-                )}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={preSelectedStudentId ? 'hidden' : ''} aria-hidden={preSelectedStudentId ? true : undefined}>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">
+                Aluno *
+              </label>
+              <CustomSelect
+                value={formData.studentId}
+                onChange={(studentId) => setFormData({ ...formData, studentId })}
+                options={students.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Selecione um aluno"
+                aria-label="Aluno"
+              />
             </div>
-          )}
+
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-3">
+                Dias da Semana * (selecione um ou mais)
+              </label>
+              {formData.studentId && daysWithExistingWorkout.length > 0 && (
+                <p className="text-xs text-dark-500 mb-2">
+                  Dias em azul já possuem treino para este aluno.
+                </p>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {daysOfWeek.map((day) => {
+                  const hasExisting = daysWithExistingWorkout.includes(day.value);
+                  const isSelected = formData.daysOfWeek.includes(day.value);
+                  const disabled = hasExisting;
+                  return (
+                    <button
+                      key={day.value}
+                      type="button"
+                      onClick={() => toggleDay(day.value)}
+                      disabled={disabled}
+                      title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
+                      className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
+                        disabled
+                          ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
+                          : isSelected
+                            ? 'bg-gradient-accent text-white shadow-medium'
+                            : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
+                      }`}
+                    >
+                      <span>{day.label}</span>
+                      {hasExisting && (
+                        <span className="text-[10px] font-medium opacity-90">Já alocado</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {formData.daysOfWeek.length === 0 && (
+                <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
+              )}
+              {formData.daysOfWeek.length > 1 && (
+                <p className="text-xs text-green-600 mt-2">
+                  ✓ Este treino será replicado para {formData.daysOfWeek.length} dias
+                </p>
+              )}
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
@@ -2390,7 +2672,7 @@ function AddWorkoutModal({
                   <button
                     type="button"
                     onClick={() => setShowExerciseLibrary(true)}
-                    className="px-4 py-2 bg-blue-50 text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center gap-2"
+                    className="hidden px-4 py-2 bg-blue-50 text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center gap-2"
                   >
                     <Copy className="w-4 h-4" />
                     Biblioteca ({savedExercises.length})
@@ -2414,7 +2696,7 @@ function AddWorkoutModal({
                 <p className="text-sm text-dark-400 mt-1">Clique em "Adicionar Exercício" para começar</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
                 {exercises.map((exercise, index) => {
                   const isExpanded = expandedExerciseIndex === index;
                   const isConfirmingDelete = exerciseToDeleteIndex === index;
@@ -2444,17 +2726,8 @@ function AddWorkoutModal({
                         </div>
                       ) : !isExpanded ? (
                         <>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || `Exercício ${index + 1}`}
-                              </p>
-                              <p className="text-sm text-dark-500 mt-0.5">
-                                {exercise.sets} séries × {exercise.reps} reps
-                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
-                              </p>
-                            </div>
-                            <div className="flex gap-2 shrink-0">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2 shrink-0 self-end">
                               <button
                                 type="button"
                                 onClick={() => saveExercise(exercise)}
@@ -2480,6 +2753,15 @@ function AddWorkoutModal({
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-dark-900 truncate">
+                                {exercise.name || `Exercício ${index + 1}`}
+                              </p>
+                              <p className="text-sm text-dark-500 mt-0.5">
+                                {exercise.sets} séries × {exercise.reps} reps
+                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                              </p>
                             </div>
                           </div>
                         </>
@@ -2574,6 +2856,11 @@ function AddWorkoutModal({
                                 className="input-modern"
                                 placeholder="https://youtube.com/watch?v=..."
                               />
+                              <ExerciseVideoSuggestions
+                                exerciseName={exercise.name}
+                                selectedVideoUrl={exercise.videoUrl}
+                                onSelect={(url) => updateExercise(index, 'videoUrl', url)}
+                              />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
@@ -2585,6 +2872,11 @@ function AddWorkoutModal({
                                 placeholder="https://exemplo.com/imagem-exercicio.jpg"
                               />
                               <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                              <ExerciseImageSuggestions
+                                exerciseName={exercise.name}
+                                selectedImageUrl={exercise.imageUrl}
+                                onSelect={(url) => updateExercise(index, 'imageUrl', url)}
+                              />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
@@ -2698,12 +2990,12 @@ function AddWorkoutModal({
 
 function EditWorkoutModal({ 
   workout,
-  students, 
+  students,
   onClose, 
   onSuccess 
 }: { 
   workout: Workout;
-  students: Student[]; 
+  students: Student[];
   onClose: () => void; 
   onSuccess: () => void;
 }) {
@@ -2906,7 +3198,7 @@ function EditWorkoutModal({
                 <p className="text-sm text-dark-400 mt-1">Clique em "Adicionar Exercício" para começar</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
                 {exercises.map((exercise, index) => {
                   const isExpanded = expandedExerciseIndex === index;
                   const isConfirmingDelete = exerciseToDeleteIndex === index;
@@ -2936,17 +3228,8 @@ function EditWorkoutModal({
                         </div>
                       ) : !isExpanded ? (
                         <>
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || `Exercício ${index + 1}`}
-                              </p>
-                              <p className="text-sm text-dark-500 mt-0.5">
-                                {exercise.sets} séries × {exercise.reps} reps
-                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
-                              </p>
-                            </div>
-                            <div className="flex gap-2 shrink-0">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2 shrink-0 self-end">
                               <button
                                 type="button"
                                 onClick={() => setExpandedExerciseIndex(index)}
@@ -2963,6 +3246,15 @@ function EditWorkoutModal({
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-dark-900 truncate">
+                                {exercise.name || `Exercício ${index + 1}`}
+                              </p>
+                              <p className="text-sm text-dark-500 mt-0.5">
+                                {exercise.sets} séries × {exercise.reps} reps
+                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                              </p>
                             </div>
                           </div>
                         </>
@@ -3048,6 +3340,11 @@ function EditWorkoutModal({
                                 className="input-modern"
                                 placeholder="https://youtube.com/watch?v=..."
                               />
+                              <ExerciseVideoSuggestions
+                                exerciseName={exercise.name}
+                                selectedVideoUrl={exercise.videoUrl}
+                                onSelect={(url) => updateExercise(index, 'videoUrl', url)}
+                              />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
@@ -3059,6 +3356,11 @@ function EditWorkoutModal({
                                 placeholder="https://exemplo.com/imagem-exercicio.jpg"
                               />
                               <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                              <ExerciseImageSuggestions
+                                exerciseName={exercise.name}
+                                selectedImageUrl={exercise.imageUrl}
+                                onSelect={(url) => updateExercise(index, 'imageUrl', url)}
+                              />
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
