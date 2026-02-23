@@ -72,8 +72,8 @@ const normalizeText = (value: string) =>
 const IMAGE_SUGGESTIONS_CACHE = new Map<string, SuggestedExerciseImage[]>();
 
 const buildImageSearchTerm = (exerciseName: string) => {
-  const normalized = exerciseName.replace(/[–—]/g, '-').trim();
-  return `${normalized} execução correta academia`;
+  // Para imagem, priorizamos o nome cru do exercício para evitar resultados genéricos.
+  return exerciseName.replace(/[–—]/g, '-').trim();
 };
 
 const YOUTUBE_SUGGESTIONS_CACHE = new Map<string, SuggestedExerciseVideo[]>();
@@ -210,7 +210,7 @@ function ExerciseImageSuggestions({
 
   useEffect(() => {
     const trimmed = exerciseName.trim();
-    if (!trimmed) {
+    if (!trimmed || trimmed.length < 3) {
       setImages([]);
       setError('');
       return;
@@ -644,7 +644,8 @@ function DashboardHome() {
             <p className="text-sm mt-1">Quando seus alunos finalizarem treinos, aparecerão aqui</p>
           </div>
         ) : (
-          <ul className="space-y-4">
+          <div className="max-h-[52vh] overflow-y-auto pr-1">
+            <ul className="space-y-4">
             {logsLast24h.map((log) => (
               <li
                 key={log.id}
@@ -671,7 +672,8 @@ function DashboardHome() {
                 </div>
               </li>
             ))}
-          </ul>
+            </ul>
+          </div>
         );
         })()}
       </div>
@@ -1832,6 +1834,7 @@ function PerfilPage() {
   const [cancelError, setCancelError] = useState('');
   const [editing, setEditing] = useState(false);
   const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
+  const supportWhatsappNumber = (import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5585992654339').replace(/\D/g, '');
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [form, setForm] = useState({
@@ -1962,6 +1965,13 @@ function PerfilPage() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleOpenSupport = () => {
+    if (!supportWhatsappNumber) return;
+    const message = `Olá, sou assinante Pro do GymApp e preciso de suporte.${user?.name ? `\n\nNome: ${user.name}` : ''}`;
+    const whatsappUrl = `https://wa.me/${supportWhatsappNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleAssinarPro = async () => {
@@ -2324,13 +2334,25 @@ function PerfilPage() {
           </div>
 
           <div className="pt-5 border-t">
-            <button
-              onClick={handleLogout}
-              className="w-full md:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
-            >
-              <LogOut className="w-4 h-4" />
-              Sair da Conta
-            </button>
+            <div className="flex flex-col md:flex-row gap-2 md:items-center">
+              {isPro && supportWhatsappNumber && (
+                <button
+                  type="button"
+                  onClick={handleOpenSupport}
+                  className="w-full md:w-auto px-4 py-2.5 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Falar com suporte
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="w-full md:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair da Conta
+              </button>
+            </div>
           </div>
         </div>
       </div>

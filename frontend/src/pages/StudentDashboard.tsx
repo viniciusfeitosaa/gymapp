@@ -39,6 +39,7 @@ function FocusModeWorkout({
   const [phase, setPhase] = useState<'countdown' | 'workout'>('countdown');
   const [count, setCount] = useState(3);
   const [finishing, setFinishing] = useState(false);
+  const [videoPlayer, setVideoPlayer] = useState<{ embedUrl: string; originalUrl: string } | null>(null);
 
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -63,17 +64,17 @@ function FocusModeWorkout({
     }
   };
 
+  const openVideoInApp = (videoUrl: string) => {
+    const embed = getYouTubeEmbedUrl(videoUrl);
+    if (embed) {
+      setVideoPlayer({ embedUrl: embed, originalUrl: videoUrl });
+      return;
+    }
+    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      {/* Botão sair (canto) */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-        aria-label="Sair"
-      >
-        <X className="w-6 h-6" />
-      </button>
-
       {phase === 'countdown' ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center animate-scaleIn">
@@ -89,76 +90,102 @@ function FocusModeWorkout({
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pb-24">
-          <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 truncate">
-            {workout.name}
-          </h2>
-          {workout.description && (
-            <p className="text-white/70 text-sm mb-4 line-clamp-2">{workout.description}</p>
-          )}
+          <div className="shrink-0">
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={onClose}
+                className="z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                aria-label="Sair"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 truncate">
+              {workout.name}
+            </h2>
+            {workout.description && (
+              <p className="text-white/70 text-sm mb-4 line-clamp-2">{workout.description}</p>
+            )}
+          </div>
 
           <div className="flex-1 overflow-y-auto space-y-5 pr-1">
             {(workout.exercises || []).map((ex, idx) => (
               <div
                 key={ex.id ?? idx}
-                className="relative bg-gradient-to-b from-white/[0.14] to-white/[0.06] backdrop-blur-xl rounded-2xl p-5 md:p-6 border border-white/25 shadow-xl shadow-black/25 overflow-hidden before:absolute before:inset-0 before:rounded-2xl before:border before:border-white/10 before:pointer-events-none"
+                className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/55 via-slate-900/45 to-indigo-900/35 p-5 md:p-6 shadow-2xl shadow-black/25 backdrop-blur-xl"
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-accent flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg shadow-accent-500/25 ring-2 ring-white/30">
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight drop-shadow-sm">{ex.name}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
-                        <strong className="font-bold">{ex.sets}</strong> séries
-                      </span>
-                      <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
-                        <strong className="font-bold">{ex.reps}</strong> reps
-                      </span>
-                      {ex.rest && (
-                        <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
-                          Descanso <strong className="font-bold">{ex.rest}</strong>
-                        </span>
-                      )}
-                      {ex.weight && (
-                        <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm">
-                          Peso <strong className="font-bold">{ex.weight}</strong>
-                        </span>
-                      )}
+                <div className="pointer-events-none absolute inset-0 opacity-80">
+                  <div className="absolute -right-14 -top-14 h-36 w-36 rounded-full bg-accent-400/15 blur-2xl" />
+                  <div className="absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-blue-400/10 blur-3xl" />
+                </div>
+
+                <div className="relative z-10">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-accent flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-lg shadow-accent-500/30 ring-1 ring-white/35">
+                      {idx + 1}
                     </div>
-                    {ex.notes && (
-                      <div className="mt-3 px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-400/25 shadow-sm">
-                        <p className="text-amber-100 text-sm italic">💡 {ex.notes}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-semibold">Exercício</p>
+                      <h3 className="text-lg md:text-xl font-display font-bold text-white mt-0.5 leading-tight">
+                        {ex.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                    <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-white/60">Séries</p>
+                      <p className="text-sm font-bold text-white">{ex.sets}</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-white/60">Reps</p>
+                      <p className="text-sm font-bold text-white">{ex.reps}</p>
+                    </div>
+                    {ex.rest && (
+                      <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-white/60">Descanso</p>
+                        <p className="text-sm font-bold text-white">{ex.rest}</p>
+                      </div>
+                    )}
+                    {ex.weight && (
+                      <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-white/60">Peso</p>
+                        <p className="text-sm font-bold text-white">{ex.weight}</p>
                       </div>
                     )}
                   </div>
-                </div>
-                {ex.imageUrl && (
-                  <>
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <p className="text-white/50 text-xs font-medium uppercase tracking-wider mb-2">Referência</p>
-                      <div className="rounded-xl overflow-hidden border border-white/20 bg-black/20 shadow-inner ring-1 ring-white/10">
-                        <img
-                          src={ex.imageUrl}
-                          alt={ex.name}
-                          className="w-full h-auto object-cover max-h-56"
-                        />
-                      </div>
+
+                  {ex.notes && (
+                    <div className="mt-4 rounded-2xl border border-amber-200/35 bg-gradient-to-r from-amber-400/12 to-orange-400/8 px-4 py-3 ring-1 ring-white/10">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-100/90">Execucao</p>
+                      <p className="mt-1.5 text-sm leading-relaxed font-medium text-amber-50 whitespace-pre-line">{ex.notes}</p>
                     </div>
-                  </>
+                  )}
+                </div>
+
+                {ex.imageUrl && (
+                  <div className="relative z-10 mt-4 pt-4 border-t border-white/10">
+                    <p className="text-white/55 text-[11px] font-semibold uppercase tracking-[0.12em] mb-2">Referência visual</p>
+                    <div className="rounded-2xl overflow-hidden border border-white/20 bg-black/30 shadow-inner ring-1 ring-white/10">
+                      <img
+                        src={ex.imageUrl}
+                        alt={ex.name}
+                        className="w-full h-auto object-cover max-h-56"
+                      />
+                    </div>
+                  </div>
                 )}
                 {ex.videoUrl && (
-                  <a
-                    href={ex.videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center justify-center gap-2 mt-3 px-4 py-2.5 rounded-xl bg-red-500/25 hover:bg-red-500/35 border border-red-400/40 text-red-100 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${ex.imageUrl ? 'w-full' : ''}`}
+                  <button
+                    type="button"
+                    onClick={() => openVideoInApp(ex.videoUrl!)}
+                    className={`relative z-10 inline-flex items-center justify-center gap-2 mt-4 px-4 py-3 rounded-2xl bg-red-500/18 hover:bg-red-500/28 border border-red-300/40 text-red-100 text-sm font-semibold transition-all hover:translate-y-[-1px] active:translate-y-0 ${ex.imageUrl ? 'w-full' : 'w-full md:w-auto'}`}
                   >
                     <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                     </svg>
-                    Ver vídeo no YouTube
-                  </a>
+                    Assistir execução no YouTube
+                  </button>
                 )}
               </div>
             ))}
@@ -179,6 +206,50 @@ function FocusModeWorkout({
                 </>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Player de vídeo dentro do app (modo focado) */}
+      {videoPlayer && (
+        <div
+          className="fixed inset-0 z-[110] flex flex-col bg-black/95 backdrop-blur-sm animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Player de vídeo"
+        >
+          <div className="flex items-center justify-between p-3 md:p-4 bg-black/50">
+            <p className="text-white font-semibold">Vídeo do exercício</p>
+            <button
+              type="button"
+              onClick={() => setVideoPlayer(null)}
+              className="p-2 rounded-lg text-white hover:bg-white/20 transition-colors"
+              aria-label="Fechar vídeo"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0 overflow-auto">
+            <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden bg-dark-900 shadow-strong flex-shrink-0">
+              <iframe
+                src={videoPlayer.embedUrl}
+                title="Vídeo do exercício"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            <a
+              href={videoPlayer.originalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-colors"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              Não consegue assistir aqui? Abrir no YouTube
+            </a>
           </div>
         </div>
       )}

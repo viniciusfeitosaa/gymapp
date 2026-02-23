@@ -3,6 +3,72 @@ import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
+const WEEKDAY_BY_ENGLISH_NAME: Record<string, string> = {
+  sunday: 'SUNDAY',
+  monday: 'MONDAY',
+  tuesday: 'TUESDAY',
+  wednesday: 'WEDNESDAY',
+  thursday: 'THURSDAY',
+  friday: 'FRIDAY',
+  saturday: 'SATURDAY',
+};
+
+const IMAGE_STOP_WORDS = new Set([
+  'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'no', 'na', 'para', 'com', 'a', 'o', 'as', 'os',
+  'como', 'fazer', 'execucao', 'execucao', 'correta', 'academia', 'exercicio', 'treino',
+]);
+
+const EXERCISE_QUERY_ALIASES: Array<{ match: RegExp; alias: string }> = [
+  { match: /\bsupino\b/i, alias: 'bench press chest press' },
+  { match: /\bagachamento\b/i, alias: 'squat barbell squat' },
+  { match: /\blevantamento\s*terra\b/i, alias: 'deadlift' },
+  { match: /\bremada\b/i, alias: 'row seated row bent over row' },
+  { match: /\bpuxada\b|\bpulldown\b/i, alias: 'lat pulldown' },
+  { match: /\bdesenvolvimento\b|\bombr(o|os)\b/i, alias: 'shoulder press overhead press' },
+  { match: /\brosca\b/i, alias: 'biceps curl' },
+  { match: /\btriceps\b|\btr[íi]ceps\b/i, alias: 'triceps extension pushdown' },
+  { match: /\bafundo\b|\bpassada\b/i, alias: 'lunge' },
+  { match: /\bleg\s*press\b/i, alias: 'leg press machine' },
+  { match: /\bcadeira\s*extensora\b/i, alias: 'leg extension machine' },
+  { match: /\bcadeira\s*flexora\b/i, alias: 'leg curl machine' },
+  { match: /\belevacao\s*pelvica\b|\bhip\s*thrust\b/i, alias: 'hip thrust glute bridge' },
+  { match: /\bpanturrilha\b/i, alias: 'calf raise' },
+  { match: /\bcrucifixo\b/i, alias: 'chest fly dumbbell fly' },
+];
+
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const tokenize = (value: string) =>
+  normalizeText(value)
+    .replace(/[^\w\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token && token.length > 2 && !IMAGE_STOP_WORDS.has(token));
+
+const buildImageQuery = (rawQuery: string) => {
+  const base = rawQuery.replace(/[–—]/g, '-').trim();
+  const aliases = EXERCISE_QUERY_ALIASES
+    .filter((item) => item.match.test(base))
+    .map((item) => item.alias);
+  return [base, ...aliases, 'gym exercise form'].join(' ');
+};
+
+const scoreImageRelevance = (title: string, author: string | undefined, rawQuery: string) => {
+  const queryTokens = tokenize(rawQuery);
+  if (queryTokens.length === 0) return 0;
+
+  const haystack = normalizeText(`${title} ${author || ''}`);
+  let score = 0;
+  for (const token of queryTokens) {
+    if (haystack.includes(token)) score += token.length > 5 ? 3 : 2;
+  }
+  return score;
+};
 
 export class WorkoutController {
   // Buscar sugestões de imagens por termo (Pexels com fallback Wikimedia Commons)
@@ -16,12 +82,13 @@ export class WorkoutController {
       }
 
       const pexelsApiKey = process.env.PEXELS_API_KEY;
+      const expandedQuery = buildImageQuery(rawQuery);
 
       // 1) Preferência: Pexels (uso comercial-friendly) se houver chave
       if (pexelsApiKey) {
         const params = new URLSearchParams({
-          query: `${rawQuery} gym exercise`,
-          per_page: String(maxResults),
+          query: expandedQuery,
+          per_page: String(Math.min(30, maxResults * 3)),
           orientation: 'landscape',
           size: 'medium',
         });
@@ -34,14 +101,20 @@ export class WorkoutController {
 
         if (response.ok) {
           const data = await response.json() as any;
-          const images = (data.photos || []).map((p: any) => ({
-            id: String(p.id),
-            title: p.alt || 'Imagem de exercício',
-            imageUrl: p?.src?.large2x || p?.src?.large || p?.src?.original || '',
-            thumbUrl: p?.src?.medium || p?.src?.small || '',
-            source: 'pexels',
-            author: p?.photographer || 'Pexels',
-          })).filter((i: any) => i.imageUrl && i.thumbUrl);
+          const images = (data.photos || [])
+            .map((p: any) => ({
+              id: String(p.id),
+              title: String(p.alt || 'Imagem de exercício'),
+              imageUrl: String(p?.src?.large2x || p?.src?.large || p?.src?.original || ''),
+              thumbUrl: String(p?.src?.medium || p?.src?.small || ''),
+              source: 'pexels',
+              author: String(p?.photographer || 'Pexels'),
+              score: scoreImageRelevance(String(p.alt || ''), String(p?.photographer || ''), rawQuery),
+            }))
+            .filter((i: any) => i.imageUrl && i.thumbUrl)
+            .sort((a: any, b: any) => b.score - a.score)
+            .slice(0, maxResults)
+            .map(({ score, ...item }: any) => item);
 
           return res.json({ images });
         }
@@ -51,9 +124,9 @@ export class WorkoutController {
       const wikiParams = new URLSearchParams({
         action: 'query',
         generator: 'search',
-        gsrsearch: `${rawQuery} exercise gym`,
+        gsrsearch: `${expandedQuery}`,
         gsrnamespace: '6', // File namespace
-        gsrlimit: String(maxResults),
+        gsrlimit: String(Math.min(30, maxResults * 3)),
         prop: 'imageinfo',
         iiprop: 'url',
         iiurlwidth: '640',
@@ -71,17 +144,24 @@ export class WorkoutController {
 
       const wikiData = await wikiResponse.json() as any;
       const pages = Object.values(wikiData?.query?.pages || {}) as any[];
-      const images = pages.map((page: any) => {
-        const info = page?.imageinfo?.[0];
-        return {
-          id: String(page.pageid),
-          title: String(page.title || 'Imagem'),
-          imageUrl: String(info?.url || ''),
-          thumbUrl: String(info?.thumburl || info?.url || ''),
-          source: 'wikimedia',
-          author: 'Wikimedia Commons',
-        };
-      }).filter((i) => i.imageUrl && i.thumbUrl);
+      const images = pages
+        .map((page: any) => {
+          const info = page?.imageinfo?.[0];
+          const title = String(page.title || 'Imagem');
+          return {
+            id: String(page.pageid),
+            title,
+            imageUrl: String(info?.url || ''),
+            thumbUrl: String(info?.thumburl || info?.url || ''),
+            source: 'wikimedia',
+            author: 'Wikimedia Commons',
+            score: scoreImageRelevance(title, 'Wikimedia Commons', rawQuery),
+          };
+        })
+        .filter((i) => i.imageUrl && i.thumbUrl)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxResults)
+        .map(({ score, ...item }) => item);
 
       res.json({ images });
     } catch (error) {
@@ -368,8 +448,14 @@ export class WorkoutController {
   async getTodayWorkout(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
-      const today = new Date().getDay();
-      const dayOfWeek = DAYS_OF_WEEK[today];
+      // Usa timezone configurável para evitar virada de dia antecipada em produção (ex.: servidor UTC).
+      const weekdayInTimezone = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        timeZone: APP_TIMEZONE,
+      })
+        .format(new Date())
+        .toLowerCase();
+      const dayOfWeek = WEEKDAY_BY_ENGLISH_NAME[weekdayInTimezone] || DAYS_OF_WEEK[new Date().getDay()];
 
       const workout = await prisma.workout.findFirst({
         where: {

@@ -7,6 +7,7 @@ declare module 'canvas-confetti' {
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
+  readonly VITE_SUPPORT_WHATSAPP_NUMBER?: string
 }
 
 interface ImportMeta {
