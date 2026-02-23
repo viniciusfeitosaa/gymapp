@@ -240,7 +240,7 @@ function ExerciseImageSuggestions({
           thumbUrl: String(item.thumbUrl || ''),
           source: String(item.source || 'source'),
           author: String(item.author || ''),
-        })).filter((i) => i.imageUrl && i.thumbUrl);
+        })).filter((i: SuggestedExerciseImage) => i.imageUrl && i.thumbUrl);
         IMAGE_SUGGESTIONS_CACHE.set(cacheKey, mapped);
         setImages(mapped);
       } catch (err) {
@@ -969,8 +969,6 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     { value: 'SATURDAY', label: 'Sábado' },
     { value: 'SUNDAY', label: 'Domingo' },
   ];
-  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
-
   const toggleDay = (day: string) => {
     setFormData(prev => ({
       ...prev,
@@ -1221,8 +1219,6 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
     { value: 'SATURDAY', label: 'Sábado' },
     { value: 'SUNDAY', label: 'Domingo' },
   ];
-  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
-
   const toggleDay = (day: string) => {
     setFormData(prev => ({
       ...prev,
