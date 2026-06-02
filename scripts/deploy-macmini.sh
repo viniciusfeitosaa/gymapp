@@ -109,7 +109,15 @@ if grep -qE '^USE_CLOUDFLARE_TUNNEL=1' .env 2>/dev/null; then
 fi
 
 echo "🐳 Docker build + up..."
-docker compose -f docker-compose.prod.yml $COMPOSE_PROFILES up -d --build
+PULL_FLAG=""
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  PULL_FLAG="--pull never"
+  export COMPOSE_BAKE=false
+  echo "📥 Garantindo imagens base em cache (sem Keychain)..."
+  docker pull node:18-alpine
+  docker pull nginx:alpine
+fi
+docker compose -f docker-compose.prod.yml $COMPOSE_PROFILES up -d --build $PULL_FLAG
 
 echo "🧹 Limpando imagens antigas..."
 docker image prune -f >/dev/null 2>&1 || true
