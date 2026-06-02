@@ -21,9 +21,19 @@ cd "$ROOT_DIR"
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
 
-LOCK_FILE="${TMPDIR:-/tmp}/gymapp-deploy.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -w 900 9; then
+LOCK_DIR="${TMPDIR:-/tmp}/gymapp-deploy.lock.d"
+_deploy_lock_acquire() {
+  local i
+  for i in $(seq 1 180); do
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+      trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+      return 0
+    fi
+    [[ "$i" -eq 180 ]] && return 1
+    sleep 5
+  done
+}
+if ! _deploy_lock_acquire; then
   echo "❌ Outro deploy em andamento (aguarde até 15 min e tente de novo)"
   exit 1
 fi
