@@ -19,7 +19,9 @@
 secrets.*
 credentials.*
 *secret*
-*password*
+# senhas em arquivos soltos (não ignora páginas ForgotPassword/ResetPassword)
+passwords.txt
+.password
 *apikey*
 config/secrets/
 
