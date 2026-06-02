@@ -25,7 +25,8 @@ jobs:
       - name: Sincronizar para produção
         run: |
           set -euo pipefail
-          DEST="${MACMINI_DEPLOY_PATH:-$HOME/gymapp}"
+          # Serviço do runner pode ter HOME=~/actions-runner; usar caminho fixo do Mac Mini
+          DEST="${MACMINI_DEPLOY_PATH:-/Users/vinicius/gymapp}"
           mkdir -p "$DEST"
           rsync -a --delete \
             --exclude '.env' \
@@ -41,7 +42,7 @@ jobs:
       - name: Deploy Docker
         run: |
           set -euo pipefail
-          DEST="${MACMINI_DEPLOY_PATH:-$HOME/gymapp}"
+          DEST="${MACMINI_DEPLOY_PATH:-/Users/vinicius/gymapp}"
           cd "$DEST"
           chmod +x scripts/deploy-macmini.sh
           ./scripts/deploy-macmini.sh --no-git
