@@ -21,6 +21,28 @@ cd "$ROOT_DIR"
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
 
+# Runner/serviço não abre o Keychain do macOS (erro ao puxar imagens do Docker Hub)
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  CI_DOCKER_CONFIG="${TMPDIR:-/tmp}/gymapp-docker-config"
+  rm -rf "$CI_DOCKER_CONFIG"
+  mkdir -p "$CI_DOCKER_CONFIG/cli-plugins"
+  if [[ -d "$HOME/.docker/cli-plugins" ]]; then
+    cp -R "$HOME/.docker/cli-plugins/." "$CI_DOCKER_CONFIG/cli-plugins/"
+  fi
+  export CI_DOCKER_CONFIG
+  python3 - <<'PY'
+import json, os, pathlib
+src = pathlib.Path(os.path.expanduser("~/.docker/config.json"))
+dst = pathlib.Path(os.environ["CI_DOCKER_CONFIG"]) / "config.json"
+cfg = json.loads(src.read_text()) if src.is_file() else {}
+cfg.pop("credHelpers", None)
+cfg["credsStore"] = ""
+dst.write_text(json.dumps(cfg, indent=2) + "\n")
+PY
+  export DOCKER_CONFIG="$CI_DOCKER_CONFIG"
+  export DOCKER_HOST="${DOCKER_HOST:-unix://${HOME}/.docker/run/docker.sock}"
+fi
+
 LOCK_DIR="${TMPDIR:-/tmp}/gymapp-deploy.lock.d"
 _deploy_lock_acquire() {
   local i
