@@ -1,0 +1,9 @@
+tunnel: a1a7da43-11ca-42ba-8f1c-fda18998fb43
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: mygymcode.com
+    service: http://caddy:80
+  - hostname: www.mygymcode.com
+    service: http://caddy:80
+  - service: http_status:404

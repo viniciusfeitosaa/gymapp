@@ -1,0 +1,4 @@
+# Maddy está integrado em docker-compose.prod.yml (serviço `maddy`).
+#
+#   docker compose -f docker-compose.prod.yml up -d maddy
+#   ./scripts/setup-maddy-email.sh

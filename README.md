@@ -46,10 +46,24 @@ npm install
 npm run dev
 ```
 
-### Docker
+### Docker (Homelab — Mac Mini)
 
 ```bash
-docker-compose up --build
+# Setup completo (primeira vez)
+make setup
+
+# Ou manualmente:
+cp .env.example .env
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**Guia completo:** [HOMELAB_SETUP.md](./HOMELAB_SETUP.md)
+
+### Docker (Desenvolvimento)
+
+```bash
+make dev
+# ou: docker compose -f docker-compose.dev.yml up --build
 ```
 
 ## 🔧 Configuração

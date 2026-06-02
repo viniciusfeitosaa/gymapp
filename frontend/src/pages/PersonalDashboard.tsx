@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2 } from 'lucide-react';
 import { CustomSelect } from '../components/CustomSelect';
 import { GymCodeIcon } from '../components/GymCodeIcon';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 
 interface Student {
   id: string;
@@ -779,7 +780,7 @@ function AlunosPage() {
         <div className="card-modern p-4 md:p-6">
           {subscription?.atLimit && (
             <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              <strong>Limite do plano gratuito:</strong> você pode ter até {subscription.maxStudentsAllowed} aluno(s). Assine para cadastrar mais alunos.
+              <strong>Limite do plano gratuito:</strong> você pode ter até {subscription.maxStudentsAllowed} aluno(s) no momento.
             </div>
           )}
           <div className="flex justify-between items-center mb-4 md:mb-6">
@@ -790,7 +791,7 @@ function AlunosPage() {
               onClick={() => !subscription?.atLimit && setShowAddModal(true)}
               disabled={subscription?.atLimit}
               className="btn-primary inline-flex items-center gap-2 text-sm md:text-base disabled:opacity-60 disabled:cursor-not-allowed"
-              title={subscription?.atLimit ? 'Limite de alunos atingido. Assine para cadastrar mais.' : undefined}
+              title={subscription?.atLimit ? 'Limite de alunos atingido no plano gratuito.' : undefined}
             >
               <Plus className="w-4 h-4" />
               Novo Aluno
@@ -1789,18 +1790,8 @@ function formatCepDisplay(value: string | undefined): string {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
-/** Bloco isolado: status "Plano Pro ativo" + link para cancelar assinatura */
-function ProPlanActiveBlock({
-  cancelError,
-  cancelLoading,
-  onCancel,
-  standalone,
-}: {
-  cancelError: string;
-  cancelLoading: boolean;
-  onCancel: () => void;
-  standalone?: boolean;
-}) {
+/** Status do plano Pro (sem fluxo de pagamento por enquanto) */
+function ProPlanActiveBlock({ standalone }: { standalone?: boolean }) {
   return (
     <div className={standalone ? '' : 'mt-6 pt-6 border-t border-amber-200/60'}>
       <div className="flex items-center gap-2 mb-2">
@@ -1809,16 +1800,7 @@ function ProPlanActiveBlock({
         </span>
         <span className="font-display font-bold text-amber-800">Plano Pro ativo</span>
       </div>
-      <p className="text-amber-700/90 text-sm mb-3">Você tem acesso a alunos ilimitados e todos os benefícios do plano.</p>
-      {cancelError && <p className="text-red-600 text-xs mb-2">{cancelError}</p>}
-      <button
-        type="button"
-        onClick={onCancel}
-        disabled={cancelLoading}
-        className="text-sm text-dark-500 hover:text-red-600 underline disabled:opacity-70"
-      >
-        {cancelLoading ? 'Cancelando...' : 'Cancelar assinatura'}
-      </button>
+      <p className="text-amber-700/90 text-sm">Você tem acesso a alunos ilimitados e todos os benefícios do plano.</p>
     </div>
   );
 }
@@ -1826,17 +1808,13 @@ function ProPlanActiveBlock({
 function PerfilPage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [showPlans, setShowPlans] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState('');
-  const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelError, setCancelError] = useState('');
   const [editing, setEditing] = useState(false);
   const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const supportWhatsappNumber = (import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5585992654339').replace(/\D/g, '');
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [form, setForm] = useState({
     name: user?.name ?? '',
     phone: user?.phone ?? '',
@@ -1859,85 +1837,6 @@ function PerfilPage() {
       postalCode: user?.postalCode ? formatCepDisplay(user.postalCode) : '',
     });
   }, [user?.name, user?.phone, user?.taxId, user?.address, user?.addressNumber, user?.complement, user?.province, user?.postalCode]);
-
-  const subscriptionSuccessFromUrl = new URLSearchParams(location.search).get('subscription') === 'success';
-  // Estado após voltar do checkout: 'pro' = pago e ativado, 'pending' = aguardando confirmação
-  const [subscriptionReturnStatus, setSubscriptionReturnStatus] = useState<'pro' | 'pending' | null>(null);
-
-  // Ao voltar do checkout com ?subscription=success: sync por e-mail (ativa Pro se achar assinatura) e depois confere status
-  useEffect(() => {
-    if (!subscriptionSuccessFromUrl) return;
-    let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    const check = (): Promise<boolean> =>
-      api
-        .get<{ subscription?: { maxStudentsAllowed: number } }>('/students')
-        .then((res) => {
-          if (cancelled) return false;
-          const maxAllowed = res.data?.subscription?.maxStudentsAllowed ?? 2;
-          const isProNow = maxAllowed > 2;
-          setSubscriptionReturnStatus((prev) => (prev === 'pro' ? 'pro' : isProNow ? 'pro' : 'pending'));
-          if (isProNow) updateUser({ maxStudentsAllowed: maxAllowed });
-          window.history.replaceState({}, '', location.pathname);
-          return isProNow;
-        })
-        .catch(() => {
-          if (!cancelled) setSubscriptionReturnStatus((prev) => prev ?? 'pending');
-          window.history.replaceState({}, '', location.pathname);
-          return false;
-        });
-
-    // Primeiro tenta sincronizar por e-mail (Asaas: cliente com esse email tem assinatura ativa?)
-    api
-      .post<{ activated?: boolean; maxStudentsAllowed?: number }>('/subscription/sync')
-      .then((res) => {
-        if (cancelled) return;
-        if (res.data?.activated && res.data?.maxStudentsAllowed) {
-          updateUser({ maxStudentsAllowed: res.data.maxStudentsAllowed });
-          setSubscriptionReturnStatus('pro');
-          window.history.replaceState({}, '', location.pathname);
-          return;
-        }
-        check().then((isPro) => {
-          if (cancelled || isPro) return;
-          intervalId = setInterval(() => {
-            check().then((ok) => {
-              if (ok && intervalId) clearInterval(intervalId);
-            });
-          }, 5000);
-        });
-      })
-      .catch(() => {
-        if (!cancelled) check().then((isPro) => {
-          if (cancelled || isPro) return;
-          intervalId = setInterval(() => {
-            check().then((ok) => {
-              if (ok && intervalId) clearInterval(intervalId);
-            });
-          }, 5000);
-        });
-      });
-
-    return () => {
-      cancelled = true;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [subscriptionSuccessFromUrl]);
-
-  // Ao abrir o Perfil sem ser Pro, tenta sincronizar com Asaas por e-mail (ativa Pro se já existir assinatura paga)
-  useEffect(() => {
-    const isProNow = (user?.maxStudentsAllowed ?? 2) > 2;
-    if (!user || isProNow) return;
-    api
-      .post<{ activated?: boolean; maxStudentsAllowed?: number }>('/subscription/sync')
-      .then((res) => {
-        if (res.data?.activated && res.data?.maxStudentsAllowed) {
-          updateUser({ maxStudentsAllowed: res.data.maxStudentsAllowed });
-        }
-      })
-      .catch(() => {});
-  }, [user?.id]); // roda quando o usuário está definido (login), uma vez por "sessão" do Perfil
 
   const handleSaveProfile = async () => {
     setProfileError('');
@@ -1974,38 +1873,6 @@ function PerfilPage() {
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleAssinarPro = async () => {
-    setCheckoutError('');
-    setCheckoutLoading(true);
-    try {
-      const { data } = await api.post<{ url: string }>('/subscription/create-checkout');
-      if (data?.url) window.location.href = data.url;
-      else setCheckoutError('Link de pagamento não disponível.');
-    } catch (err: any) {
-      const code = err.response?.data?.code;
-      const msg = err.response?.data?.error || 'Erro ao gerar link de pagamento. Tente novamente.';
-      setCheckoutError(msg);
-      if (code === 'CPF_REQUIRED') setShowPlans(true);
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura? Você voltará ao plano gratuito (até 2 alunos) e não será mais cobrado.')) return;
-    setCancelError('');
-    setCancelLoading(true);
-    try {
-      const { data } = await api.post<{ maxStudentsAllowed: number }>('/subscription/cancel');
-      updateUser({ maxStudentsAllowed: data?.maxStudentsAllowed ?? 2 });
-      setCancelError('');
-    } catch (err: any) {
-      setCancelError(err.response?.data?.error || 'Erro ao cancelar. Tente novamente.');
-    } finally {
-      setCancelLoading(false);
-    }
-  };
-
   return (
     <div className="w-full">
       <div className="mb-6 md:mb-8">
@@ -2014,31 +1881,6 @@ function PerfilPage() {
         </h2>
         <p className="text-dark-500 text-sm md:text-lg">Gerencie suas informações pessoais</p>
       </div>
-
-      {(subscriptionSuccessFromUrl || subscriptionReturnStatus) && (
-        <div
-          className={`mb-6 p-4 rounded-xl border text-sm font-medium ${
-            subscriptionReturnStatus === 'pro'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : subscriptionReturnStatus === 'pending'
-                ? 'bg-amber-50 border-amber-200 text-amber-800'
-                : 'bg-dark-50 border-dark-200 text-dark-600'
-          }`}
-        >
-          {subscriptionReturnStatus === 'pro' && (
-            <>Pagamento confirmado! Seu plano Pro foi ativado — você já pode cadastrar alunos ilimitados.</>
-          )}
-          {subscriptionReturnStatus === 'pending' && (
-            <>
-              Aguardando confirmação do pagamento. Se você já realizou o pagamento, o plano Pro será ativado em
-              instantes. Atualize a página em alguns segundos ou confira o status no seu e-mail/Asaas.
-            </>
-          )}
-          {subscriptionReturnStatus === null && subscriptionSuccessFromUrl && (
-            <>Verificando status do pagamento...</>
-          )}
-        </div>
-      )}
 
       {/* Área Assinatura - clicável para expandir planos */}
       <div className="card-modern p-6 md:p-8 mb-6">
@@ -2062,70 +1904,32 @@ function PerfilPage() {
         {showPlans && (
           <div className="mt-6 pt-6 border-t border-dark-100">
             <p className="text-dark-600 text-sm mb-4">Escolha o plano ideal para você:</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Plano Gratuito */}
+            <div className="grid grid-cols-1 gap-4">
               <div className="rounded-xl border-2 border-dark-200 bg-dark-50/50 p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-display font-bold text-dark-900">Gratuito</h5>
-                  <span className="text-lg font-display font-bold text-dark-900">R$ 0</span>
+                  <h5 className="font-display font-bold text-dark-900">
+                    {isPro ? 'Plano Pro' : 'Plano Gratuito'}
+                  </h5>
+                  <span className="text-lg font-display font-bold text-dark-900">
+                    {isPro ? 'Ativo' : 'R$ 0'}
+                  </span>
                 </div>
-                <ul className="space-y-2 text-sm text-dark-600 mb-4">
+                <ul className="space-y-2 text-sm text-dark-600">
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> 2 alunos
+                    <span className="text-emerald-500">✓</span>
+                    {isPro ? 'Alunos ilimitados' : `Até ${user?.maxStudentsAllowed ?? 2} alunos`}
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-500">✓</span> Fichas de treino
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Acompanhamento básico
+                    <span className="text-emerald-500">✓</span> Acompanhamento de evolução
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-500">✓</span> Mensagens com alunos
                   </li>
                 </ul>
-                <p className="text-xs text-dark-500">Ideal para começar</p>
               </div>
-
-              {/* Plano Pago - só exibe se ainda não for Pro (evita assinar de novo por engano) */}
-              {!isPro && (
-                <div className="rounded-xl border-2 border-accent-300 bg-gradient-to-br from-accent-50 to-white p-5 relative shadow-medium">
-                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-accent-500 text-white text-xs font-semibold">
-                    Recomendado
-                  </div>
-                  <div className="flex items-center justify-between mb-3 mt-6">
-                    <h5 className="font-display font-bold text-dark-900 flex items-center gap-2 text-xl">
-                      <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6" /></span>
-                      Pro
-                    </h5>
-                    <div className="text-right flex items-baseline justify-end gap-1">
-                      <span className="text-lg font-display font-bold text-accent-600">R$ 29,90</span>
-                      <span className="text-dark-500 text-xs">/mês</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2 text-sm text-dark-700 mb-4">
-                    <li className="flex items-center gap-2 font-semibold text-accent-700">
-                      <span>✓</span> Alunos ilimitados
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-500">✓</span> Tudo do plano Gratuito
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-500">✓</span> Fichas e exercícios sem limite
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-500">✓</span> Suporte prioritário
-                    </li>
-                  </ul>
-                  {checkoutError && (
-                    <p className="text-red-600 text-xs mb-2">{checkoutError}</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleAssinarPro}
-                    disabled={checkoutLoading}
-                    className="w-full py-2.5 rounded-xl bg-gradient-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {checkoutLoading ? 'Gerando link...' : 'Assinar por R$ 29,90'}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -2133,12 +1937,7 @@ function PerfilPage() {
 
       {isPro && (
         <div className="card-modern p-6 md:p-8 mb-6">
-          <ProPlanActiveBlock
-            cancelError={cancelError}
-            cancelLoading={cancelLoading}
-            onCancel={handleCancelSubscription}
-            standalone
-          />
+          <ProPlanActiveBlock standalone />
         </div>
       )}
 
@@ -2198,7 +1997,7 @@ function PerfilPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-dark-500 mb-1 block">CPF (necessário para assinar o plano Pro)</label>
+                  <label className="text-sm text-dark-500 mb-1 block">CPF (opcional)</label>
                   <input
                     type="text"
                     value={form.taxId}
@@ -2211,7 +2010,7 @@ function PerfilPage() {
                   />
                 </div>
                 <div className="border-t border-dark-100 pt-4 mt-4">
-                  <p className="text-sm font-semibold text-dark-700 mb-3">Endereço (usado na Asaas para cobrança)</p>
+                  <p className="text-sm font-semibold text-dark-700 mb-3">Endereço (opcional)</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="md:col-span-2">
                       <label className="text-sm text-dark-500 mb-1 block">CEP</label>
@@ -2354,8 +2153,36 @@ function PerfilPage() {
               </button>
             </div>
           </div>
+
+          <div className="pt-5 mt-5 border-t border-red-100">
+            <h4 className="text-sm font-display font-bold text-red-800 mb-1">Zona de perigo</h4>
+            <p className="text-xs text-dark-500 mb-3">
+              Excluir sua conta remove permanentemente todos os alunos e dados associados.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeleteAccount(true)}
+              className="w-full md:w-auto px-4 py-2.5 border-2 border-red-300 text-red-700 hover:bg-red-50 font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir minha conta
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeleteAccount && (
+        <DeleteAccountModal
+          userType="personal"
+          userEmail={user?.email}
+          onClose={() => setShowDeleteAccount(false)}
+          onDeleted={() => {
+            setShowDeleteAccount(false);
+            logout();
+            navigate('/login');
+          }}
+        />
+      )}
     </div>
   );
 }

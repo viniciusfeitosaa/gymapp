@@ -1,0 +1,48 @@
+# Deploy no Mac Mini via runner self-hosted (push em main)
+# Setup: ./scripts/setup-github-runner.sh + variável DEPLOY_METHOD=self-hosted
+
+name: Deploy produção (Mac Mini)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-macmini-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy no Mac Mini
+    runs-on: self-hosted
+    if: ${{ vars.DEPLOY_METHOD == 'self-hosted' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sincronizar para produção
+        run: |
+          set -euo pipefail
+          DEST="${MACMINI_DEPLOY_PATH:-$HOME/gymapp}"
+          mkdir -p "$DEST"
+          rsync -a --delete \
+            --exclude '.env' \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude 'postgres_data' \
+            --exclude 'backups' \
+            --exclude 'infra/cloudflared/credentials.json' \
+            ./ "$DEST/"
+          echo "✅ Sincronizado em $DEST"
+
+      - name: Deploy Docker
+        run: |
+          set -euo pipefail
+          DEST="${MACMINI_DEPLOY_PATH:-$HOME/gymapp}"
+          cd "$DEST"
+          chmod +x scripts/deploy-macmini.sh
+          ./scripts/deploy-macmini.sh --no-git

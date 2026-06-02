@@ -26,22 +26,27 @@ console.log('✅ DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃ
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
+// Middlewares — origens permitidas via FRONTEND_URL (+ localhost em dev)
+const defaultOrigins = [
+  'http://localhost:5173',
+  'http://localhost',
+  'http://127.0.0.1',
+];
+
 const allowedOrigins = [
-  'https://mygymcode.com',
-  'https://www.mygymcode.com',
-  'https://letsgym.netlify.app',
-  'http://localhost:5173' // Para desenvolvimento
+  ...defaultOrigins,
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/$/, '')] : []),
+  ...(process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean)
+    : []),
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Permitir requisições sem origin (mobile apps, Postman, etc)
     if (!origin) return callback(null, true);
-    
-    // Remover barra final se existir
+
     const normalizedOrigin = origin.replace(/\/$/, '');
-    
+
     if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {

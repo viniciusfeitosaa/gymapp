@@ -102,7 +102,9 @@ desktop.ini
 
 # ============ Docker ============
 docker-compose.override.yml
-.dockerignore
+infra/maddy/maddy.active.conf
+# backups locais do banco
+backups/
 
 # ============ Git ============
 *.orig

@@ -1,7 +1,17 @@
 import { Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { z } from 'zod';
+
+const DELETE_CONFIRMATION = 'EXCLUIR';
+
+const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Senha é obrigatória'),
+  confirmation: z.literal(DELETE_CONFIRMATION, {
+    errorMap: () => ({ message: `Digite ${DELETE_CONFIRMATION} para confirmar` }),
+  }),
+});
 
 const updateProfileSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres').optional(),
@@ -43,6 +53,40 @@ export class PersonalController {
       }
       console.error('Update personal profile error:', error);
       res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+  }
+
+  async deleteAccount(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+      const { password } = deleteAccountSchema.parse(req.body);
+
+      const personal = await prisma.personalTrainer.findUnique({
+        where: { id: personalId },
+        select: { id: true, email: true, password: true, _count: { select: { students: true } } },
+      });
+
+      if (!personal) {
+        return res.status(404).json({ error: 'Conta não encontrada' });
+      }
+
+      const passwordValid = await bcrypt.compare(password, personal.password);
+      if (!passwordValid) {
+        return res.status(401).json({ error: 'Senha incorreta' });
+      }
+
+      await prisma.$transaction([
+        prisma.passwordResetToken.deleteMany({ where: { email: personal.email } }),
+        prisma.personalTrainer.delete({ where: { id: personalId } }),
+      ]);
+
+      res.json({ message: 'Conta excluída com sucesso' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Delete personal account error:', error);
+      res.status(500).json({ error: 'Erro ao excluir conta' });
     }
   }
 }

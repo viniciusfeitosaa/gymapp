@@ -15,5 +15,6 @@ router.post('/:id/generate-code', authenticatePersonal, studentController.genera
 
 // Rotas do Aluno (ver seus próprios dados)
 router.get('/me/profile', authenticateStudent, studentController.getMyProfile.bind(studentController));
+router.delete('/me/account', authenticateStudent, studentController.deleteMyAccount.bind(studentController));
 
 export { router as studentRoutes };

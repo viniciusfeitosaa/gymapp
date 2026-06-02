@@ -18,9 +18,9 @@ model PersonalTrainer {
   email     String   @unique
   password  String
   phone     String?
-  taxId     String?   // CPF para pagamentos (Asaas)
+  taxId     String?   // CPF (opcional)
   cref      String?
-  // Endereço (para Asaas / cobrança)
+  // Endereço (opcional)
   address      String?
   addressNumber String?
   complement   String?
@@ -29,15 +29,26 @@ model PersonalTrainer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Assinatura: plano gratuito = 2 alunos; assinante = mais alunos (maxStudentsAllowed)
-  maxStudentsAllowed    Int     @default(2)
-  asaasSubscriptionId  String? // ID da assinatura na Asaas (para cancelamento pelo app)
+  // Assinatura: plano gratuito = 2 alunos; assinante = ilimitado
+  maxStudentsAllowed   Int     @default(2)
+  storeSubscriptionId  String? // ID da assinatura na App Store / Google Play
 
   // Relações
   students  Student[]
   messages  Message[]
 
   @@map("personal_trainers")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("password_reset_tokens")
 }
 
 // Modelo para Alunos

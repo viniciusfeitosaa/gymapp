@@ -6,5 +6,6 @@ const router = Router();
 const personalController = new PersonalController();
 
 router.patch('/me', authenticatePersonal, personalController.updateProfile.bind(personalController));
+router.delete('/me/account', authenticatePersonal, personalController.deleteAccount.bind(personalController));
 
 export { router as personalRoutes };

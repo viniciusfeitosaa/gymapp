@@ -1,0 +1,75 @@
+# Gym Code — Desenvolvimento local com hot reload
+# Uso: docker compose -f docker-compose.dev.yml up --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gymapp-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gymapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gymapp_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-gymapp}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gymapp} -d ${POSTGRES_DB:-gymapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gymapp-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: gymapp-backend-dev
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gymapp}:${POSTGRES_PASSWORD:-gymapp_dev}@postgres:5432/${POSTGRES_DB:-gymapp}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      FRONTEND_URL: http://localhost:5173
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gymapp-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gymapp-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - gymapp-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_dev_data:
+    name: gymapp_postgres_dev_data
+
+networks:
+  gymapp-network:
+    driver: bridge

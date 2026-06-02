@@ -3,6 +3,15 @@ import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { z } from 'zod';
 
+const DELETE_CONFIRMATION = 'EXCLUIR';
+
+const deleteMyAccountSchema = z.object({
+  accessCode: z.string().length(5, 'Código deve ter 5 caracteres'),
+  confirmation: z.literal(DELETE_CONFIRMATION, {
+    errorMap: () => ({ message: `Digite ${DELETE_CONFIRMATION} para confirmar` }),
+  }),
+});
+
 const createStudentSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
   phone: z.string().optional(),
@@ -276,6 +285,36 @@ export class StudentController {
     } catch (error) {
       console.error('Get profile error:', error);
       res.status(500).json({ error: 'Erro ao buscar perfil' });
+    }
+  }
+
+  async deleteMyAccount(req: AuthRequest, res: Response) {
+    try {
+      const studentId = req.userId!;
+      const { accessCode } = deleteMyAccountSchema.parse(req.body);
+
+      const student = await prisma.student.findUnique({
+        where: { id: studentId },
+        select: { id: true, accessCode: true },
+      });
+
+      if (!student) {
+        return res.status(404).json({ error: 'Conta não encontrada' });
+      }
+
+      if (student.accessCode !== accessCode.toUpperCase()) {
+        return res.status(401).json({ error: 'Código de acesso incorreto' });
+      }
+
+      await prisma.student.delete({ where: { id: studentId } });
+
+      res.json({ message: 'Conta excluída com sucesso' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Delete student account error:', error);
+      res.status(500).json({ error: 'Erro ao excluir conta' });
     }
   }
 }

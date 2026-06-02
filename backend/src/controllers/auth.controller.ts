@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../config/database';
 import { z } from 'zod';
+import { buildPasswordResetEmail, isEmailConfigured, sendMail } from '../services/email.service';
 
 // Schemas de validação
 const registerSchema = z.object({
@@ -26,6 +28,22 @@ const loginPersonalSchema = z.object({
 const loginStudentSchema = z.object({
   accessCode: z.string().length(5, 'Código deve ter 5 caracteres (4 números + 1 letra)'),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(32, 'Token inválido'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+});
+
+const RESET_TOKEN_HOURS = 1;
+
+function getFrontendBaseUrl(): string {
+  const url = process.env.FRONTEND_URL || process.env.VITE_APP_URL || 'http://localhost';
+  return url.replace(/\/$/, '');
+}
 
 // Bloqueio após 2 tentativas erradas: 5 minutos
 const MAX_LOGIN_ATTEMPTS = 2;
@@ -271,6 +289,111 @@ export class AuthController {
       }
       console.error('Student login error:', error);
       res.status(500).json({ error: 'Erro ao fazer login' });
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response) {
+    const genericMessage =
+      'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha em alguns minutos.';
+
+    try {
+      const { email } = forgotPasswordSchema.parse(req.body);
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const personal = await prisma.personalTrainer.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+        select: { id: true, name: true, email: true },
+      });
+
+      if (!personal) {
+        return res.json({ message: genericMessage });
+      }
+
+      if (!isEmailConfigured()) {
+        console.error('[forgotPassword] Maddy/SMTP não configurado (MADDY_SMTP_PASS no .env).');
+        return res.status(503).json({
+          error: 'Envio de e-mail indisponível. Configure o Maddy (veja EMAIL.md) e rode ./scripts/setup-maddy-email.sh',
+        });
+      }
+
+      await prisma.passwordResetToken.deleteMany({
+        where: { email: personal.email },
+      });
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_HOURS * 60 * 60 * 1000);
+
+      await prisma.passwordResetToken.create({
+        data: {
+          email: personal.email,
+          token,
+          expiresAt,
+        },
+      });
+
+      const resetUrl = `${getFrontendBaseUrl()}/reset-password?token=${token}`;
+      const emailContent = buildPasswordResetEmail({
+        name: personal.name,
+        resetUrl,
+      });
+
+      await sendMail({
+        to: personal.email,
+        ...emailContent,
+      });
+
+      return res.json({ message: genericMessage });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Forgot password error:', error);
+      return res.status(500).json({ error: 'Erro ao processar solicitação' });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const { token, password } = resetPasswordSchema.parse(req.body);
+
+      const resetRecord = await prisma.passwordResetToken.findUnique({
+        where: { token },
+      });
+
+      if (!resetRecord || resetRecord.expiresAt < new Date()) {
+        if (resetRecord) {
+          await prisma.passwordResetToken.delete({ where: { id: resetRecord.id } });
+        }
+        return res.status(400).json({ error: 'Link inválido ou expirado. Solicite um novo e-mail.' });
+      }
+
+      const personal = await prisma.personalTrainer.findUnique({
+        where: { email: resetRecord.email },
+        select: { id: true },
+      });
+
+      if (!personal) {
+        await prisma.passwordResetToken.delete({ where: { id: resetRecord.id } });
+        return res.status(400).json({ error: 'Link inválido ou expirado. Solicite um novo e-mail.' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await prisma.$transaction([
+        prisma.personalTrainer.update({
+          where: { id: personal.id },
+          data: { password: hashedPassword },
+        }),
+        prisma.passwordResetToken.delete({ where: { id: resetRecord.id } }),
+      ]);
+
+      return res.json({ message: 'Senha redefinida com sucesso! Você já pode fazer login.' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Reset password error:', error);
+      return res.status(500).json({ error: 'Erro ao redefinir senha' });
     }
   }
 }

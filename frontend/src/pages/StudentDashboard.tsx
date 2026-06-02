@@ -3,8 +3,9 @@ import confetti from 'canvas-confetti';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
+import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X, Trash2 } from 'lucide-react';
 import { GymCodeIcon } from '../components/GymCodeIcon';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 
 interface Exercise {
   id?: string;
@@ -1275,6 +1276,7 @@ function StudentPerfilPage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -1417,8 +1419,35 @@ function StudentPerfilPage() {
               Sair da Conta
             </button>
           </div>
+
+          <div className="pt-4 mt-4 border-t border-red-100">
+            <h4 className="text-sm font-display font-bold text-red-800 mb-1">Zona de perigo</h4>
+            <p className="text-xs text-dark-500 mb-3">
+              Excluir sua conta remove seu histórico de treinos e evolução de forma permanente.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeleteAccount(true)}
+              className="w-full md:w-auto px-4 py-2.5 border-2 border-red-300 text-red-700 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir minha conta
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeleteAccount && (
+        <DeleteAccountModal
+          userType="student"
+          onClose={() => setShowDeleteAccount(false)}
+          onDeleted={() => {
+            setShowDeleteAccount(false);
+            logout();
+            navigate('/login');
+          }}
+        />
+      )}
     </div>
   );
 }
