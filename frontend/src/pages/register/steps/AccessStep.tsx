@@ -1,8 +1,7 @@
 import { Lock, Phone, FileText } from 'lucide-react';
 import type { RegisterFormData } from '../registerTypes';
 
-const inputClass =
-  'w-full pl-11 pr-4 py-3.5 bg-white border border-[#D2D2D7] rounded-xl text-[#1D1D1F] placeholder:text-[#AEAEB2] focus:border-[#0071E3] focus:ring-4 focus:ring-[#0071E3]/15 outline-none transition-all text-base';
+import { registerInputWithIconClass, registerLabelClass } from '../registerStyles';
 
 type Props = {
   formData: RegisterFormData;
@@ -14,7 +13,7 @@ export default function AccessStep({ formData, onChange }: Props) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Senha</label>
+          <label className={registerLabelClass}>Senha</label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />
             <input
@@ -22,7 +21,7 @@ export default function AccessStep({ formData, onChange }: Props) {
               name="password"
               value={formData.password}
               onChange={onChange}
-              className={inputClass}
+              className={registerInputWithIconClass}
               placeholder="••••••"
               autoComplete="new-password"
               required
@@ -30,7 +29,7 @@ export default function AccessStep({ formData, onChange }: Props) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Confirmar senha</label>
+          <label className={registerLabelClass}>Confirmar senha</label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />
             <input
@@ -38,7 +37,7 @@ export default function AccessStep({ formData, onChange }: Props) {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={onChange}
-              className={inputClass}
+              className={registerInputWithIconClass}
               placeholder="••••••"
               autoComplete="new-password"
               required
@@ -48,7 +47,7 @@ export default function AccessStep({ formData, onChange }: Props) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">
+          <label className={registerLabelClass}>
             Telefone <span className="font-normal text-[#86868B]">(opcional)</span>
           </label>
           <div className="relative">
@@ -58,14 +57,14 @@ export default function AccessStep({ formData, onChange }: Props) {
               name="phone"
               value={formData.phone}
               onChange={onChange}
-              className={inputClass}
+              className={registerInputWithIconClass}
               placeholder="(00) 00000-0000"
               autoComplete="tel"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">
+          <label className={registerLabelClass}>
             CREF <span className="font-normal text-[#86868B]">(opcional)</span>
           </label>
           <div className="relative">
@@ -75,7 +74,7 @@ export default function AccessStep({ formData, onChange }: Props) {
               name="cref"
               value={formData.cref}
               onChange={onChange}
-              className={inputClass}
+              className={registerInputWithIconClass}
               placeholder="000000-G/UF"
             />
           </div>

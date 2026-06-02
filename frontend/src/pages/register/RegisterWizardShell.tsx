@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import type { RegisterStep } from './registerTypes';
+import { registerLinkClass, registerPrimaryButtonClass } from './registerStyles';
 
 const STEP_COPY: Record<
   Exclude<RegisterStep, 'celebration'>,
@@ -62,8 +63,12 @@ export default function RegisterWizardShell({
   const showProgress = progress > 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-accent-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-accent-400/10 rounded-full blur-3xl" />
+      </div>
+      <div className="w-full max-w-lg relative">
         <div className="bg-white rounded-3xl shadow-lg border border-[#E8E8ED] p-6 sm:p-10">
           {showProgress && (
             <div className="mb-8">
@@ -72,7 +77,7 @@ export default function RegisterWizardShell({
                   <div
                     key={i}
                     className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                      i <= progress ? 'bg-[#1D1D1F]' : 'bg-[#E8E8ED]'
+                      i <= progress ? 'bg-gradient-accent' : 'bg-[#E8E8ED]'
                     }`}
                   />
                 ))}
@@ -103,7 +108,7 @@ export default function RegisterWizardShell({
               type="button"
               onClick={onPrimary}
               disabled={loading}
-              className="w-full py-3.5 px-6 bg-[#1D1D1F] text-white rounded-xl font-semibold text-base hover:bg-[#333336] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className={registerPrimaryButtonClass}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -120,7 +125,7 @@ export default function RegisterWizardShell({
                 type="button"
                 onClick={onBack}
                 disabled={loading}
-                className="w-full py-2.5 text-[#6E6E73] hover:text-[#1D1D1F] font-medium text-sm inline-flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                className="w-full py-2.5 text-[#6E6E73] hover:text-accent-600 font-medium text-sm inline-flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Voltar
@@ -131,7 +136,7 @@ export default function RegisterWizardShell({
           {showLoginLink && (
             <p className="text-center text-sm text-[#6E6E73] mt-6">
               Já tem cadastro?{' '}
-              <Link to="/login" className="text-[#0071E3] font-semibold hover:underline">
+              <Link to="/login" className={registerLinkClass}>
                 Faça login
               </Link>
             </p>

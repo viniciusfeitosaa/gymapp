@@ -2,8 +2,7 @@ import { MapPin } from 'lucide-react';
 import type { RegisterFormData } from '../registerTypes';
 import { formatCep } from '../registerCep';
 
-const inputClass =
-  'w-full px-4 py-3.5 bg-white border border-[#D2D2D7] rounded-xl text-[#1D1D1F] placeholder:text-[#AEAEB2] focus:border-[#0071E3] focus:ring-4 focus:ring-[#0071E3]/15 outline-none transition-all text-base';
+import { registerInputClass, registerLabelClass } from '../registerStyles';
 
 type Props = {
   formData: RegisterFormData;
@@ -28,62 +27,62 @@ export default function AddressStep({
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="sm:col-span-1">
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">CEP</label>
+          <label className={registerLabelClass}>CEP</label>
           <input
             type="text"
             name="postalCode"
             value={formatCep(formData.postalCode)}
             onChange={(e) => onPostalCodeChange(e.target.value.replace(/\D/g, ''))}
             onBlur={onCepBlur}
-            className={inputClass}
+            className={registerInputClass}
             placeholder="00000-000"
             maxLength={9}
           />
           {cepLoading && <p className="text-xs text-[#86868B] mt-1">Buscando endereço...</p>}
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Rua / Logradouro</label>
+          <label className={registerLabelClass}>Rua / Logradouro</label>
           <input
             type="text"
             name="address"
             value={formData.address}
             onChange={onChange}
-            className={inputClass}
+            className={registerInputClass}
             placeholder="Nome da rua"
           />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Número</label>
+          <label className={registerLabelClass}>Número</label>
           <input
             type="text"
             name="addressNumber"
             value={formData.addressNumber}
             onChange={onChange}
-            className={inputClass}
+            className={registerInputClass}
             placeholder="Nº"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Complemento</label>
+          <label className={registerLabelClass}>Complemento</label>
           <input
             type="text"
             name="complement"
             value={formData.complement}
             onChange={onChange}
-            className={inputClass}
+            className={registerInputClass}
             placeholder="Apto, bloco..."
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[#1D1D1F] mb-2">Bairro</label>
+          <label className={registerLabelClass}>Bairro</label>
           <input
             type="text"
             name="province"
             value={formData.province}
             onChange={onChange}
-            className={inputClass}
+            className={registerInputClass}
             placeholder="Bairro"
           />
         </div>
