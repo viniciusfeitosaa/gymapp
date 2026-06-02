@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 
 /**
- * Redireciona para a landing estática em tela cheia.
- * Evita iframe para não conflitar com X-Frame-Options (ex.: Cloudflare) que bloqueia exibição em frame.
+ * Fallback React: em produção o Nginx serve a landing em `/`.
+ * Se o usuário cair nesta rota via SPA, recarrega a raiz.
  */
 export default function LandingPage() {
   useEffect(() => {
-    window.location.replace('/landing/index.html');
+    window.location.replace('/');
   }, []);
 
   return (
