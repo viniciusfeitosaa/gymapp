@@ -64,6 +64,8 @@ export default {
       animation: {
         'fadeIn': 'fadeIn 0.3s ease-in-out',
         'scaleIn': 'scaleIn 0.3s ease-in-out',
+        'register-slide-forward': 'registerSlideForward 0.3s ease-out',
+        'register-slide-back': 'registerSlideBack 0.3s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -73,6 +75,14 @@ export default {
         scaleIn: {
           '0%': { opacity: '0', transform: 'scale(0.9)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        registerSlideForward: {
+          '0%': { opacity: '0', transform: 'translateX(12px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        registerSlideBack: {
+          '0%': { opacity: '0', transform: 'translateX(-12px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
         },
       },
     },
