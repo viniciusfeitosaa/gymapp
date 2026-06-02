@@ -19,6 +19,20 @@ fi
 
 cd "$ROOT_DIR"
 
+export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+
+LOCK_FILE="${TMPDIR:-/tmp}/gymapp-deploy.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -w 900 9; then
+  echo "❌ Outro deploy em andamento (aguarde até 15 min e tente de novo)"
+  exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "❌ Docker não acessível — abra o Docker Desktop no Mac Mini"
+  exit 1
+fi
+
 echo "🚀 Gym Code — Deploy produção"
 echo "   Diretório: $ROOT_DIR"
 echo "================================"
