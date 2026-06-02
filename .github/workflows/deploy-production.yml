@@ -40,9 +40,12 @@ jobs:
           echo "✅ Sincronizado em $DEST"
 
       - name: Deploy Docker
+        env:
+          HOME: /Users/vinicius
+          DOCKER_HOST: unix:///Users/vinicius/.docker/run/docker.sock
         run: |
           set -euo pipefail
           DEST="${MACMINI_DEPLOY_PATH:-/Users/vinicius/gymapp}"
           cd "$DEST"
           chmod +x scripts/deploy-macmini.sh
-          ./scripts/deploy-macmini.sh --no-git
+          ./scripts/deploy-macmini.sh --no-git 2>&1 | tee /tmp/gymapp-last-deploy.log
