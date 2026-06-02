@@ -38,7 +38,12 @@ dst = pathlib.Path(os.environ["CI_DOCKER_CONFIG"]) / "config.json"
 cfg = json.loads(src.read_text()) if src.is_file() else {}
 cfg.pop("credHelpers", None)
 cfg["credsStore"] = ""
+cfg["currentContext"] = "default"
+cfg.pop("features", None)
 cfg.get("plugins", {}).pop("scout", None)
+for plugin in cfg.get("plugins", {}).values():
+    if isinstance(plugin, dict):
+        plugin.pop("hooks", None)
 dst.write_text(json.dumps(cfg, indent=2) + "\n")
 PY
   export DOCKER_CONFIG="$CI_DOCKER_CONFIG"

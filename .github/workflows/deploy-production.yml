@@ -43,6 +43,7 @@ jobs:
         env:
           HOME: /Users/vinicius
           DOCKER_HOST: unix:///Users/vinicius/.docker/run/docker.sock
+          DOCKER_AUTH_CONFIG: ""
         run: |
           set -euo pipefail
           DEST="${MACMINI_DEPLOY_PATH:-/Users/vinicius/gymapp}"
