@@ -35,11 +35,8 @@ echo "================================"
 echo ""
 
 if [[ -z "${RUNNER_TOKEN:-}" ]]; then
-  echo "1. Abra no navegador:"
-  echo "   https://github.com/${REPO}/settings/actions/runners/new"
-  echo ""
-  echo "2. Escolha: macOS → ${ARCH} → copie o TOKEN de configuração"
-  echo "   (começa após ./config.sh --token)"
+  echo "1. Abra: https://github.com/${REPO}/settings/actions/runners/new"
+  echo "2. macOS → ${ARCH} → copie só o TOKEN (não rode ./config.sh manualmente)"
   echo ""
   read -r -p "Cole o token aqui: " RUNNER_TOKEN
   echo ""
@@ -63,15 +60,21 @@ if [[ ! -d bin ]]; then
   tar xzf "$RUNNER_TAR"
 fi
 
-echo "⚙️  Configurando runner..."
+echo "⚙️  Configurando runner (nome: macmini-gymapp)..."
+./config.sh remove 2>/dev/null || true
 ./config.sh \
   --url "https://github.com/${REPO}" \
   --token "$RUNNER_TOKEN" \
   --name "macmini-gymapp" \
-  --labels "self-hosted,macOS,production" \
+  --labels "self-hosted,macOS,ARM64,production" \
   --work "_work" \
   --unattended \
   --replace
+
+if [[ ! -f .runner ]]; then
+  echo "❌ Configuração falhou. Gere um token NOVO e rode o script de novo."
+  exit 1
+fi
 
 echo ""
 echo "📌 Instalar como serviço (inicia com o Mac)? [s/N]"

@@ -16,7 +16,6 @@ jobs:
   deploy:
     name: Deploy no Mac Mini
     runs-on: self-hosted
-    if: ${{ vars.DEPLOY_METHOD == 'self-hosted' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
