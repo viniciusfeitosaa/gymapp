@@ -32,6 +32,7 @@ model PersonalTrainer {
   // Assinatura: plano gratuito = 2 alunos; assinante = ilimitado
   maxStudentsAllowed   Int     @default(2)
   storeSubscriptionId  String? // ID da assinatura na App Store / Google Play
+  logoUrl              String? // Caminho público ex.: /api/uploads/logos/{id}.jpg
 
   // Relações
   students  Student[]

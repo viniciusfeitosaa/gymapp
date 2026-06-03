@@ -1,0 +1,73 @@
+{
+  "identifier" : "GymCodeStoreKit",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "GYM_CODE_PRO",
+      "localizations" : [
+        {
+          "description" : "Assinatura Pro do Gym Code",
+          "displayName" : "Gym Code Pro",
+          "locale" : "pt_BR"
+        }
+      ],
+      "name" : "Gym Code Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.90",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "GYM_PRO_MONTHLY",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Alunos ilimitados e todos os recursos do app",
+              "displayName" : "Gym Code Pro Mensal",
+              "locale" : "pt_BR"
+            },
+            {
+              "description" : "Unlimited students and all app features",
+              "displayName" : "Gym Code Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "gymcode_pro_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Gym Code Pro Monthly",
+          "subscriptionGroupID" : "GYM_CODE_PRO",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import { ensureLogoDir, getUploadsRoot } from './utils/personalLogo';
 import { authRoutes } from './routes/auth.routes';
 import { studentRoutes } from './routes/student.routes';
 import { workoutRoutes } from './routes/workout.routes';
@@ -31,6 +32,9 @@ const defaultOrigins = [
   'http://localhost:5173',
   'http://localhost',
   'http://127.0.0.1',
+  'https://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
 ];
 
 const allowedOrigins = [
@@ -41,22 +45,33 @@ const allowedOrigins = [
     : []),
 ];
 
+function isMobileAppOrigin(origin: string) {
+  return (
+    /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+    origin.startsWith('capacitor://') ||
+    origin.startsWith('ionic://')
+  );
+}
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = origin.replace(/\/$/, '');
 
-    if (allowedOrigins.includes(normalizedOrigin)) {
+    if (allowedOrigins.includes(normalizedOrigin) || isMobileAppOrigin(normalizedOrigin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
-  credentials: true
+  credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+ensureLogoDir().catch((err) => console.warn('[Uploads] mkdir:', err));
+app.use('/api/uploads', express.static(path.join(getUploadsRoot())));
 
 // Rotas
 app.use('/api/auth', authRoutes);

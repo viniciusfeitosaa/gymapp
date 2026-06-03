@@ -12,6 +12,7 @@
     @apply w-full;
     @apply max-w-full;
   }
+
   
   body {
     @apply bg-gradient-to-br from-dark-900 via-dark-950 to-black;

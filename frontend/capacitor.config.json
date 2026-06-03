@@ -1,0 +1,8 @@
+{
+  "appId": "com.gymcode.app",
+  "appName": "Gym Code",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "always"
+  }
+}

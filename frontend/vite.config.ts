@@ -34,6 +34,8 @@ function landingAtRoot(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Capacitor precisa de paths relativos (CAPACITOR_BUILD=1 no mobile:sync)
+  base: process.env.CAPACITOR_BUILD === '1' ? './' : '/',
   plugins: [react(), landingAtRoot()],
   server: {
     host: '0.0.0.0',

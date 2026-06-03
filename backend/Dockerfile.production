@@ -28,8 +28,8 @@ RUN npm ci --only=production
 # Production stage
 FROM node:18-alpine
 
-# Instalar OpenSSL e dependências do Prisma
-RUN apk add --no-cache openssl libc6-compat
+# Instalar OpenSSL e dependências do Prisma (+ su-exec para entrypoint)
+RUN apk add --no-cache openssl libc6-compat su-exec
 
 WORKDIR /app
 
@@ -38,15 +38,17 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Criar usuário não-root
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Ajustar permissões do diretório de trabalho
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
+RUN chown -R nodejs:nodejs /app && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    mkdir -p /app/uploads/logos && \
+    chown -R nodejs:nodejs /app/uploads
 
 # Expor porta
 EXPOSE 3001
@@ -55,5 +57,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Comando de inicialização
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Entrypoint roda migrate, ajusta /app/uploads e inicia como nodejs
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -71,7 +71,7 @@ export default function LoginPage() {
     try {
       if (userType === 'personal') {
         await login(email, password, 'personal');
-        navigate('/personal/home');
+        navigate('/personal/home', { replace: true });
       } else if (userType === 'student') {
         if (isStudentBlocked) {
           setError('Muitas tentativas de login. Aguarde 5 minutos para tentar novamente.');
@@ -82,7 +82,7 @@ export default function LoginPage() {
         setFailedStudentAttempts(0);
         setStudentBlockedUntil(null);
         sessionStorage.removeItem(STUDENT_BLOCKED_UNTIL_KEY);
-        navigate('/student/dashboard');
+        navigate('/student/dashboard', { replace: true });
       }
     } catch (err: any) {
       const message = err?.message || 'Código inválido';

@@ -1,13 +1,20 @@
 import { useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { isCapacitorApp } from '../lib/capacitorApp';
 
 /**
- * Fallback React: em produção o Nginx serve a landing em `/`.
- * Se o usuário cair nesta rota via SPA, recarrega a raiz.
+ * Fallback React: em produção web o Nginx serve a landing estática em `/`.
+ * No app Capacitor, HomeRoute redireciona ao login.
  */
 export default function LandingPage() {
   useEffect(() => {
+    if (isCapacitorApp()) return;
     window.location.replace('/');
   }, []);
+
+  if (isCapacitorApp()) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-900">

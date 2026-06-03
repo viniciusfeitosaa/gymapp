@@ -6,6 +6,10 @@ import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, H
 import { CustomSelect } from '../components/CustomSelect';
 import { GymCodeIcon } from '../components/GymCodeIcon';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { SubscriptionPanel } from '../components/SubscriptionPanel';
+import { PersonalLogoUpload } from '../components/PersonalLogoUpload';
+import { resolveAssetUrl } from '../lib/resolveAssetUrl';
+import { parseStoredJson } from '../lib/storageJson';
 
 interface Student {
   id: string;
@@ -319,9 +323,9 @@ export default function PersonalDashboard() {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
+    <div className="native-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100 sticky top-0 z-50">
+      <header className="native-app-header bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100 z-50">
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 md:h-20">
             <div className="flex items-center gap-2 md:gap-4">
@@ -379,7 +383,7 @@ export default function PersonalDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8 pb-20 md:pb-8">
+      <main className="native-app-main w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
         {currentPath === 'home' && <DashboardHome />}
         {currentPath === 'alunos' && <AlunosPage />}
         {currentPath === 'treinos' && <TreinosPage />}
@@ -387,8 +391,8 @@ export default function PersonalDashboard() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="grid grid-cols-4 h-16">
+      <nav className="native-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
+        <div className="grid grid-cols-4 h-14">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -1790,21 +1794,6 @@ function formatCepDisplay(value: string | undefined): string {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
-/** Status do plano Pro (sem fluxo de pagamento por enquanto) */
-function ProPlanActiveBlock({ standalone }: { standalone?: boolean }) {
-  return (
-    <div className={standalone ? '' : 'mt-6 pt-6 border-t border-amber-200/60'}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600">
-          <Crown className="w-4 h-4" />
-        </span>
-        <span className="font-display font-bold text-amber-800">Plano Pro ativo</span>
-      </div>
-      <p className="text-amber-700/90 text-sm">Você tem acesso a alunos ilimitados e todos os benefícios do plano.</p>
-    </div>
-  );
-}
-
 function PerfilPage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -1903,7 +1892,9 @@ function PerfilPage() {
 
         {showPlans && (
           <div className="mt-6 pt-6 border-t border-dark-100">
-            <p className="text-dark-600 text-sm mb-4">Escolha o plano ideal para você:</p>
+            <p className="text-dark-600 text-sm mb-4">
+              {isPro ? 'Seu plano e opções de gerenciamento:' : 'Assine o Pro ou compare os benefícios:'}
+            </p>
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-xl border-2 border-dark-200 bg-dark-50/50 p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -1914,7 +1905,7 @@ function PerfilPage() {
                     {isPro ? 'Ativo' : 'R$ 0'}
                   </span>
                 </div>
-                <ul className="space-y-2 text-sm text-dark-600">
+                <ul className="space-y-2 text-sm text-dark-600 mb-4">
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-500">✓</span>
                     {isPro ? 'Alunos ilimitados' : `Até ${user?.maxStudentsAllowed ?? 2} alunos`}
@@ -1929,6 +1920,12 @@ function PerfilPage() {
                     <span className="text-emerald-500">✓</span> Mensagens com alunos
                   </li>
                 </ul>
+                {!isPro && (
+                  <SubscriptionPanel
+                    isPro={false}
+                    onProActivated={() => updateUser({ maxStudentsAllowed: 999 })}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -1937,16 +1934,33 @@ function PerfilPage() {
 
       {isPro && (
         <div className="card-modern p-6 md:p-8 mb-6">
-          <ProPlanActiveBlock standalone />
+          <SubscriptionPanel
+            isPro
+            onProActivated={() => updateUser({ maxStudentsAllowed: 999 })}
+          />
         </div>
       )}
+
+      <div className="mb-6">
+        <PersonalLogoUpload user={user} onUpdated={updateUser} />
+      </div>
 
       <div className="card-modern p-5 md:p-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-accent rounded-xl flex items-center justify-center text-white font-bold text-2xl md:text-3xl shadow-medium">
-              {user?.name?.charAt(0)}
-            </div>
+            {resolveAssetUrl(user?.logoUrl) ? (
+              <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl border border-dark-100 bg-white flex items-center justify-center overflow-hidden shadow-medium">
+                <img
+                  src={resolveAssetUrl(user?.logoUrl)!}
+                  alt=""
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
+            ) : (
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-accent rounded-xl flex items-center justify-center text-white font-bold text-2xl md:text-3xl shadow-medium">
+                {user?.name?.charAt(0)}
+              </div>
+            )}
             {isPro && (
               <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title="Plano Pro">
                 <Crown className="w-3 h-3 md:w-4 md:h-4" />
@@ -2277,9 +2291,8 @@ function AddWorkoutModal({
   // Carregar exercícios salvos do localStorage
   useEffect(() => {
     const saved = localStorage.getItem('savedExercises');
-    if (saved) {
-      setSavedExercises(JSON.parse(saved));
-    }
+    const parsed = parseStoredJson<typeof savedExercises>(saved);
+    if (parsed) setSavedExercises(parsed);
   }, []);
 
   const daysOfWeek = [

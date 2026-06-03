@@ -5,6 +5,7 @@ export interface User {
   phone?: string;
   taxId?: string;
   maxStudentsAllowed?: number; // 2 = gratuito, 999 = Pro (para exibir cancelar assinatura)
+  logoUrl?: string;
   address?: string;
   addressNumber?: string;
   complement?: string;
@@ -15,6 +16,7 @@ export interface User {
     id: string;
     name: string;
     phone?: string;
+    logoUrl?: string | null;
   };
 }
 

@@ -6,9 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mobile:config": "node scripts/write-capacitor-config.mjs",
+    "mobile:sync": "CAPACITOR_BUILD=1 VITE_API_URL=https://mygymcode.com npm run build && npm run mobile:config && npx cap sync",
+    "mobile:open:ios": "npm run mobile:config && npx cap open ios",
+    "mobile:open:android": "npm run mobile:config && npx cap open android"
   },
   "dependencies": {
+    "@capacitor/browser": "^6.0.6",
+    "@capacitor/core": "^6.2.1",
+    "@capgo/native-purchases": "^6.0.42",
     "axios": "^1.6.5",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^3.3.1",
@@ -18,6 +25,9 @@
     "react-router-dom": "^6.22.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/ios": "^6.2.1",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",

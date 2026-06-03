@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X, Trash2 } from 'lucide-react';
-import { GymCodeIcon } from '../components/GymCodeIcon';
+import { StudentBrandMark } from '../components/StudentBrandMark';
+import { useStudentBrand } from '../hooks/useStudentBrand';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 
 interface Exercise {
@@ -260,6 +261,7 @@ function FocusModeWorkout({
 
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
+  const { personal: brandPersonal } = useStudentBrand();
   const navigate = useNavigate();
   const location = useLocation();
   const [focusWorkout, setFocusWorkout] = useState<Workout | null>(null);
@@ -279,22 +281,12 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-50 via-white to-primary-50">
+    <div className="native-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-primary-50/95 via-white to-primary-50/95 backdrop-blur-xl shadow-soft border-b border-primary-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center shadow-medium">
-                <GymCodeIcon size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
-                  Gym Code
-                </h1>
-                <p className="text-xs text-slate-500 font-medium">Meus Treinos</p>
-              </div>
-            </div>
+      <header className="native-app-header bg-gradient-to-r from-primary-50/95 via-white to-primary-50/95 backdrop-blur-xl shadow-soft border-b border-primary-100 z-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 md:h-16">
+            <StudentBrandMark personal={brandPersonal} subtitle="Meus Treinos" />
 
             {/* Desktop Menu */}
             <nav className="hidden md:flex items-center gap-2">
@@ -339,7 +331,7 @@ export default function StudentDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="native-app-main w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
         {currentPath === 'dashboard' && (
           <StudentDashboardHome
             onStartFocusMode={setFocusWorkout}
@@ -349,7 +341,7 @@ export default function StudentDashboard() {
         {currentPath === 'treinos' && (
           <StudentTreinosPage onStartFocusMode={setFocusWorkout} refetchLogsRef={refetchLogsRef} />
         )}
-        {currentPath === 'perfil' && <StudentPerfilPage />}
+        {currentPath === 'perfil' && <StudentPerfilPage brandPersonal={brandPersonal} />}
       </main>
 
       {/* Modo focado: countdown + exercícios */}
@@ -362,8 +354,8 @@ export default function StudentDashboard() {
       )}
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="grid grid-cols-3 gap-0.5 p-1.5">
+      <nav className="native-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
+        <div className="grid grid-cols-3 h-14 gap-0.5 px-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -1268,10 +1260,14 @@ interface StudentProfile {
   weight?: number;
   height?: number;
   trainingDays: string[];
-  personalTrainer?: { id: string; name: string; phone?: string; email?: string };
+  personalTrainer?: { id: string; name: string; phone?: string; email?: string; logoUrl?: string | null };
 }
 
-function StudentPerfilPage() {
+function StudentPerfilPage({
+  brandPersonal,
+}: {
+  brandPersonal: { name: string; logoUrl?: string | null } | null;
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -1322,6 +1318,15 @@ function StudentPerfilPage() {
           Meu Perfil
         </h2>
         <p className="text-dark-500 text-sm md:text-base">Suas informações</p>
+      </div>
+
+      <div className="card-modern p-5 md:p-6 mb-6">
+        <p className="text-xs text-dark-500 mb-3 uppercase tracking-wide font-semibold">Seu personal</p>
+        <StudentBrandMark
+          personal={brandPersonal ?? profile?.personalTrainer ?? user?.personalTrainer}
+          subtitle="Personal trainer"
+          iconSize="md"
+        />
       </div>
 
       <div className="card-modern p-5 md:p-6">

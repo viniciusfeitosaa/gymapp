@@ -1,0 +1,189 @@
+/**
+ * Layout nativo: scroll no conteúdo, header/nav fixos, safe areas reduzidas.
+ */
+html.capacitor-native {
+  --safe-inset-factor: 0.5;
+  /* Inferior mais compacta, como Instagram/WhatsApp (ícones na barra, pouco vão abaixo) */
+  --safe-bottom-factor: 0.18;
+  --safe-top: max(
+    4px,
+    calc(
+      env(safe-area-inset-top, constant(safe-area-inset-top, 0px)) * var(--safe-inset-factor)
+    )
+  );
+  --safe-right: max(
+    0px,
+    calc(
+      env(safe-area-inset-right, constant(safe-area-inset-right, 0px)) * var(--safe-inset-factor)
+    )
+  );
+  --safe-bottom: max(
+    6px,
+    calc(
+      env(safe-area-inset-bottom, constant(safe-area-inset-bottom, 0px)) *
+        var(--safe-bottom-factor)
+    )
+  );
+  --safe-left: max(
+    0px,
+    calc(
+      env(safe-area-inset-left, constant(safe-area-inset-left, 0px)) * var(--safe-inset-factor)
+    )
+  );
+  --native-header-h: 3.5rem;
+  --native-bottom-nav: 3.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+html.capacitor-native,
+html.capacitor-native body {
+  height: 100%;
+  height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  overflow: hidden;
+}
+
+html.capacitor-native #root {
+  height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Dashboard: header + nav fixos, main com scroll */
+html.capacitor-native .native-app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+html.capacitor-native .native-app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  flex-shrink: 0;
+  padding-top: var(--safe-top);
+  box-sizing: border-box;
+}
+
+html.capacitor-native .native-app-main {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  margin-top: calc(var(--native-header-h) + var(--safe-top));
+  padding-bottom: calc(var(--native-bottom-nav) + var(--safe-bottom)) !important;
+  box-sizing: border-box;
+}
+
+html.capacitor-native .native-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: var(--safe-left);
+  right: var(--safe-right);
+  z-index: 50;
+  width: auto;
+  /* Barra encosta na base; só um respiro mínimo sobre o home indicator */
+  padding-bottom: max(4px, calc(var(--safe-bottom) * 0.65));
+  box-sizing: border-box;
+}
+
+/* Evita espaço duplo dentro da área rolável */
+@media (max-width: 767px) {
+  html.capacitor-native .native-app-main .pb-20 {
+    padding-bottom: 0 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  html.capacitor-native .native-app-layout {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  html.capacitor-native .native-app-header {
+    position: sticky;
+    padding-top: 0;
+  }
+
+  html.capacitor-native .native-app-main {
+    margin-top: 0;
+    overflow-y: visible;
+    padding-bottom: 2rem !important;
+  }
+}
+
+html.capacitor-native .min-h-screen:not(.native-app-layout) {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Login e telas centradas */
+html.capacitor-native .min-h-screen.flex:not(.native-app-layout) {
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  box-sizing: border-box;
+  padding-top: max(0.5rem, var(--safe-top));
+  padding-bottom: max(0.5rem, var(--safe-bottom));
+  padding-left: max(0.5rem, var(--safe-left));
+  padding-right: max(0.5rem, var(--safe-right));
+}
+
+/* Modais */
+html.capacitor-native .fixed.inset-0,
+html.capacitor-native [class*='fixed'][class*='inset-0'] {
+  top: var(--safe-top) !important;
+  right: var(--safe-right) !important;
+  bottom: var(--safe-bottom) !important;
+  left: var(--safe-left) !important;
+  box-sizing: border-box;
+}
+
+html.capacitor-native img,
+html.capacitor-native video,
+html.capacitor-native canvas,
+html.capacitor-native svg {
+  max-width: 100%;
+  height: auto;
+}
+
+html.capacitor-native table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+html.capacitor-native input,
+html.capacitor-native select,
+html.capacitor-native textarea {
+  font-size: 16px !important;
+}
+
+html.capacitor-native .max-w-7xl,
+html.capacitor-native .max-w-6xl,
+html.capacitor-native .max-w-5xl,
+html.capacitor-native .max-w-4xl {
+  max-width: 100%;
+}

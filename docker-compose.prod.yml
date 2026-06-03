@@ -42,6 +42,14 @@ services:
       SMTP_PASS: ${SMTP_PASS:-${MADDY_SMTP_PASS:-}}
       SMTP_FROM: ${SMTP_FROM:-noreply@mygymcode.com}
       BREVO_API_KEY: ${BREVO_API_KEY:-}
+      SUBSCRIPTION_PRODUCT_ID: ${SUBSCRIPTION_PRODUCT_ID:-gymcode_pro_monthly}
+      APPLE_APP_SHARED_SECRET: ${APPLE_APP_SHARED_SECRET:-}
+      APPLE_SANDBOX: ${APPLE_SANDBOX:-0}
+      STORE_BILLING_SANDBOX_TRUST: ${STORE_BILLING_SANDBOX_TRUST:-0}
+      GOOGLE_PLAY_PACKAGE_NAME: ${GOOGLE_PLAY_PACKAGE_NAME:-com.gymcode.app}
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}
+    volumes:
+      - gymapp_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,6 +139,8 @@ volumes:
     name: gymapp_postgres_data
   maddy_data:
     name: gymapp_maddy_data
+  gymapp_uploads:
+    name: gymapp_uploads
 
 networks:
   gymapp-internal:

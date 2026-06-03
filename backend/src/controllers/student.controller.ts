@@ -268,6 +268,7 @@ export class StudentController {
               name: true,
               phone: true,
               email: true,
+              logoUrl: true,
             },
           },
           progressRecords: {
