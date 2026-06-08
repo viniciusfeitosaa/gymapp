@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2 } from 'lucide-react';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2, Lock, Unlock, Calendar, Loader2 } from 'lucide-react';
+import { formatPaymentDueDay, isPaymentLikelyOverdue } from '../lib/paymentDueDay';
 import { CustomSelect } from '../components/CustomSelect';
 import { GymCodeIcon } from '../components/GymCodeIcon';
+import { AccountDeletionSection } from '../components/AccountDeletionSection';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { SubscriptionPanel } from '../components/SubscriptionPanel';
+import { PersonalBrandSettings } from '../components/PersonalBrandSettings';
 import { PersonalLogoUpload } from '../components/PersonalLogoUpload';
 import { resolveAssetUrl } from '../lib/resolveAssetUrl';
 import { parseStoredJson } from '../lib/storageJson';
+import { appLocaleToDateLocale } from '../i18n/dateLocale';
+import { useWeekdayOptions, useWeekdayShortMap } from '../i18n/useWeekdayOptions';
+import { applyNativeSafeAreas } from '../lib/applyNativeSafeAreas';
 
 interface Student {
   id: string;
@@ -20,6 +27,8 @@ interface Student {
   weight?: number;
   height?: number;
   trainingDays: string[];
+  paymentDueDay?: number | null;
+  isTrainingBlocked?: boolean;
 }
 
 interface Exercise {
@@ -103,6 +112,7 @@ function ExerciseVideoSuggestions({
   selectedVideoUrl?: string;
   onSelect: (url: string) => void;
 }) {
+  const { t } = useTranslation();
   const [videos, setVideos] = useState<SuggestedExerciseVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -134,8 +144,8 @@ function ExerciseVideoSuggestions({
         const list = Array.isArray(data?.videos) ? data.videos : [];
         const mapped: SuggestedExerciseVideo[] = list.map((item: any) => ({
           id: String(item.id),
-          title: String(item.title || 'Vídeo'),
-          channelTitle: String(item.channelTitle || 'Canal'),
+          title: String(item.title || t('common.video')),
+          channelTitle: String(item.channelTitle || t('common.channel')),
           videoUrl: String(item.watchUrl || ''),
           embedUrl: String(item.embedUrl || ''),
           thumbUrl: String(item.thumbnailUrl || ''),
@@ -144,7 +154,7 @@ function ExerciseVideoSuggestions({
         setVideos(mapped);
       } catch (err) {
         setVideos([]);
-        setError('Não foi possível carregar sugestões do YouTube agora.');
+        setError(t('errors.youtubeLoad'));
       } finally {
         setLoading(false);
       }
@@ -157,8 +167,8 @@ function ExerciseVideoSuggestions({
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-dark-500 mb-2">Sugestões do YouTube para este exercício:</p>
-      {loading && <p className="text-xs text-dark-400 mb-2">Buscando vídeos...</p>}
+      <p className="text-xs text-dark-500 mb-2">{t('personal.suggestions.youtubeTitle')}</p>
+      {loading && <p className="text-xs text-dark-400 mb-2">{t('personal.suggestions.youtubeLoading')}</p>}
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
       {!loading && videos.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
@@ -191,10 +201,10 @@ function ExerciseVideoSuggestions({
         </div>
       )}
       {!loading && !error && videos.length === 0 && (
-        <p className="text-[11px] text-dark-400">Sem sugestões no momento para este termo.</p>
+        <p className="text-[11px] text-dark-400">{t('personal.suggestions.youtubeEmpty')}</p>
       )}
       <p className="text-[11px] text-dark-400 mt-2">
-        Clique em um vídeo para preencher automaticamente o campo acima.
+        {t('personal.suggestions.youtubeHint')}
       </p>
     </div>
   );
@@ -209,6 +219,7 @@ function ExerciseImageSuggestions({
   selectedImageUrl?: string;
   onSelect: (url: string) => void;
 }) {
+  const { t } = useTranslation();
   const [images, setImages] = useState<SuggestedExerciseImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -240,7 +251,7 @@ function ExerciseImageSuggestions({
         const list = Array.isArray(data?.images) ? data.images : [];
         const mapped: SuggestedExerciseImage[] = list.map((item: any) => ({
           id: String(item.id),
-          title: String(item.title || 'Imagem'),
+          title: String(item.title || t('common.image')),
           imageUrl: String(item.imageUrl || ''),
           thumbUrl: String(item.thumbUrl || ''),
           source: String(item.source || 'source'),
@@ -250,7 +261,7 @@ function ExerciseImageSuggestions({
         setImages(mapped);
       } catch (err) {
         setImages([]);
-        setError('Não foi possível carregar sugestões de imagens agora.');
+        setError(t('errors.imagesLoad'));
       } finally {
         setLoading(false);
       }
@@ -263,8 +274,8 @@ function ExerciseImageSuggestions({
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-dark-500 mb-2">Sugestões de imagens para este exercício:</p>
-      {loading && <p className="text-xs text-dark-400 mb-2">Buscando imagens...</p>}
+      <p className="text-xs text-dark-500 mb-2">{t('personal.suggestions.imagesTitle')}</p>
+      {loading && <p className="text-xs text-dark-400 mb-2">{t('common.loading')}</p>}
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
       {!loading && images.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
@@ -299,28 +310,36 @@ function ExerciseImageSuggestions({
         </div>
       )}
       {!loading && !error && images.length === 0 && (
-        <p className="text-[11px] text-dark-400">Sem sugestões no momento para este termo.</p>
+        <p className="text-[11px] text-dark-400">{t('personal.suggestions.imagesEmpty')}</p>
       )}
       <p className="text-[11px] text-dark-400 mt-2">
-        Clique em uma imagem para preencher automaticamente o campo acima.
+        {t('personal.suggestions.imagesHint')}
       </p>
     </div>
   );
 }
 
 export default function PersonalDashboard() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const currentPath = location.pathname.split('/').pop() || 'home';
 
-  const menuItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/personal/home' },
-    { id: 'alunos', label: 'Alunos', icon: Users, path: '/personal/alunos' },
-    { id: 'treinos', label: 'Treinos', icon: Dumbbell, path: '/personal/treinos' },
-    { id: 'perfil', label: 'Perfil', icon: UserIcon, path: '/personal/perfil' },
-  ];
+  useEffect(() => {
+    applyNativeSafeAreas();
+  }, []);
+
+  const menuItems = useMemo(
+    () => [
+      { id: 'home', label: t('nav.personal.home'), icon: Home, path: '/personal/home' },
+      { id: 'alunos', label: t('nav.personal.students'), icon: Users, path: '/personal/alunos' },
+      { id: 'treinos', label: t('nav.personal.workouts'), icon: Dumbbell, path: '/personal/treinos' },
+      { id: 'perfil', label: t('nav.personal.profile'), icon: UserIcon, path: '/personal/perfil' },
+    ],
+    [t]
+  );
 
   return (
     <div className="native-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
@@ -336,7 +355,7 @@ export default function PersonalDashboard() {
                 <h1 className="text-lg md:text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
                   Gym Code
                 </h1>
-                <p className="text-[10px] md:text-xs text-slate-500 font-medium">Painel do Personal Trainer</p>
+                <p className="text-[10px] md:text-xs text-slate-500 font-medium">{t('personal.panelTitle')}</p>
               </div>
             </div>
             
@@ -373,7 +392,7 @@ export default function PersonalDashboard() {
               <button
                 onClick={logout}
                 className="hidden md:block p-1.5 md:p-2.5 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg md:rounded-xl transition-all duration-200"
-                title="Sair"
+                title={t('personal.logout')}
               >
                 <LogOut className="w-4 h-4 md:w-5 md:h-5" />
               </button>
@@ -391,8 +410,8 @@ export default function PersonalDashboard() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="native-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="grid grid-cols-4 h-14">
+      <nav className="native-bottom-nav md:hidden bg-white border-t border-dark-200 shadow-strong z-50">
+        <div className="native-bottom-nav-inner grid grid-cols-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -432,18 +451,20 @@ function toDateKeyBR(date: Date | string): string {
 const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
 function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff: number }) {
+  const { t } = useTranslation();
+
   return (
     <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-emerald-50 to-teal-50/80 border border-emerald-100/80 shadow-sm">
-        <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Resumo da semana</h3>
-        <p className="text-sm text-dark-500 mb-4">Treinos concluídos esta semana</p>
+        <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.weekSummary')}</h3>
+        <p className="text-sm text-dark-500 mb-4">{t('personal.weekSummaryDesc')}</p>
         <p className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">{thisWeekCount}</p>
         <p className="text-sm text-dark-600 mb-1">
-          {diff >= 0 ? `+${diff}` : `${diff}`} em relação à semana anterior
+          {t('personal.vsLastWeek', { diff: diff >= 0 ? `+${diff}` : `${diff}` })}
         </p>
         {diff !== 0 && (
           <span className={`inline-flex items-center gap-1 text-sm font-medium ${diff > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {diff > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            {diff > 0 ? 'Em alta' : 'Em baixa'}
+            {diff > 0 ? t('common.trendUp') : t('common.trendDown')}
           </span>
         )}
     </div>
@@ -451,6 +472,7 @@ function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff
 }
 
 function DashboardHome() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const [students, setStudents] = useState<Student[]>([]);
@@ -499,10 +521,10 @@ function DashboardHome() {
     <div className="w-full">
       <div className="mb-6 md:mb-8">
         <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2 flex items-center gap-2">
-          Olá, {user?.name?.split(' ')[0]}!
+          {t('personal.hello', { name: user?.name?.split(' ')[0] || '' })}
           {isPro && <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6 md:w-8 md:h-8" /></span>}
         </h2>
-        <p className="text-dark-500 text-sm md:text-lg">Bem-vindo ao seu painel de controle</p>
+        <p className="text-dark-500 text-sm md:text-lg">{t('personal.welcomePanel')}</p>
       </div>
 
       {/* Resumo da semana, Quem treina hoje, Top 3 */}
@@ -534,7 +556,7 @@ function DashboardHome() {
         });
         const whoTrainsToday = studentIdsToday.map((id) => {
           const student = students.find((s) => s.id === id);
-          return { id, name: student?.name ?? 'Aluno', phone: student?.phone, completed: completedTodayByStudent.has(id) };
+          return { id, name: student?.name ?? t('common.student'), phone: student?.phone, completed: completedTodayByStudent.has(id) };
         });
         const thisWeekByStudent: { [id: string]: number } = {};
         recentLogs.forEach((log) => {
@@ -545,7 +567,7 @@ function DashboardHome() {
         const top3 = Object.entries(thisWeekByStudent)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
-          .map(([id, count]) => ({ id, count, name: students.find((s) => s.id === id)?.name ?? recentLogs.find((l) => l.student.id === id)?.student?.name ?? 'Aluno' }));
+          .map(([id, count]) => ({ id, count, name: students.find((s) => s.id === id)?.name ?? recentLogs.find((l) => l.student.id === id)?.student?.name ?? t('common.student') }));
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
             {/* 1. Resumo da semana + comparação */}
@@ -553,10 +575,10 @@ function DashboardHome() {
 
             {/* 2. Quem treina hoje */}
             <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-sky-50 to-blue-50/80 border border-sky-100/80 shadow-sm">
-              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Quem treina hoje</h3>
-              <p className="text-sm text-dark-500 mb-4">Status e lembrete por WhatsApp</p>
+              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.whoTrainsToday')}</h3>
+              <p className="text-sm text-dark-500 mb-4">{t('personal.whoTrainsTodayDesc')}</p>
               {whoTrainsToday.length === 0 ? (
-                <p className="text-dark-500 text-sm">Nenhum aluno com treino no dia de hoje.</p>
+                <p className="text-dark-500 text-sm">{t('personal.noWorkoutToday')}</p>
               ) : (
                 <ul className="space-y-3">
                   {whoTrainsToday.map(({ id, name, phone, completed }) => (
@@ -567,7 +589,7 @@ function DashboardHome() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={`text-xs font-medium ${completed ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {completed ? 'Concluído' : 'Pendente'}
+                          {completed ? t('common.completed') : t('common.pending')}
                         </span>
                         {!completed && phone && (
                           <a
@@ -575,7 +597,7 @@ function DashboardHome() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                            title="Enviar lembrete no WhatsApp"
+                            title={t('personal.whatsappReminder')}
                           >
                             <MessageCircle className="w-4 h-4" />
                           </a>
@@ -589,10 +611,10 @@ function DashboardHome() {
 
             {/* 3. Top 3 alunos em destaque */}
             <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-100/80 shadow-sm">
-              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">Alunos em destaque</h3>
-              <p className="text-sm text-dark-500 mb-4">Top 3 esta semana (mais conclusões)</p>
+              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.topStudents')}</h3>
+              <p className="text-sm text-dark-500 mb-4">{t('personal.topStudentsDesc')}</p>
               {top3.length === 0 ? (
-                <p className="text-dark-500 text-sm">Nenhuma conclusão nesta semana ainda.</p>
+                <p className="text-dark-500 text-sm">{t('personal.noCompletionsWeek')}</p>
               ) : (
                 <ul className="space-y-3">
                   {top3.map(({ id, name, count }, i) => (
@@ -601,7 +623,10 @@ function DashboardHome() {
                         {i + 1}
                       </div>
                       <span className="font-medium text-dark-900 truncate flex-1">{name}</span>
-                      <span className="text-sm font-semibold text-accent-600 flex-shrink-0">{count} {count === 1 ? 'treino' : 'treinos'}</span>
+                      <span className="text-sm font-semibold text-accent-600 flex-shrink-0">
+                        {count}{' '}
+                        {t(count === 1 ? 'personal.workout_one' : 'personal.workout_other')}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -620,7 +645,7 @@ function DashboardHome() {
               </div>
             </div>
             <p className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1">{totalAlunos}</p>
-            <p className="text-sm text-dark-500">Alunos Ativos</p>
+            <p className="text-sm text-dark-500">{t('personal.activeStudents')}</p>
           </div>
 
           <div className="card-modern p-4 md:p-6">
@@ -630,14 +655,14 @@ function DashboardHome() {
               </div>
             </div>
             <p className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1">{totalTreinos}</p>
-            <p className="text-sm text-dark-500">Treinos Criados</p>
+            <p className="text-sm text-dark-500">{t('personal.workoutsCreated')}</p>
           </div>
 
         </div>
 
       <div className="card-modern p-8 md:p-10 mt-8">
         <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-6">
-          Atividades Recentes
+          {t('personal.recentActivity')}
         </h3>
         {(() => {
           const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -645,8 +670,8 @@ function DashboardHome() {
           return logsLast24h.length === 0 ? (
           <div className="text-center py-12 text-dark-400">
             <Dumbbell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Nenhuma conclusão de treino nas últimas 24h</p>
-            <p className="text-sm mt-1">Quando seus alunos finalizarem treinos, aparecerão aqui</p>
+            <p>{t('personal.noActivity24h')}</p>
+            <p className="text-sm mt-1">{t('personal.noActivityHint')}</p>
           </div>
         ) : (
           <div className="max-h-[52vh] overflow-y-auto pr-1">
@@ -661,12 +686,13 @@ function DashboardHome() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-dark-900">
-                    <span className="text-emerald-700">{log.student?.name}</span>
-                    {' '}concluiu o treino{' '}
-                    <span className="text-dark-800">{log.workout?.name}</span>
+                    {t('personal.completedWorkout', {
+                      name: log.student?.name,
+                      workout: log.workout?.name,
+                    })}
                   </p>
                   <p className="text-sm text-dark-500">
-                    {new Date(log.date).toLocaleDateString('pt-BR', {
+                    {new Date(log.date).toLocaleDateString(appLocaleToDateLocale(i18n.language), {
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric',
@@ -694,6 +720,7 @@ type SubscriptionInfo = {
 };
 
 function AlunosPage() {
+  const { t } = useTranslation();
   const [students, setStudents] = useState<Student[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -701,6 +728,22 @@ function AlunosPage() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
+
+  const handleToggleTrainingBlock = async (student: Student, blocked: boolean) => {
+    try {
+      setTogglingBlockId(student.id);
+      await api.patch(`/students/${student.id}/training-block`, { isTrainingBlocked: blocked });
+      setStudents((prev) =>
+        prev.map((s) => (s.id === student.id ? { ...s, isTrainingBlocked: blocked } : s))
+      );
+    } catch (error) {
+      console.error('Erro ao alterar bloqueio:', error);
+      alert(t('errors.updateBlock'));
+    } finally {
+      setTogglingBlockId(null);
+    }
+  };
 
   // Carregar alunos
   const loadStudents = async () => {
@@ -730,7 +773,7 @@ function AlunosPage() {
       loadStudents();
     } catch (error) {
       console.error('Erro ao deletar aluno:', error);
-      alert('Erro ao excluir aluno. Tente novamente.');
+      alert(t('errors.deleteStudent'));
     } finally {
       setDeleting(false);
     }
@@ -744,18 +787,16 @@ function AlunosPage() {
     <div className="w-full">
       <div className="mb-6 md:mb-8">
         <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2">
-          Gestão de Alunos
+          {t('personal.studentsTitle')}
         </h2>
-        <p className="text-dark-500 text-sm md:text-lg">
-          Cadastre e gerencie seus alunos
-        </p>
+        <p className="text-dark-500 text-sm md:text-lg">{t('personal.studentsSubtitle')}</p>
       </div>
 
       {/* Lista de Alunos ou Empty State */}
       {loading ? (
         <div className="card-modern p-12 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-dark-500 mt-4">Carregando alunos...</p>
+          <p className="text-dark-500 mt-4">{t('personal.loadingStudents')}</p>
         </div>
       ) : (students?.length || 0) === 0 ? (
         <div className="card-modern p-6 md:p-12 text-center">
@@ -763,13 +804,13 @@ function AlunosPage() {
             <Users className="w-8 h-8 md:w-10 md:h-10 text-dark-400" />
           </div>
           <h3 className="text-lg md:text-2xl font-display font-bold text-dark-900 mb-2 md:mb-3">
-            Comece Adicionando Seus Alunos!
+            {t('personal.emptyStudentsTitle')}
           </h3>
           <p className="text-dark-500 mb-6 md:mb-8 max-w-md mx-auto text-sm md:text-lg">
-            Cadastre seus alunos e comece a criar fichas de treino personalizadas para cada um deles.
+            {t('personal.emptyStudentsDesc')}
           </p>
           {subscription?.atLimit && (
-            <p className="text-amber-600 text-sm mb-3">Limite do plano gratuito atingido. Assine para cadastrar mais alunos.</p>
+            <p className="text-amber-600 text-sm mb-3">{t('personal.freeLimitBanner')}</p>
           )}
           <button 
             onClick={() => !subscription?.atLimit && setShowAddModal(true)}
@@ -777,35 +818,37 @@ function AlunosPage() {
             className="btn-primary inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4 md:w-5 md:h-5" />
-            Adicionar Primeiro Aluno
+            {t('personal.addFirstStudent')}
           </button>
         </div>
       ) : (
         <div className="card-modern p-4 md:p-6">
           {subscription?.atLimit && (
             <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              <strong>Limite do plano gratuito:</strong> você pode ter até {subscription.maxStudentsAllowed} aluno(s) no momento.
+              {t('personal.freeLimitInfo', { count: subscription.maxStudentsAllowed })}
             </div>
           )}
           <div className="flex justify-between items-center mb-4 md:mb-6">
             <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900">
-              Meus Alunos ({students?.length || 0})
+              {t('personal.myStudents', { count: students?.length || 0 })}
             </h3>
             <button 
               onClick={() => !subscription?.atLimit && setShowAddModal(true)}
               disabled={subscription?.atLimit}
               className="btn-primary inline-flex items-center gap-2 text-sm md:text-base disabled:opacity-60 disabled:cursor-not-allowed"
-              title={subscription?.atLimit ? 'Limite de alunos atingido no plano gratuito.' : undefined}
+              title={subscription?.atLimit ? t('errors.studentLimitTooltip') : undefined}
             >
               <Plus className="w-4 h-4" />
-              Novo Aluno
+              {t('personal.newStudent')}
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {students.map((student) => (
               <StudentCard 
                 key={student.id} 
-                student={student} 
+                student={student}
+                togglingBlock={togglingBlockId === student.id}
+                onToggleTrainingBlock={(blocked) => handleToggleTrainingBlock(student, blocked)}
                 onEdit={() => setStudentToEdit(student)}
                 onDelete={() => setStudentToDelete(student)}
               />
@@ -850,8 +893,24 @@ function AlunosPage() {
   );
 }
 
-function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: () => void; onDelete: () => void }) {
+function StudentCard({
+  student,
+  onEdit,
+  onDelete,
+  onToggleTrainingBlock,
+  togglingBlock,
+}: {
+  student: Student;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleTrainingBlock: (blocked: boolean) => void;
+  togglingBlock: boolean;
+}) {
+  const { t } = useTranslation();
+  const dayShortMap = useWeekdayShortMap();
   const [codeCopied, setCodeCopied] = useState(false);
+  const paymentLabel = formatPaymentDueDay(student.paymentDueDay);
+  const paymentOverdue = isPaymentLikelyOverdue(student.paymentDueDay) && !student.isTrainingBlocked;
 
   const copyCode = () => {
     navigator.clipboard.writeText(student.accessCode);
@@ -862,7 +921,10 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
   const shareLoginLink = () => {
     const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     const url = `${baseUrl.replace(/\/$/, '')}/login?code=${encodeURIComponent(student.accessCode)}&tipo=aluno`;
-    const text = `Olá ${student.name.split(' ')[0]}! Acesse sua área de treinos no Gym Code. Use este link para entrar com seu código já preenchido: ${url}`;
+    const text = t('personal.studentCard.shareMessage', {
+      name: student.name.split(' ')[0],
+      url,
+    });
     const onlyDigits = student.phone?.replace(/\D/g, '') ?? '';
     const phoneWithCountry = onlyDigits.startsWith('55') ? onlyDigits : `55${onlyDigits}`;
     const hasValidPhone = phoneWithCountry.length >= 12; // 55 + DDD + número
@@ -883,12 +945,12 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
           <button
             onClick={copyCode}
             className="flex items-center gap-1 px-2 py-1 bg-accent-50 text-accent-700 rounded-md hover:bg-accent-100 transition-colors text-xs font-semibold"
-            title="Copiar código de acesso"
+            title={t('personal.studentCard.copyAccessCode')}
           >
             {codeCopied ? (
               <>
                 <Check className="w-3 h-3" />
-                Copiado!
+                {t('common.copied')}
               </>
             ) : (
               <>
@@ -900,21 +962,21 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
           <button
             onClick={onEdit}
             className="p-1.5 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-            title="Editar informações do aluno"
+            title={t('personal.studentCard.editStudent')}
           >
             <Pen className="w-3 h-3" />
           </button>
           <button
             onClick={shareLoginLink}
             className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-            title="Compartilhar link de login por WhatsApp"
+            title={t('personal.studentCard.shareWhatsapp')}
           >
             <Share2 className="w-3 h-3" />
           </button>
           <button
             onClick={onDelete}
             className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-            title="Excluir aluno"
+            title={t('personal.studentCard.deleteStudent')}
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -931,29 +993,59 @@ function StudentCard({ student, onEdit, onDelete }: { student: Student; onEdit: 
       )}
       {student.trainingDays && student.trainingDays.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
-          {student.trainingDays.map((day) => {
-            const dayLabels: { [key: string]: string } = {
-              MONDAY: 'Seg',
-              TUESDAY: 'Ter',
-              WEDNESDAY: 'Qua',
-              THURSDAY: 'Qui',
-              FRIDAY: 'Sex',
-              SATURDAY: 'Sáb',
-              SUNDAY: 'Dom',
-            };
-            return (
+          {student.trainingDays.map((day) => (
               <span key={day} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded leading-tight">
-                {dayLabels[day] || day}
+                {dayShortMap[day as keyof typeof dayShortMap] || day}
               </span>
-            );
-          })}
+            ))}
         </div>
       )}
+
+      <div className="mt-4 pt-3 border-t border-dark-100 space-y-2">
+        {paymentLabel && (
+          <div className="flex items-center gap-1.5 text-xs text-dark-600">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span>{t('personal.studentCard.payment', { label: paymentLabel })}</span>
+            {paymentOverdue && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">
+                {t('personal.studentCard.paymentPending')}
+              </span>
+            )}
+          </div>
+        )}
+        {student.isTrainingBlocked && (
+          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-50 text-red-700 text-xs font-semibold">
+            <Lock className="w-3.5 h-3.5" />
+            {t('personal.studentCard.workoutBlocked')}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => onToggleTrainingBlock(!student.isTrainingBlocked)}
+          disabled={togglingBlock}
+          className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
+            student.isTrainingBlocked
+              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+              : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+          }`}
+        >
+          {togglingBlock ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : student.isTrainingBlocked ? (
+            <Unlock className="w-4 h-4" />
+          ) : (
+            <Lock className="w-4 h-4" />
+          )}
+          {student.isTrainingBlocked ? t('common.unblockWorkout') : t('common.blockWorkout')}
+        </button>
+      </div>
     </div>
   );
 }
 
 function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { t } = useTranslation();
+  const daysOfWeek = useWeekdayOptions();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -962,20 +1054,12 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     weight: '',
     height: '',
     trainingDays: [] as string[],
+    paymentDueDay: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [newStudent, setNewStudent] = useState<Student | null>(null);
 
-  const daysOfWeek = [
-    { value: 'MONDAY', label: 'Segunda' },
-    { value: 'TUESDAY', label: 'Terça' },
-    { value: 'WEDNESDAY', label: 'Quarta' },
-    { value: 'THURSDAY', label: 'Quinta' },
-    { value: 'FRIDAY', label: 'Sexta' },
-    { value: 'SATURDAY', label: 'Sábado' },
-    { value: 'SUNDAY', label: 'Domingo' },
-  ];
   const toggleDay = (day: string) => {
     setFormData(prev => ({
       ...prev,
@@ -991,6 +1075,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     setLoading(true);
 
     try {
+      const paymentDueDay = formData.paymentDueDay ? parseInt(formData.paymentDueDay, 10) : undefined;
       const payload = {
         name: formData.name,
         email: formData.email || undefined,
@@ -999,6 +1084,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         height: formData.height ? parseFloat(formData.height) : undefined,
         trainingDays: formData.trainingDays,
+        paymentDueDay: paymentDueDay && paymentDueDay >= 1 && paymentDueDay <= 31 ? paymentDueDay : undefined,
       };
 
       const response = await api.post('/students', payload);
@@ -1006,9 +1092,9 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     } catch (err: any) {
       const data = err.response?.data;
       if (err.response?.status === 403 && data?.code === 'SUBSCRIPTION_LIMIT') {
-        setError(data?.error || 'Limite de alunos do plano gratuito atingido. Assine para cadastrar mais alunos.');
+        setError(data?.error || t('errors.subscriptionLimit'));
       } else {
-        setError(data?.error || 'Erro ao criar aluno');
+        setError(data?.error || t('errors.createStudent'));
       }
       setLoading(false);
     }
@@ -1023,13 +1109,13 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               <Check className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-display font-bold text-dark-900 mb-2">
-              Aluno Criado com Sucesso!
+              {t('personal.addStudent.successTitle')}
             </h3>
             <p className="text-dark-500 mb-6">
-              Compartilhe o código de acesso com <strong>{newStudent.name}</strong>:
+              {t('personal.addStudent.successDesc', { name: newStudent.name })}
             </p>
             <div className="bg-gradient-to-br from-accent-50 to-accent-100 rounded-xl p-6 mb-6">
-              <p className="text-sm text-dark-600 mb-2 font-medium">Código de Acesso:</p>
+              <p className="text-sm text-dark-600 mb-2 font-medium">{t('personal.addStudent.accessCodeLabel')}</p>
               <p className="text-4xl font-display font-bold text-accent-600 tracking-wider">
                 {newStudent.accessCode}
               </p>
@@ -1042,13 +1128,13 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               className="btn-primary w-full mb-3 inline-flex items-center justify-center gap-2"
             >
               <Copy className="w-5 h-5 shrink-0" />
-              Copiar Código e Fechar
+              {t('personal.addStudent.copyAndClose')}
             </button>
             <button
               onClick={onSuccess}
               className="w-full px-6 py-3 text-dark-600 hover:bg-dark-50 rounded-xl transition-colors"
             >
-              Fechar
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -1060,7 +1146,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 md:p-8 my-8">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">Adicionar Novo Aluno</h3>
+          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.addStudent.title')}</h3>
           <button
             onClick={onClose}
             className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
@@ -1078,7 +1164,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
-              Nome Completo *
+              {t('personal.studentForm.fullName')}
             </label>
             <input
               type="text"
@@ -1086,34 +1172,34 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="input-modern"
-              placeholder="Ex: João Silva"
+              placeholder={t('personal.studentForm.fullNamePlaceholder')}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Email
+                {t('personal.studentForm.email')}
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="input-modern"
-                placeholder="email@exemplo.com"
+                placeholder={t('personal.studentForm.emailPlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Telefone
+                {t('personal.studentForm.phone')}
               </label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="input-modern"
-                placeholder="(11) 99999-9999"
+                placeholder={t('personal.studentForm.phonePlaceholder')}
               />
             </div>
           </div>
@@ -1121,7 +1207,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Data de Nascimento
+                {t('personal.studentForm.birthDate')}
               </label>
               <input
                 type="date"
@@ -1133,7 +1219,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Peso (kg)
+                {t('personal.studentForm.weight')}
               </label>
               <input
                 type="number"
@@ -1147,7 +1233,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Altura (cm)
+                {t('personal.studentForm.height')}
               </label>
               <input
                 type="number"
@@ -1161,8 +1247,26 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-2">
+              {t('personal.studentForm.paymentDueDay')}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={formData.paymentDueDay}
+              onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+              className="input-modern max-w-[10rem]"
+              placeholder={t('personal.studentForm.paymentDueDayPlaceholder')}
+            />
+            <p className="text-xs text-dark-500 mt-1.5">
+              {t('personal.studentForm.paymentDueDayHint')}
+            </p>
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-dark-700 mb-3">
-              Dias de Treino
+              {t('personal.studentForm.trainingDays')}
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {daysOfWeek.map((day) => (
@@ -1188,14 +1292,14 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || !formData.name}
               className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Criando...' : 'Criar Aluno'}
+              {loading ? t('common.creating') : t('personal.createStudent')}
             </button>
           </div>
         </form>
@@ -1205,6 +1309,8 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 }
 
 function EditStudentModal({ student, onClose, onSuccess }: { student: Student; onClose: () => void; onSuccess: () => void }) {
+  const { t } = useTranslation();
+  const daysOfWeek = useWeekdayOptions();
   const [formData, setFormData] = useState({
     name: student.name,
     email: student.email || '',
@@ -1213,19 +1319,11 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
     weight: student.weight != null ? String(student.weight) : '',
     height: student.height != null ? String(student.height) : '',
     trainingDays: student.trainingDays || [],
+    paymentDueDay: student.paymentDueDay != null ? String(student.paymentDueDay) : '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const daysOfWeek = [
-    { value: 'MONDAY', label: 'Segunda' },
-    { value: 'TUESDAY', label: 'Terça' },
-    { value: 'WEDNESDAY', label: 'Quarta' },
-    { value: 'THURSDAY', label: 'Quinta' },
-    { value: 'FRIDAY', label: 'Sexta' },
-    { value: 'SATURDAY', label: 'Sábado' },
-    { value: 'SUNDAY', label: 'Domingo' },
-  ];
   const toggleDay = (day: string) => {
     setFormData(prev => ({
       ...prev,
@@ -1240,6 +1338,7 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
     setError('');
     setLoading(true);
     try {
+      const paymentDueDay = formData.paymentDueDay ? parseInt(formData.paymentDueDay, 10) : null;
       const payload = {
         name: formData.name,
         email: formData.email || undefined,
@@ -1248,11 +1347,13 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         height: formData.height ? parseFloat(formData.height) : undefined,
         trainingDays: formData.trainingDays,
+        paymentDueDay:
+          paymentDueDay && paymentDueDay >= 1 && paymentDueDay <= 31 ? paymentDueDay : null,
       };
       await api.put(`/students/${student.id}`, payload);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao atualizar aluno');
+      setError(err.response?.data?.error || t('errors.updateStudent'));
     } finally {
       setLoading(false);
     }
@@ -1262,7 +1363,7 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 md:p-8 my-8">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">Editar Aluno</h3>
+          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.editStudent.title')}</h3>
           <button onClick={onClose} className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors">
             <X className="w-6 h-6" />
           </button>
@@ -1272,35 +1373,48 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>
           )}
           <div>
-            <label className="block text-sm font-semibold text-dark-700 mb-2">Nome Completo *</label>
-            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder="Ex: João Silva" />
+            <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.fullName')}</label>
+            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-modern" placeholder={t('personal.studentForm.fullNamePlaceholder')} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">Email</label>
-              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-modern" placeholder="email@exemplo.com" />
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.email')}</label>
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-modern" placeholder={t('personal.studentForm.emailPlaceholder')} />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">Telefone</label>
-              <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder="(11) 99999-9999" />
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.phone')}</label>
+              <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder={t('personal.studentForm.phonePlaceholder')} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">Data de Nascimento</label>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.birthDate')}</label>
               <input type="date" value={formData.birthDate} onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })} className="input-modern" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso (kg)</label>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.weight')}</label>
               <input type="number" step="0.1" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} className="input-modern" placeholder="75.5" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-dark-700 mb-2">Altura (cm)</label>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.height')}</label>
               <input type="number" step="0.1" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} className="input-modern" placeholder="175" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-dark-700 mb-3">Dias de Treino</label>
+            <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.paymentDueDay')}</label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={formData.paymentDueDay}
+              onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+              className="input-modern max-w-[10rem]"
+              placeholder={t('personal.studentForm.paymentDueDayPlaceholder')}
+            />
+            <p className="text-xs text-dark-500 mt-1.5">{t('personal.studentForm.paymentDueDayHintShort')}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-3">{t('personal.studentForm.trainingDays')}</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {daysOfWeek.map((day) => (
                 <button key={day.value} type="button" onClick={() => toggleDay(day.value)} className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${formData.trainingDays.includes(day.value) ? 'bg-gradient-accent text-white shadow-medium' : 'bg-dark-50 text-dark-600 hover:bg-dark-100'}`}>
@@ -1310,8 +1424,8 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
             </div>
           </div>
           <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors">Cancelar</button>
-            <button type="submit" disabled={loading || !formData.name} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Salvando...' : 'Salvar alterações'}</button>
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors">{t('common.cancel')}</button>
+            <button type="submit" disabled={loading || !formData.name} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? t('common.saving') : t('common.saveChanges')}</button>
           </div>
         </form>
       </div>
@@ -1330,6 +1444,7 @@ function DeleteConfirmModal({
   onConfirm: () => void; 
   deleting: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-strong max-w-md w-full p-8 animate-scaleIn">
@@ -1338,13 +1453,13 @@ function DeleteConfirmModal({
             <AlertTriangle className="w-10 h-10 text-red-600" />
           </div>
           <h3 className="text-2xl font-display font-bold text-dark-900 mb-2">
-            Excluir Aluno?
+            {t('personal.deleteStudent.title')}
           </h3>
           <p className="text-dark-500 mb-2">
-            Tem certeza que deseja excluir <strong>{student.name}</strong>?
+            {t('personal.deleteStudent.confirm', { name: student.name })}
           </p>
           <p className="text-sm text-dark-400 mb-6">
-            Esta ação não pode ser desfeita. Todos os treinos e progresso deste aluno serão perdidos.
+            {t('personal.deleteStudent.warning')}
           </p>
           
           <div className="flex gap-3">
@@ -1353,14 +1468,14 @@ function DeleteConfirmModal({
               disabled={deleting}
               className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors disabled:opacity-50"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={onConfirm}
               disabled={deleting}
               className="flex-1 px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {deleting ? 'Excluindo...' : 'Excluir'}
+              {deleting ? t('common.deleting') : t('common.delete')}
             </button>
           </div>
         </div>
@@ -1370,6 +1485,8 @@ function DeleteConfirmModal({
 }
 
 function TreinosPage() {
+  const { t } = useTranslation();
+  const daysOfWeek = useWeekdayOptions(true);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string>('');
@@ -1380,16 +1497,6 @@ function TreinosPage() {
   const [loading, setLoading] = useState(true);
   const [workoutToDelete, setWorkoutToDelete] = useState<Workout | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  const daysOfWeek = [
-    { value: 'MONDAY', label: 'Segunda', short: 'SEG' },
-    { value: 'TUESDAY', label: 'Terça', short: 'TER' },
-    { value: 'WEDNESDAY', label: 'Quarta', short: 'QUA' },
-    { value: 'THURSDAY', label: 'Quinta', short: 'QUI' },
-    { value: 'FRIDAY', label: 'Sexta', short: 'SEX' },
-    { value: 'SATURDAY', label: 'Sábado', short: 'SÁB' },
-    { value: 'SUNDAY', label: 'Domingo', short: 'DOM' },
-  ];
 
   useEffect(() => {
     loadData();
@@ -1429,7 +1536,7 @@ function TreinosPage() {
       loadData();
     } catch (error) {
       console.error('Erro ao deletar treino:', error);
-      alert('Erro ao excluir treino. Tente novamente.');
+      alert(t('errors.deleteWorkout'));
     } finally {
       setDeleting(false);
     }
@@ -1456,9 +1563,9 @@ function TreinosPage() {
     <div className="w-full">
       <div className="mb-6 md:mb-8">
         <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2">
-          Gestão de Treinos
+          {t('personal.workouts.title')}
         </h2>
-        <p className="text-dark-500 text-sm md:text-lg">Crie e gerencie fichas de treino personalizadas</p>
+        <p className="text-dark-500 text-sm md:text-lg">{t('personal.workouts.subtitle')}</p>
       </div>
 
       {students.length === 0 ? (
@@ -1467,10 +1574,10 @@ function TreinosPage() {
             <Users className="w-8 h-8 md:w-10 md:h-10 text-dark-400" />
           </div>
           <h3 className="text-lg md:text-2xl font-display font-bold text-dark-900 mb-2 md:mb-3">
-            Nenhum Aluno Cadastrado
+            {t('personal.workouts.emptyStudentsTitle')}
           </h3>
           <p className="text-dark-500 mb-6 md:mb-8 max-w-md mx-auto text-sm md:text-lg">
-            Cadastre alunos primeiro para poder criar treinos para eles.
+            {t('personal.workouts.emptyStudentsDesc')}
           </p>
         </div>
       ) : (
@@ -1480,14 +1587,14 @@ function TreinosPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-dark-700 mb-2">
-                  Selecione o Aluno
+                  {t('personal.workouts.selectStudent')}
                 </label>
                 <CustomSelect
                   value={selectedStudent}
                   onChange={setSelectedStudent}
                   options={students.map((s) => ({ value: s.id, label: s.name }))}
-                  placeholder="Selecione o Aluno"
-                  aria-label="Selecione o aluno"
+                  placeholder={t('personal.workouts.selectStudent')}
+                  aria-label={t('personal.workouts.selectStudent')}
                 />
               </div>
               <button 
@@ -1498,7 +1605,7 @@ function TreinosPage() {
                 className="btn-primary inline-flex items-center gap-2 self-end"
               >
                 <Plus className="w-4 h-4" />
-                Novo Treino
+                {t('personal.workouts.newWorkout')}
               </button>
             </div>
           </div>
@@ -1506,7 +1613,7 @@ function TreinosPage() {
           {/* Grade de Dias da Semana - Visão Compacta */}
           <div className="card-modern p-4 md:p-6 mb-6">
             <h3 className="text-lg font-display font-bold text-dark-900 mb-4">
-              Selecione o Dia da Semana
+              {t('personal.workouts.selectWeekday')}
             </h3>
             <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
               {workoutsByDay.map((day) => (
@@ -1555,7 +1662,7 @@ function TreinosPage() {
                         {dayData.label}
                       </h3>
                       <p className="text-dark-500 text-sm">
-                        {dayData.workout ? 'Treino configurado' : 'Sem treino definido'}
+                        {dayData.workout ? t('common.workoutConfigured') : t('common.noWorkoutDefined')}
                       </p>
                     </div>
                   </div>
@@ -1586,14 +1693,14 @@ function TreinosPage() {
                           <button
                             onClick={() => setWorkoutToEdit(dayData.workout!)}
                             className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                            title="Editar treino"
+                            title={t('common.edit')}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setWorkoutToDelete(dayData.workout!)}
                             className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                            title="Excluir treino"
+                            title={t('common.delete')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1603,7 +1710,7 @@ function TreinosPage() {
                       <div className="flex items-center gap-2 text-dark-700 text-sm">
                         <Dumbbell className="w-4 h-4" />
                         <span className="font-semibold">
-                          {dayData.workout.exercises?.length || 0} exercício(s)
+                          {t('personal.workouts.exerciseCount', { count: dayData.workout.exercises?.length || 0 })}
                         </span>
                       </div>
                     </div>
@@ -1612,7 +1719,7 @@ function TreinosPage() {
                     {dayData.workout.exercises && dayData.workout.exercises.length > 0 && (
                       <div>
                         <h5 className="text-base font-display font-bold text-dark-900 mb-4">
-                          Exercícios
+                          {t('personal.workouts.exercisesTitle')}
                         </h5>
                         <div className="space-y-3">
                           {dayData.workout.exercises.map((exercise, idx) => (
@@ -1636,22 +1743,22 @@ function TreinosPage() {
                                   </h6>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                     <div>
-                                      <span className="text-dark-500">Séries:</span>
+                                      <span className="text-dark-500">{t('personal.workouts.setsLabel')}</span>
                                       <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
                                     </div>
                                     <div>
-                                      <span className="text-dark-500">Reps:</span>
+                                      <span className="text-dark-500">{t('personal.workouts.repsLabel')}</span>
                                       <span className="ml-2 font-semibold text-dark-900">{exercise.reps}</span>
                                     </div>
                                     {exercise.rest && (
                                       <div>
-                                        <span className="text-dark-500">Descanso:</span>
+                                        <span className="text-dark-500">{t('personal.workouts.restLabel')}</span>
                                         <span className="ml-2 font-semibold text-dark-900">{exercise.rest}</span>
                                       </div>
                                     )}
                                     {exercise.weight && (
                                       <div>
-                                        <span className="text-dark-500">Peso:</span>
+                                        <span className="text-dark-500">{t('personal.workouts.weightLabel')}</span>
                                         <span className="ml-2 font-semibold text-dark-900">{exercise.weight}</span>
                                       </div>
                                     )}
@@ -1668,7 +1775,7 @@ function TreinosPage() {
                                           <div className="aspect-video">
                                             <iframe
                                               src={`https://www.youtube.com/embed/${getYoutubeVideoId(exercise.videoUrl)}`}
-                                              title={`Demonstração: ${exercise.name}`}
+                                              title={t('personal.suggestions.demoTitle', { name: exercise.name })}
                                               className="w-full h-full"
                                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                               referrerPolicy="strict-origin-when-cross-origin"
@@ -1681,7 +1788,7 @@ function TreinosPage() {
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:text-accent-700 font-semibold"
                                           >
-                                            Ver no YouTube
+                                            {t('personal.suggestions.viewOnYoutube')}
                                           </a>
                                         </div>
                                       ) : (
@@ -1694,7 +1801,7 @@ function TreinosPage() {
                                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                                           </svg>
-                                          Ver vídeo no YouTube
+                                          {t('personal.suggestions.viewVideoOnYoutube')}
                                         </a>
                                       )}
                                     </>
@@ -1713,10 +1820,10 @@ function TreinosPage() {
                       <Dumbbell className="w-10 h-10 text-dark-400" />
                     </div>
                     <h4 className="text-xl font-bold text-dark-900 mb-2">
-                      Nenhum Treino Definido
+                      {t('personal.workouts.noWorkoutForDayTitle')}
                     </h4>
                     <p className="text-dark-500 mb-6">
-                      Crie um treino para {dayData.label} clicando no botão abaixo
+                      {t('personal.workouts.noWorkoutForDayDesc', { day: dayData.label })}
                     </p>
                     <button
                       onClick={() => {
@@ -1726,7 +1833,7 @@ function TreinosPage() {
                       className="btn-primary inline-flex items-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
-                      Criar Treino para {dayData.label}
+                      {t('personal.workouts.createWorkoutForDay', { day: dayData.label })}
                     </button>
                   </div>
                 )}
@@ -1795,6 +1902,7 @@ function formatCepDisplay(value: string | undefined): string {
 }
 
 function PerfilPage() {
+  const { t } = useTranslation();
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const [showPlans, setShowPlans] = useState(false);
@@ -1844,7 +1952,7 @@ function PerfilPage() {
       updateUser(res.data);
       setEditing(false);
     } catch (err: any) {
-      setProfileError(err.response?.data?.error || 'Erro ao salvar.');
+      setProfileError(err.response?.data?.error || t('errors.saveProfile'));
     } finally {
       setSaving(false);
     }
@@ -1857,7 +1965,7 @@ function PerfilPage() {
 
   const handleOpenSupport = () => {
     if (!supportWhatsappNumber) return;
-    const message = `Olá, sou assinante Pro do GymApp e preciso de suporte.${user?.name ? `\n\nNome: ${user.name}` : ''}`;
+    const message = `${t('personal.workouts.supportMessage')}${user?.name ? `\n\n${t('personal.profile.supportName', { name: user.name })}` : ''}`;
     const whatsappUrl = `https://wa.me/${supportWhatsappNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
@@ -1866,9 +1974,9 @@ function PerfilPage() {
     <div className="w-full">
       <div className="mb-6 md:mb-8">
         <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2">
-          Perfil
+          {t('personal.profileTitle')}
         </h2>
-        <p className="text-dark-500 text-sm md:text-lg">Gerencie suas informações pessoais</p>
+        <p className="text-dark-500 text-sm md:text-lg">{t('personal.profileSubtitle')}</p>
       </div>
 
       {/* Área Assinatura - clicável para expandir planos */}
@@ -1883,8 +1991,8 @@ function PerfilPage() {
               <Dumbbell className="w-6 h-6 text-accent-600" />
             </div>
             <div>
-              <h4 className="text-lg font-display font-bold text-dark-900">Assinatura</h4>
-              <p className="text-dark-500 text-sm">Ver planos e benefícios</p>
+              <h4 className="text-lg font-display font-bold text-dark-900">{t('personal.subscriptionSection')}</h4>
+              <p className="text-dark-500 text-sm">{t('personal.subscriptionSectionDesc')}</p>
             </div>
           </div>
           <span className={`text-2xl text-dark-400 transition-transform ${showPlans ? 'rotate-180' : ''}`}>▼</span>
@@ -1893,31 +2001,33 @@ function PerfilPage() {
         {showPlans && (
           <div className="mt-6 pt-6 border-t border-dark-100">
             <p className="text-dark-600 text-sm mb-4">
-              {isPro ? 'Seu plano e opções de gerenciamento:' : 'Assine o Pro ou compare os benefícios:'}
+              {isPro ? t('subscription.manageTitle') : t('subscription.compareTitle')}
             </p>
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-xl border-2 border-dark-200 bg-dark-50/50 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <h5 className="font-display font-bold text-dark-900">
-                    {isPro ? 'Plano Pro' : 'Plano Gratuito'}
+                    {isPro ? t('subscription.proPlan') : t('subscription.freePlan')}
                   </h5>
                   <span className="text-lg font-display font-bold text-dark-900">
-                    {isPro ? 'Ativo' : 'R$ 0'}
+                    {isPro ? t('subscription.active') : t('subscription.freePrice')}
                   </span>
                 </div>
                 <ul className="space-y-2 text-sm text-dark-600 mb-4">
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-500">✓</span>
-                    {isPro ? 'Alunos ilimitados' : `Até ${user?.maxStudentsAllowed ?? 2} alunos`}
+                    {isPro
+                      ? t('subscription.unlimitedStudents')
+                      : t('subscription.studentsLimit', { count: user?.maxStudentsAllowed ?? 2 })}
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Fichas de treino
+                    <span className="text-emerald-500">✓</span> {t('personal.benefitWorkouts')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Acompanhamento de evolução
+                    <span className="text-emerald-500">✓</span> {t('personal.benefitEvolution')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Mensagens com alunos
+                    <span className="text-emerald-500">✓</span> {t('personal.benefitMessages')}
                   </li>
                 </ul>
                 {!isPro && (
@@ -1941,8 +2051,13 @@ function PerfilPage() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-6 space-y-6">
         <PersonalLogoUpload user={user} onUpdated={updateUser} />
+        <PersonalBrandSettings user={user} onUpdated={updateUser} />
+      </div>
+
+      <div className="mb-6">
+        <AccountDeletionSection userType="personal" onDelete={() => setShowDeleteAccount(true)} />
       </div>
 
       <div className="card-modern p-5 md:p-6">
@@ -1979,7 +2094,7 @@ function PerfilPage() {
         <div className="space-y-5">
           <div>
             <h4 className="text-base font-display font-bold text-dark-900 mb-3">
-              Informações da Conta
+              {t('personal.accountInfo')}
             </h4>
             {profileError && (
               <p className="text-red-600 text-sm mb-3">{profileError}</p>
@@ -2088,7 +2203,7 @@ function PerfilPage() {
                     disabled={saving}
                     className="px-4 py-2.5 rounded-xl bg-accent-500 text-white font-semibold text-sm disabled:opacity-70"
                   >
-                    {saving ? 'Salvando...' : 'Salvar'}
+                    {saving ? t('common.saving') : t('common.save')}
                   </button>
                   <button
                     type="button"
@@ -2168,20 +2283,6 @@ function PerfilPage() {
             </div>
           </div>
 
-          <div className="pt-5 mt-5 border-t border-red-100">
-            <h4 className="text-sm font-display font-bold text-red-800 mb-1">Zona de perigo</h4>
-            <p className="text-xs text-dark-500 mb-3">
-              Excluir sua conta remove permanentemente todos os alunos e dados associados.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowDeleteAccount(true)}
-              className="w-full md:w-auto px-4 py-2.5 border-2 border-red-300 text-red-700 hover:bg-red-50 font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Excluir minha conta
-            </button>
-          </div>
         </div>
       </div>
 
@@ -2212,6 +2313,7 @@ function DeleteWorkoutModal({
   onConfirm: () => void; 
   deleting: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-strong max-w-md w-full p-8 animate-scaleIn">
@@ -2220,13 +2322,13 @@ function DeleteWorkoutModal({
             <AlertTriangle className="w-10 h-10 text-red-600" />
           </div>
           <h3 className="text-2xl font-display font-bold text-dark-900 mb-2">
-            Excluir Treino?
+            {t('personal.workouts.deleteTitle')}
           </h3>
           <p className="text-dark-500 mb-2">
-            Tem certeza que deseja excluir o treino <strong>{workout.name}</strong>?
+            {t('personal.workouts.deleteConfirm', { name: workout.name })}
           </p>
           <p className="text-sm text-dark-400 mb-6">
-            Esta ação não pode ser desfeita. Todos os exercícios serão perdidos.
+            {t('personal.workouts.deleteWarning')}
           </p>
           
           <div className="flex gap-3">
@@ -2235,14 +2337,14 @@ function DeleteWorkoutModal({
               disabled={deleting}
               className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors disabled:opacity-50"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={onConfirm}
               disabled={deleting}
               className="flex-1 px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {deleting ? 'Excluindo...' : 'Excluir'}
+              {deleting ? t('common.deleting') : t('common.delete')}
             </button>
           </div>
         </div>
@@ -2266,6 +2368,8 @@ function AddWorkoutModal({
   onClose: () => void; 
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
+  const daysOfWeek = useWeekdayOptions();
   const [formData, setFormData] = useState({
     studentId: preSelectedStudentId || '',
     name: '',
@@ -2295,15 +2399,6 @@ function AddWorkoutModal({
     if (parsed) setSavedExercises(parsed);
   }, []);
 
-  const daysOfWeek = [
-    { value: 'MONDAY', label: 'Segunda' },
-    { value: 'TUESDAY', label: 'Terça' },
-    { value: 'WEDNESDAY', label: 'Quarta' },
-    { value: 'THURSDAY', label: 'Quinta' },
-    { value: 'FRIDAY', label: 'Sexta' },
-    { value: 'SATURDAY', label: 'Sábado' },
-    { value: 'SUNDAY', label: 'Domingo' },
-  ];
   const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
 
   const toggleDay = (day: string) => {
@@ -2412,12 +2507,12 @@ function AddWorkoutModal({
     e.preventDefault();
     
     if (formData.daysOfWeek.length === 0) {
-      setError('Selecione pelo menos um dia da semana');
+      setError(t('errors.selectOneDayRequired'));
       return;
     }
 
     if (exercises.length === 0) {
-      setError('Adicione pelo menos um exercício');
+      setError(t('errors.addOneExercise'));
       return;
     }
 
@@ -2439,7 +2534,7 @@ function AddWorkoutModal({
       await Promise.all(promises);
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao criar treino');
+      setError(err.response?.data?.error || t('errors.createWorkout'));
     } finally {
       setLoading(false);
     }
@@ -2449,7 +2544,7 @@ function AddWorkoutModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-strong max-w-4xl w-full p-6 md:p-8 my-8 max-h-[85vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">Criar Novo Treino</h3>
+          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.workouts.createTitle')}</h3>
           <button
             onClick={onClose}
             className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
@@ -2468,24 +2563,24 @@ function AddWorkoutModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={preSelectedStudentId ? 'hidden' : ''} aria-hidden={preSelectedStudentId ? true : undefined}>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Aluno *
+                {t('common.student')} *
               </label>
               <CustomSelect
                 value={formData.studentId}
                 onChange={(studentId) => setFormData({ ...formData, studentId })}
                 options={students.map((s) => ({ value: s.id, label: s.name }))}
-                placeholder="Selecione um aluno"
-                aria-label="Aluno"
+                placeholder={t('personal.workouts.selectStudentPlaceholder')}
+                aria-label={t('common.student')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-3">
-                Dias da Semana * (selecione um ou mais)
+                {t('personal.workouts.weekdaysMulti')}
               </label>
               {formData.studentId && daysWithExistingWorkout.length > 0 && (
                 <p className="text-xs text-dark-500 mb-2">
-                  Dias em azul já possuem treino para este aluno.
+                  {t('personal.workouts.daysAlreadyAllocated')}
                 </p>
               )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -2499,7 +2594,7 @@ function AddWorkoutModal({
                       type="button"
                       onClick={() => toggleDay(day.value)}
                       disabled={disabled}
-                      title={disabled ? 'Este dia já possui treino para este aluno' : undefined}
+                      title={disabled ? t('personal.workouts.dayAlreadyAllocated') : undefined}
                       className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex flex-col items-center gap-0.5 ${
                         disabled
                           ? 'bg-blue-50 text-blue-600 border-2 border-blue-200 cursor-not-allowed opacity-90'
@@ -2510,18 +2605,18 @@ function AddWorkoutModal({
                     >
                       <span>{day.label}</span>
                       {hasExisting && (
-                        <span className="text-[10px] font-medium opacity-90">Já alocado</span>
+                        <span className="text-[10px] font-medium opacity-90">{t('personal.workouts.alreadyAllocated')}</span>
                       )}
                     </button>
                   );
                 })}
               </div>
               {formData.daysOfWeek.length === 0 && (
-                <p className="text-xs text-red-500 mt-2">Selecione pelo menos um dia</p>
+                <p className="text-xs text-red-500 mt-2">{t('personal.workouts.selectOneDayError')}</p>
               )}
               {formData.daysOfWeek.length > 1 && (
                 <p className="text-xs text-green-600 mt-2">
-                  ✓ Este treino será replicado para {formData.daysOfWeek.length} dias
+                  ✓ {t('personal.workouts.replicateDays', { count: formData.daysOfWeek.length })}
                 </p>
               )}
             </div>
@@ -2529,7 +2624,7 @@ function AddWorkoutModal({
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
-              Nome do Treino *
+              {t('personal.workouts.workoutName')}
             </label>
             <input
               type="text"
@@ -2537,27 +2632,27 @@ function AddWorkoutModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="input-modern"
-              placeholder="Ex: Treino A - Peito e Tríceps"
+              placeholder={t('personal.workouts.workoutNamePlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
-              Descrição
+              {t('personal.workouts.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="input-modern"
               rows={2}
-              placeholder="Descreva o objetivo deste treino..."
+              placeholder={t('personal.workouts.descriptionPlaceholder')}
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-lg font-display font-bold text-dark-900">
-                Exercícios ({exercises.length})
+                {t('personal.workouts.exercisesTitle')} ({exercises.length})
               </h4>
               <div className="flex gap-2">
                 {workoutTemplates.length > 0 && (
@@ -2567,7 +2662,7 @@ function AddWorkoutModal({
                     className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-sm rounded-lg hover:bg-indigo-100 transition-colors inline-flex items-center gap-2"
                   >
                     <Copy className="w-4 h-4" />
-                    Biblioteca de Treinos ({workoutTemplates.length})
+                    {t('personal.workouts.workoutLibrary', { count: workoutTemplates.length })}
                   </button>
                 )}
                 {savedExercises.length > 0 && (
@@ -2577,7 +2672,7 @@ function AddWorkoutModal({
                     className="hidden px-4 py-2 bg-blue-50 text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center gap-2"
                   >
                     <Copy className="w-4 h-4" />
-                    Biblioteca ({savedExercises.length})
+                    {t('personal.workouts.exerciseLibrary', { count: savedExercises.length })}
                   </button>
                 )}
                 <button
@@ -2586,7 +2681,7 @@ function AddWorkoutModal({
                   className="btn-primary text-sm inline-flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Novo Exercício
+                  {t('personal.workouts.newExercise')}
                 </button>
               </div>
             </div>
@@ -2594,8 +2689,8 @@ function AddWorkoutModal({
             {exercises.length === 0 ? (
               <div className="bg-dark-50 border-2 border-dashed border-dark-200 rounded-xl p-8 text-center">
                 <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">Nenhum exercício adicionado</p>
-                <p className="text-sm text-dark-400 mt-1">Clique em "Adicionar Exercício" para começar</p>
+                <p className="text-dark-500">{t('personal.workouts.noExercisesAdded')}</p>
+                <p className="text-sm text-dark-400 mt-1">{t('personal.workouts.noExercisesHint')}</p>
               </div>
             ) : (
               <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
@@ -2607,7 +2702,9 @@ function AddWorkoutModal({
                       {isConfirmingDelete ? (
                         <div className="py-2">
                           <p className="text-dark-700 font-medium mb-4">
-                            Tem certeza que deseja excluir o exercício <strong>{exercise.name || `Exercício ${index + 1}`}</strong>?
+                            {t('personal.workouts.deleteExerciseConfirm', {
+                              name: exercise.name || t('personal.exercise.defaultName', { number: index + 1 }),
+                            })}
                           </p>
                           <div className="flex gap-2">
                             <button
@@ -2615,14 +2712,14 @@ function AddWorkoutModal({
                               onClick={() => setExerciseToDeleteIndex(null)}
                               className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
                             >
-                              Cancelar
+                              {t('common.cancel')}
                             </button>
                             <button
                               type="button"
                               onClick={() => removeExercise(index)}
                               className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
                             >
-                              Excluir
+                              {t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -2635,7 +2732,7 @@ function AddWorkoutModal({
                                 onClick={() => saveExercise(exercise)}
                                 disabled={!exercise.name || !exercise.sets || !exercise.reps}
                                 className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Salvar na biblioteca"
+                                title={t('personal.workouts.saveToLibrary')}
                               >
                                 <Copy className="w-4 h-4" />
                               </button>
@@ -2643,7 +2740,7 @@ function AddWorkoutModal({
                                 type="button"
                                 onClick={() => setExpandedExerciseIndex(index)}
                                 className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                                title="Editar exercício"
+                                title={t('personal.workouts.editExercise')}
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
@@ -2651,18 +2748,18 @@ function AddWorkoutModal({
                                 type="button"
                                 onClick={() => setExerciseToDeleteIndex(index)}
                                 className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                                title="Excluir exercício"
+                                title={t('personal.workouts.deleteExercise')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || `Exercício ${index + 1}`}
+                                {exercise.name || t('personal.exercise.defaultName', { number: index + 1 })}
                               </p>
                               <p className="text-sm text-dark-500 mt-0.5">
-                                {exercise.sets} séries × {exercise.reps} reps
-                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                                {t('personal.workouts.setsRepsSummary', { sets: exercise.sets, reps: exercise.reps })}
+                                {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
                               </p>
                             </div>
                           </div>
@@ -2675,7 +2772,7 @@ function AddWorkoutModal({
                               onClick={() => setExpandedExerciseIndex(null)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
                             >
-                              Salvar
+                              {t('common.save')}
                             </button>
                             <button
                               type="button"
@@ -2697,18 +2794,18 @@ function AddWorkoutModal({
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-32">
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Nome do Exercício *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.name')}</label>
                               <input
                                 type="text"
                                 required
                                 value={exercise.name}
                                 onChange={(e) => updateExercise(index, 'name', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: Supino Reto"
+                                placeholder={t('personal.exercise.namePlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Séries *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.sets')}</label>
                               <input
                                 type="number"
                                 required
@@ -2719,44 +2816,44 @@ function AddWorkoutModal({
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Repetições *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.reps')}</label>
                               <input
                                 type="text"
                                 required
                                 value={exercise.reps}
                                 onChange={(e) => updateExercise(index, 'reps', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 12 ou 10-12"
+                                placeholder={t('personal.exercise.repsPlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Descanso</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.rest')}</label>
                               <input
                                 type="text"
                                 value={exercise.rest}
                                 onChange={(e) => updateExercise(index, 'rest', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 60s ou 1min"
+                                placeholder={t('personal.exercise.restPlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.weight')}</label>
                               <input
                                 type="text"
                                 value={exercise.weight}
                                 onChange={(e) => updateExercise(index, 'weight', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 20kg"
+                                placeholder={t('personal.exercise.weightPlaceholder')}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">URL do Vídeo (YouTube)</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.videoUrl')}</label>
                               <input
                                 type="url"
                                 value={exercise.videoUrl}
                                 onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
                                 className="input-modern"
-                                placeholder="https://youtube.com/watch?v=..."
+                                placeholder={t('personal.exercise.videoPlaceholder')}
                               />
                               <ExerciseVideoSuggestions
                                 exerciseName={exercise.name}
@@ -2765,15 +2862,15 @@ function AddWorkoutModal({
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.imageUrl')}</label>
                               <input
                                 type="url"
                                 value={exercise.imageUrl}
                                 onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
                                 className="input-modern"
-                                placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                                placeholder={t('personal.exercise.imagePlaceholder')}
                               />
-                              <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                              <p className="text-xs text-dark-500 mt-1">{t('personal.exercise.imageHint')}</p>
                               <ExerciseImageSuggestions
                                 exerciseName={exercise.name}
                                 selectedImageUrl={exercise.imageUrl}
@@ -2781,13 +2878,13 @@ function AddWorkoutModal({
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.notes')}</label>
                               <textarea
                                 value={exercise.notes}
                                 onChange={(e) => updateExercise(index, 'notes', e.target.value)}
                                 className="input-modern"
                                 rows={2}
-                                placeholder="Dicas de execução..."
+                                placeholder={t('personal.exercise.notesPlaceholder')}
                               />
                             </div>
                           </div>
@@ -2806,14 +2903,18 @@ function AddWorkoutModal({
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || exercises.length === 0 || formData.daysOfWeek.length === 0}
               className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Criando...' : formData.daysOfWeek.length > 1 ? `Criar ${formData.daysOfWeek.length} Treinos` : 'Criar Treino'}
+              {loading
+                ? t('common.creating')
+                : formData.daysOfWeek.length > 1
+                  ? t('personal.createWorkouts', { count: formData.daysOfWeek.length })
+                  : t('personal.createWorkout')}
             </button>
           </div>
         </form>
@@ -2825,7 +2926,7 @@ function AddWorkoutModal({
           <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-display font-bold text-dark-900">
-                Biblioteca de Exercícios
+                {t('personal.workouts.exerciseLibraryTitle')}
               </h3>
               <button
                 onClick={() => setShowExerciseLibrary(false)}
@@ -2857,7 +2958,7 @@ function AddWorkoutModal({
                     </button>
                   </div>
                   <div className="flex gap-3 text-sm text-dark-600">
-                    <span>{exercise.sets} séries</span>
+                    <span>{t('personal.workouts.librarySets', { sets: exercise.sets })}</span>
                     <span>•</span>
                     <span>{exercise.reps} reps</span>
                     {exercise.weight && (
@@ -2877,7 +2978,7 @@ function AddWorkoutModal({
             {savedExercises.length === 0 && (
               <div className="text-center py-8">
                 <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">Nenhum exercício salvo ainda</p>
+                <p className="text-dark-500">{t('personal.workouts.noSavedExercises')}</p>
                 <p className="text-sm text-dark-400 mt-1">
                   Clique no ícone de salvar ao criar exercícios
                 </p>
@@ -2893,7 +2994,7 @@ function AddWorkoutModal({
           <div className="bg-white rounded-2xl shadow-strong max-w-3xl w-full p-6 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-display font-bold text-dark-900">
-                Biblioteca de Treinos
+                {t('personal.workouts.libraryTitle')}
               </h3>
               <button
                 onClick={() => setShowWorkoutLibrary(false)}
@@ -2904,7 +3005,7 @@ function AddWorkoutModal({
             </div>
 
             <p className="text-sm text-dark-500 mb-4">
-              Selecione um treino já criado para reutilizar exercícios e ganhar tempo.
+              {t('personal.workouts.librarySelectHint')}
             </p>
 
             <div className="space-y-3">
@@ -2919,13 +3020,18 @@ function AddWorkoutModal({
                     <div className="min-w-0">
                       <h4 className="font-semibold text-dark-900 truncate">{template.name}</h4>
                       <p className="text-xs text-dark-500 mt-1">
-                        {template.exercises.length} exercícios • {dayLabelByValue[template.dayOfWeek] || template.dayOfWeek}
+                        {t('personal.workouts.libraryExerciseDay', {
+                          count: template.exercises.length,
+                          day: dayLabelByValue[template.dayOfWeek] || template.dayOfWeek,
+                        })}
                       </p>
                       {template.student?.name && (
-                        <p className="text-xs text-dark-500 mt-1 truncate">Aluno: {template.student.name}</p>
+                        <p className="text-xs text-dark-500 mt-1 truncate">
+                          {t('personal.workouts.studentLabel', { name: template.student.name })}
+                        </p>
                       )}
                     </div>
-                    <span className="text-xs font-semibold text-accent-600 shrink-0">Usar treino</span>
+                    <span className="text-xs font-semibold text-accent-600 shrink-0">{t('personal.workouts.useWorkout')}</span>
                   </div>
                 </button>
               ))}
@@ -2934,7 +3040,7 @@ function AddWorkoutModal({
             {workoutTemplates.length === 0 && (
               <div className="text-center py-8">
                 <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">Nenhum treino disponível ainda</p>
+                <p className="text-dark-500">{t('personal.workouts.noWorkoutsAvailable')}</p>
               </div>
             )}
           </div>
@@ -2955,6 +3061,8 @@ function EditWorkoutModal({
   onClose: () => void; 
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
+  const daysOfWeek = useWeekdayOptions();
   const [formData, setFormData] = useState({
     studentId: workout.studentId,
     name: workout.name,
@@ -2978,16 +3086,6 @@ function EditWorkoutModal({
   );
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const daysOfWeek = [
-    { value: 'MONDAY', label: 'Segunda' },
-    { value: 'TUESDAY', label: 'Terça' },
-    { value: 'WEDNESDAY', label: 'Quarta' },
-    { value: 'THURSDAY', label: 'Quinta' },
-    { value: 'FRIDAY', label: 'Sexta' },
-    { value: 'SATURDAY', label: 'Sábado' },
-    { value: 'SUNDAY', label: 'Domingo' },
-  ];
 
   const addExercise = () => {
     setExercises([
@@ -3163,7 +3261,9 @@ function EditWorkoutModal({
                       {isConfirmingDelete ? (
                         <div className="py-2">
                           <p className="text-dark-700 font-medium mb-4">
-                            Tem certeza que deseja excluir o exercício <strong>{exercise.name || `Exercício ${index + 1}`}</strong>?
+                            {t('personal.workouts.deleteExerciseConfirm', {
+                              name: exercise.name || t('personal.exercise.defaultName', { number: index + 1 }),
+                            })}
                           </p>
                           <div className="flex gap-2">
                             <button
@@ -3171,14 +3271,14 @@ function EditWorkoutModal({
                               onClick={() => setExerciseToDeleteIndex(null)}
                               className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
                             >
-                              Cancelar
+                              {t('common.cancel')}
                             </button>
                             <button
                               type="button"
                               onClick={() => removeExercise(index)}
                               className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
                             >
-                              Excluir
+                              {t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -3190,7 +3290,7 @@ function EditWorkoutModal({
                                 type="button"
                                 onClick={() => setExpandedExerciseIndex(index)}
                                 className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                                title="Editar exercício"
+                                title={t('personal.workouts.editExercise')}
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
@@ -3198,18 +3298,18 @@ function EditWorkoutModal({
                                 type="button"
                                 onClick={() => setExerciseToDeleteIndex(index)}
                                 className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                                title="Excluir exercício"
+                                title={t('personal.workouts.deleteExercise')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || `Exercício ${index + 1}`}
+                                {exercise.name || t('personal.exercise.defaultName', { number: index + 1 })}
                               </p>
                               <p className="text-sm text-dark-500 mt-0.5">
-                                {exercise.sets} séries × {exercise.reps} reps
-                                {exercise.rest ? ` · ${exercise.rest} descanso` : ''}
+                                {t('personal.workouts.setsRepsSummary', { sets: exercise.sets, reps: exercise.reps })}
+                                {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
                               </p>
                             </div>
                           </div>
@@ -3222,7 +3322,7 @@ function EditWorkoutModal({
                               onClick={() => setExpandedExerciseIndex(null)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
                             >
-                              Salvar
+                              {t('common.save')}
                             </button>
                             <button
                               type="button"
@@ -3235,18 +3335,18 @@ function EditWorkoutModal({
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-24">
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Nome do Exercício *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.name')}</label>
                               <input
                                 type="text"
                                 required
                                 value={exercise.name}
                                 onChange={(e) => updateExercise(index, 'name', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: Supino Reto"
+                                placeholder={t('personal.exercise.namePlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Séries *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.sets')}</label>
                               <input
                                 type="number"
                                 required
@@ -3257,44 +3357,44 @@ function EditWorkoutModal({
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Repetições *</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.reps')}</label>
                               <input
                                 type="text"
                                 required
                                 value={exercise.reps}
                                 onChange={(e) => updateExercise(index, 'reps', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 12 ou 10-12"
+                                placeholder={t('personal.exercise.repsPlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Descanso</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.rest')}</label>
                               <input
                                 type="text"
                                 value={exercise.rest}
                                 onChange={(e) => updateExercise(index, 'rest', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 60s ou 1min"
+                                placeholder={t('personal.exercise.restPlaceholder')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Peso</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.weight')}</label>
                               <input
                                 type="text"
                                 value={exercise.weight}
                                 onChange={(e) => updateExercise(index, 'weight', e.target.value)}
                                 className="input-modern"
-                                placeholder="Ex: 20kg"
+                                placeholder={t('personal.exercise.weightPlaceholder')}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">URL do Vídeo (YouTube)</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.videoUrl')}</label>
                               <input
                                 type="url"
                                 value={exercise.videoUrl}
                                 onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
                                 className="input-modern"
-                                placeholder="https://youtube.com/watch?v=..."
+                                placeholder={t('personal.exercise.videoPlaceholder')}
                               />
                               <ExerciseVideoSuggestions
                                 exerciseName={exercise.name}
@@ -3303,15 +3403,15 @@ function EditWorkoutModal({
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Foto do exercício (URL)</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.imageUrl')}</label>
                               <input
                                 type="url"
                                 value={exercise.imageUrl}
                                 onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
                                 className="input-modern"
-                                placeholder="https://exemplo.com/imagem-exercicio.jpg"
+                                placeholder={t('personal.exercise.imagePlaceholder')}
                               />
-                              <p className="text-xs text-dark-500 mt-1">Link de uma imagem para o aluno visualizar o movimento</p>
+                              <p className="text-xs text-dark-500 mt-1">{t('personal.exercise.imageHint')}</p>
                               <ExerciseImageSuggestions
                                 exerciseName={exercise.name}
                                 selectedImageUrl={exercise.imageUrl}
@@ -3319,13 +3419,13 @@ function EditWorkoutModal({
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">Observações</label>
+                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.notes')}</label>
                               <textarea
                                 value={exercise.notes}
                                 onChange={(e) => updateExercise(index, 'notes', e.target.value)}
                                 className="input-modern"
                                 rows={2}
-                                placeholder="Dicas de execução..."
+                                placeholder={t('personal.exercise.notesPlaceholder')}
                               />
                             </div>
                           </div>
@@ -3351,7 +3451,7 @@ function EditWorkoutModal({
               disabled={loading || exercises.length === 0 || !formData.dayOfWeek}
               className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Salvando...' : 'Salvar Alterações'}
+              {loading ? t('common.saving') : t('common.saveChanges')}
             </button>
           </div>
         </form>

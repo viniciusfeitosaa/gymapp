@@ -21,7 +21,7 @@ html.capacitor-native {
 /* Android: WebView não reporta env(safe-area-inset-bottom) — mínimo = barra de 3 botões */
 html.capacitor-native.capacitor-android {
   --safe-top-env: max(1.75rem, env(safe-area-inset-top, 0px));
-  --safe-bottom-env: max(48px, env(safe-area-inset-bottom, 0px));
+  --safe-bottom-env: max(56px, env(safe-area-inset-bottom, 0px));
 }
 
 html.capacitor-native,

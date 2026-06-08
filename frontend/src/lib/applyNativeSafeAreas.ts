@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 
 /** Altura mínima da barra de navegação Android (3 botões), em px. */
-const ANDROID_NAV_MIN_PX = 48;
+const ANDROID_NAV_MIN_PX = 56;
 
 function readCssSafeBottom(): number {
   const probe = document.createElement('div');
@@ -31,6 +31,10 @@ function applyInsets(): void {
 
   const bottom = resolveAndroidBottomInset();
   document.documentElement.style.setProperty('--safe-bottom-env', `${bottom}px`);
+
+  document.querySelectorAll<HTMLElement>('.native-bottom-nav').forEach((el) => {
+    el.style.paddingBottom = `${bottom + 4}px`;
+  });
 }
 
 function scheduleAndroidInsetUpdates(): void {

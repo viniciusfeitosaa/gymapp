@@ -1,12 +1,17 @@
-import { useState, useEffect, useRef, useCallback, MutableRefObject } from 'react';
+import { useState, useEffect, useRef, useCallback, MutableRefObject, useMemo } from 'react';
 import confetti from 'canvas-confetti';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X, Trash2 } from 'lucide-react';
+import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
 import { StudentBrandMark } from '../components/StudentBrandMark';
 import { useStudentBrand } from '../hooks/useStudentBrand';
+import { AccountDeletionSection } from '../components/AccountDeletionSection';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { StudentTrainingBlocked } from '../components/StudentTrainingBlocked';
+import { appLocaleToDateLocale } from '../i18n/dateLocale';
+import { applyNativeSafeAreas } from '../lib/applyNativeSafeAreas';
 
 interface Exercise {
   id?: string;
@@ -38,6 +43,7 @@ function FocusModeWorkout({
   onClose: () => void;
   onFinished?: () => void;
 }) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<'countdown' | 'workout'>('countdown');
   const [count, setCount] = useState(3);
   const [finishing, setFinishing] = useState(false);
@@ -46,11 +52,11 @@ function FocusModeWorkout({
   useEffect(() => {
     if (phase !== 'countdown') return;
     if (count <= 0) {
-      const t = setTimeout(() => setPhase('workout'), 800);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setPhase('workout'), 800);
+      return () => clearTimeout(timer);
     }
-    const t = setTimeout(() => setCount(c => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCount((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [phase, count]);
 
   const handleFinish = async () => {
@@ -85,7 +91,7 @@ function FocusModeWorkout({
             </p>
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-accent flex items-center justify-center shadow-strong animate-pulse">
               <span className="text-6xl md:text-7xl font-display font-bold text-white">
-                {count > 0 ? count : 'Go!'}
+                {count > 0 ? count : t('student.go')}
               </span>
             </div>
           </div>
@@ -260,92 +266,97 @@ function FocusModeWorkout({
 }
 
 export default function StudentDashboard() {
-  const { user, logout } = useAuth();
-  const { personal: brandPersonal } = useStudentBrand();
+  const { t } = useTranslation();
+  const { user, updateUser } = useAuth();
+  const { personal: brandPersonal, themeStyle } = useStudentBrand();
   const navigate = useNavigate();
   const location = useLocation();
   const [focusWorkout, setFocusWorkout] = useState<Workout | null>(null);
+  const [trainingBlocked, setTrainingBlocked] = useState(!!user?.isTrainingBlocked);
   const refetchLogsRef = useRef<() => void>(() => {});
 
   const currentPath = location.pathname.split('/').pop() || 'dashboard';
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Início', icon: Home, path: '/student/dashboard' },
-    { id: 'treinos', label: 'Treinos', icon: Dumbbell, path: '/student/treinos' },
-    { id: 'perfil', label: 'Perfil', icon: User, path: '/student/perfil' },
-  ];
+  useEffect(() => {
+    applyNativeSafeAreas();
+  }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  useEffect(() => {
+    setTrainingBlocked(!!user?.isTrainingBlocked);
+  }, [user?.isTrainingBlocked]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await api.get('/students/me/profile');
+        const student = response.data?.student;
+        if (!cancelled && student) {
+          setTrainingBlocked(!!student.isTrainingBlocked);
+          updateUser({
+            isTrainingBlocked: student.isTrainingBlocked,
+            paymentDueDay: student.paymentDueDay,
+          });
+        }
+      } catch {
+        // mantém estado do login
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const menuItems = useMemo(
+    () => [
+      { id: 'dashboard', label: t('nav.student.home'), icon: Home, path: '/student/dashboard' },
+      { id: 'treinos', label: t('nav.student.workouts'), icon: Dumbbell, path: '/student/treinos' },
+      { id: 'perfil', label: t('nav.student.profile'), icon: User, path: '/student/perfil' },
+    ],
+    [t]
+  );
 
   return (
-    <div className="native-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
-      {/* Header */}
-      <header className="native-app-header bg-gradient-to-r from-primary-50/95 via-white to-primary-50/95 backdrop-blur-xl shadow-soft border-b border-primary-100 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14 md:h-16">
-            <StudentBrandMark personal={brandPersonal} subtitle="Meus Treinos" />
-
-            {/* Desktop Menu */}
-            <nav className="hidden md:flex items-center gap-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPath === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(item.path)}
-                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
-                      isActive
-                        ? 'bg-gradient-accent text-white shadow-medium'
-                        : 'text-dark-600 hover:bg-dark-100'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-semibold text-dark-900">{user?.name}</p>
-                <p className="text-xs text-dark-400">Aluno</p>
-              </div>
-              <div className="w-10 h-10 bg-gradient-accent rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                {user?.name?.charAt(0)}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                title="Sair"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+    <div
+      className="native-app-layout student-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50"
+      style={themeStyle}
+    >
+      {/* Header — só marca do personal (white-label) */}
+      <header className="native-app-header student-brand-header backdrop-blur-xl shadow-soft border-b z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-3">
+          <div className="flex items-center justify-center min-h-[5.25rem] sm:min-h-[5.75rem] md:min-h-[6.25rem]">
+            <StudentBrandMark
+              personal={brandPersonal}
+              iconSize="header"
+              subtitle=""
+              className="justify-center"
+            />
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="native-app-main w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        {currentPath === 'dashboard' && (
+        {currentPath === 'dashboard' && trainingBlocked && (
+          <StudentTrainingBlocked personalPhone={user?.personalTrainer?.phone} />
+        )}
+        {currentPath === 'dashboard' && !trainingBlocked && (
           <StudentDashboardHome
             onStartFocusMode={setFocusWorkout}
             refetchLogsRef={refetchLogsRef}
           />
         )}
-        {currentPath === 'treinos' && (
+        {currentPath === 'treinos' && trainingBlocked && (
+          <StudentTrainingBlocked personalPhone={user?.personalTrainer?.phone} />
+        )}
+        {currentPath === 'treinos' && !trainingBlocked && (
           <StudentTreinosPage onStartFocusMode={setFocusWorkout} refetchLogsRef={refetchLogsRef} />
         )}
         {currentPath === 'perfil' && <StudentPerfilPage brandPersonal={brandPersonal} />}
       </main>
 
       {/* Modo focado: countdown + exercícios */}
-      {focusWorkout && (
+      {focusWorkout && !trainingBlocked && (
         <FocusModeWorkout
           workout={focusWorkout}
           onClose={() => setFocusWorkout(null)}
@@ -353,24 +364,23 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="native-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="grid grid-cols-3 h-14 gap-0.5 px-1">
+      {/* Navegação inferior (mobile e desktop) */}
+      <nav className="native-bottom-nav student-bottom-nav bg-white border-t border-dark-200 shadow-strong z-50">
+        <div className="student-bottom-nav-inner">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all ${
-                  isActive
-                    ? 'bg-gradient-accent text-white'
-                    : 'text-dark-600'
+                className={`student-bottom-nav-btn ${
+                  isActive ? 'student-bottom-nav-btn--active' : ''
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] font-semibold leading-tight">{item.label}</span>
+                <Icon className="w-5 h-5 shrink-0" />
+                <span>{item.label}</span>
               </button>
             );
           })}
@@ -411,6 +421,7 @@ function StudentDashboardHome({
   onStartFocusMode: (w: Workout) => void;
   refetchLogsRef: MutableRefObject<() => void>;
 }) {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [todayWorkout, setTodayWorkout] = useState<Workout | null>(null);
@@ -500,9 +511,11 @@ function StudentDashboardHome({
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
-            Bem-vindo, {user?.name?.split(' ')[0] || 'Aluno'}! 👋
+            {t('student.welcome', {
+              name: user?.name?.split(' ')[0] || t('student.defaultName'),
+            })}
           </h2>
-          <p className="text-dark-500 text-sm md:text-base">Vamos treinar hoje?</p>
+          <p className="text-dark-500 text-sm md:text-base">{t('student.trainToday')}</p>
         </div>
         {whatsappUrl && (
           <a
@@ -514,7 +527,7 @@ function StudentDashboardHome({
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
             </svg>
-            WhatsApp do Personal
+            {t('student.personalWhatsapp')}
           </a>
         )}
       </div>
@@ -535,19 +548,23 @@ function StudentDashboardHome({
           ) : (
             <Clock className="w-5 h-5 text-blue-600" />
           )}
-          <h3 className="text-base font-display font-bold text-dark-900">Hoje</h3>
+          <h3 className="text-base font-display font-bold text-dark-900">{t('student.today')}</h3>
         </div>
         <p className="text-base md:text-lg font-display font-bold text-dark-900 mb-1 capitalize">
-          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {new Date().toLocaleDateString(appLocaleToDateLocale(i18n.language), {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+          })}
         </p>
         {todayCompleted ? (
           <p className="text-emerald-700 font-semibold text-base flex items-center gap-2">
-            <span>Treino de hoje concluído!</span>
+            <span>{t('student.todayWorkoutDone')}</span>
             <span className="text-xl" aria-hidden>🎉</span>
           </p>
         ) : (
           <p className="text-dark-600 text-sm">
-            {todayWorkout ? 'Você tem treino hoje!' : 'Dia de descanso'}
+            {todayWorkout ? t('student.workoutToday') : t('student.restDay')}
           </p>
         )}
         {streakStats !== null && (
@@ -556,7 +573,7 @@ function StudentDashboardHome({
               <span className="text-2xl" aria-hidden>🔥</span>
               <div>
                 <p className="text-dark-900 font-bold text-lg leading-tight">{streakStats.streak}</p>
-                <p className="text-dark-500 text-xs font-medium">dias seguidos</p>
+                <p className="text-dark-500 text-xs font-medium">{t('student.streakDays')}</p>
               </div>
             </div>
           </div>
@@ -566,7 +583,7 @@ function StudentDashboardHome({
       {loading ? (
         <div className="card-modern p-12 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-dark-500 mt-4">Carregando...</p>
+          <p className="text-dark-500 mt-4">{t('common.loading')}</p>
         </div>
       ) : todayWorkout ? (
         <div className="card-modern p-5 md:p-6">
@@ -1260,7 +1277,17 @@ interface StudentProfile {
   weight?: number;
   height?: number;
   trainingDays: string[];
-  personalTrainer?: { id: string; name: string; phone?: string; email?: string; logoUrl?: string | null };
+  paymentDueDay?: number | null;
+  isTrainingBlocked?: boolean;
+  personalTrainer?: {
+    id: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    logoUrl?: string | null;
+    brandPrimaryColor?: string | null;
+    brandSecondaryColor?: string | null;
+  };
 }
 
 function StudentPerfilPage({
@@ -1424,22 +1451,11 @@ function StudentPerfilPage({
               Sair da Conta
             </button>
           </div>
-
-          <div className="pt-4 mt-4 border-t border-red-100">
-            <h4 className="text-sm font-display font-bold text-red-800 mb-1">Zona de perigo</h4>
-            <p className="text-xs text-dark-500 mb-3">
-              Excluir sua conta remove seu histórico de treinos e evolução de forma permanente.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowDeleteAccount(true)}
-              className="w-full md:w-auto px-4 py-2.5 border-2 border-red-300 text-red-700 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-1.5"
-            >
-              <Trash2 className="w-4 h-4" />
-              Excluir minha conta
-            </button>
-          </div>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <AccountDeletionSection userType="student" onDelete={() => setShowDeleteAccount(true)} />
       </div>
 
       {showDeleteAccount && (
