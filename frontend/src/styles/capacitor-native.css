@@ -1,39 +1,27 @@
 /**
- * Layout nativo: scroll no conteúdo, header/nav fixos, safe areas reduzidas.
+ * Layout nativo: scroll no conteúdo, header/nav fixos, respeitando safe areas.
  */
 html.capacitor-native {
-  --safe-inset-factor: 0.5;
-  /* Inferior mais compacta, como Instagram/WhatsApp (ícones na barra, pouco vão abaixo) */
-  --safe-bottom-factor: 0.18;
-  --safe-top: max(
-    4px,
-    calc(
-      env(safe-area-inset-top, constant(safe-area-inset-top, 0px)) * var(--safe-inset-factor)
-    )
-  );
-  --safe-right: max(
-    0px,
-    calc(
-      env(safe-area-inset-right, constant(safe-area-inset-right, 0px)) * var(--safe-inset-factor)
-    )
-  );
-  --safe-bottom: max(
-    6px,
-    calc(
-      env(safe-area-inset-bottom, constant(safe-area-inset-bottom, 0px)) *
-        var(--safe-bottom-factor)
-    )
-  );
-  --safe-left: max(
-    0px,
-    calc(
-      env(safe-area-inset-left, constant(safe-area-inset-left, 0px)) * var(--safe-inset-factor)
-    )
-  );
+  --safe-top-env: env(safe-area-inset-top, constant(safe-area-inset-top, 0px));
+  --safe-right-env: env(safe-area-inset-right, constant(safe-area-inset-right, 0px));
+  --safe-bottom-env: env(safe-area-inset-bottom, constant(safe-area-inset-bottom, 0px));
+  --safe-left-env: env(safe-area-inset-left, constant(safe-area-inset-left, 0px));
+  --safe-top-extra: 6px;
+  --safe-bottom-extra: 4px;
+  --safe-top: calc(var(--safe-top-env) + var(--safe-top-extra));
+  --safe-right: var(--safe-right-env);
+  --safe-bottom: calc(var(--safe-bottom-env) + var(--safe-bottom-extra));
+  --safe-left: var(--safe-left-env);
   --native-header-h: 3.5rem;
   --native-bottom-nav: 3.5rem;
   width: 100%;
   max-width: 100%;
+}
+
+/* Android: WebView não reporta env(safe-area-inset-bottom) — mínimo = barra de 3 botões */
+html.capacitor-native.capacitor-android {
+  --safe-top-env: max(1.75rem, env(safe-area-inset-top, 0px));
+  --safe-bottom-env: max(48px, env(safe-area-inset-bottom, 0px));
 }
 
 html.capacitor-native,
@@ -66,11 +54,28 @@ html.capacitor-native .native-app-layout {
   overflow: hidden;
 }
 
+/* Header maior na visão do aluno (logo acima + nome do personal) */
+html.capacitor-native .student-app-layout {
+  --native-header-h: 6.25rem;
+}
+
+@media (min-width: 640px) {
+  html.capacitor-native .student-app-layout {
+    --native-header-h: 6.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  html.capacitor-native .student-app-layout {
+    --native-header-h: 7.25rem;
+  }
+}
+
 html.capacitor-native .native-app-header {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  left: var(--safe-left);
+  right: var(--safe-right);
   z-index: 50;
   flex-shrink: 0;
   padding-top: var(--safe-top);
@@ -87,7 +92,9 @@ html.capacitor-native .native-app-main {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
   margin-top: calc(var(--native-header-h) + var(--safe-top));
-  padding-bottom: calc(var(--native-bottom-nav) + var(--safe-bottom)) !important;
+  padding-bottom: calc(
+    var(--native-bottom-nav) + var(--safe-bottom-env) + var(--safe-bottom-extra)
+  ) !important;
   box-sizing: border-box;
 }
 
@@ -98,9 +105,103 @@ html.capacitor-native .native-bottom-nav {
   right: var(--safe-right);
   z-index: 50;
   width: auto;
-  /* Barra encosta na base; só um respiro mínimo sobre o home indicator */
-  padding-bottom: max(4px, calc(var(--safe-bottom) * 0.65));
+  /* Padding empurra os botões da navbar acima da barra do sistema Android */
+  padding-bottom: calc(var(--safe-bottom-env) + var(--safe-bottom-extra));
   box-sizing: border-box;
+}
+
+html.capacitor-native .native-bottom-nav-inner {
+  display: grid;
+  width: 100%;
+  height: var(--native-bottom-nav);
+  min-height: var(--native-bottom-nav);
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+/* Tab bar do aluno: conteúdo encostado acima da safe area, ícones centralizados */
+html.capacitor-native .student-bottom-nav {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+html.capacitor-native .student-bottom-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  height: var(--native-bottom-nav);
+  min-height: var(--native-bottom-nav);
+  align-items: stretch;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+}
+
+html.capacitor-native .student-bottom-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.1;
+  transition: color 0.2s, background-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.capacitor-native .student-bottom-nav-btn--active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+}
+
+/* Web (sem classe capacitor-native) */
+.student-bottom-nav {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.student-bottom-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  align-items: stretch;
+  padding: 0 0.25rem;
+}
+
+.student-bottom-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 100%;
+  width: 100%;
+  border: none;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.student-bottom-nav-btn--active {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
 }
 
 /* Evita espaço duplo dentro da área rolável */
@@ -149,6 +250,16 @@ html.capacitor-native .min-h-screen.flex:not(.native-app-layout) {
   padding-bottom: max(0.5rem, var(--safe-bottom));
   padding-left: max(0.5rem, var(--safe-left));
   padding-right: max(0.5rem, var(--safe-right));
+}
+
+/* Headers sticky em páginas auxiliares (termos, privacidade) */
+html.capacitor-native header.sticky,
+html.capacitor-native .sticky.top-0 {
+  top: 0;
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  box-sizing: border-box;
 }
 
 /* Modais */
