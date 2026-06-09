@@ -10,6 +10,7 @@ import { isNativeApp, nativePlatform } from '../lib/nativeStoreBilling';
 import { getPurchaseErrorMessage } from '../lib/purchaseErrors';
 import { openExternalUrl } from '../lib/openExternalUrl';
 import { openNativeSubscriptionManagement, purchaseProSubscription } from '../lib/storePurchase';
+import { storePlatformKey } from '../lib/storePlatformText';
 import { SubscriptionLegalDisclosure } from './SubscriptionLegalDisclosure';
 
 type Props = {
@@ -63,7 +64,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
       const platform = detectManagePlatform();
       const url = platform === 'ios' ? info.manageUrls.ios : info.manageUrls.android;
       await openExternalUrl(url);
-      setMessage(info.message);
+      setMessage(t(storePlatformKey('subscription.cancelHint')));
     } catch (err: unknown) {
       const apiErr = err as {
         response?: { data?: { error?: string; manageUrls?: SubscriptionStatus['manageUrls'] } };
@@ -154,7 +155,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           )}
           {t('subscription.manageOrCancel')}
         </button>
-        <p className="text-xs text-dark-500">{t('subscription.cancelNote')}</p>
+        <p className="text-xs text-dark-500">{t(storePlatformKey('subscription.cancelNote'))}</p>
         <SubscriptionLegalDisclosure />
         {message && <p className="text-sm text-emerald-700">{message}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -174,7 +175,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
             <p className="text-sm text-dark-500 mt-1">{t('subscription.proSubtitle')}</p>
           </div>
           <span className="text-xs font-medium text-accent-700 bg-accent-100 px-2 py-1 rounded-full">
-            {t('subscription.storeBadge')}
+            {t(storePlatformKey('subscription.storeBadge'))}
           </span>
         </div>
         <div className="rounded-lg bg-white/80 border border-accent-100 p-3 mb-4 text-sm text-dark-700 space-y-1">
@@ -182,7 +183,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
             <strong>{t('subscription.productName')}</strong>
           </p>
           <p>{t('subscription.autoRenew')}</p>
-          <p className="text-dark-500 text-xs">{t('subscription.priceNote')}</p>
+          <p className="text-dark-500 text-xs">{t(storePlatformKey('subscription.priceNote'))}</p>
         </div>
         <ul className="space-y-1.5 text-sm text-dark-600 mb-4">
           <li className="flex items-center gap-2">
@@ -192,7 +193,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
             <span className="text-emerald-500">✓</span> {t('subscription.benefitAllFeatures')}
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-emerald-500">✓</span> {t('subscription.benefitSecurePay')}
+            <span className="text-emerald-500">✓</span> {t(storePlatformKey('subscription.benefitSecurePay'))}
           </li>
         </ul>
         <button
@@ -206,7 +207,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           ) : (
             <>
               <Smartphone className="w-5 h-5" />
-              {isNativeApp() ? t('subscription.subscribeNow') : t('subscription.subscribeViaStore')}
+              {isNativeApp() ? t('subscription.subscribeNow') : t(storePlatformKey('subscription.subscribeViaStore'))}
             </>
           )}
         </button>

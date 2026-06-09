@@ -34,20 +34,21 @@ export async function purchaseProSubscription(): Promise<void> {
     throw new Error('Compras in-app disponíveis apenas no app móvel.');
   }
 
+  const platform = nativePlatform();
+
   try {
     await assertBillingSupported();
 
-    const platform = nativePlatform();
-    const { products } = await NativePurchases.getProducts({
-      productIdentifiers: [PRODUCT_ID],
-      productType: PURCHASE_TYPE.SUBS,
-    });
-    if (!products?.length) {
-      throw new Error(
-        platform === 'android'
-          ? `Assinatura "${PRODUCT_ID}" não encontrada na Google Play. Confira se o produto e o plano "${PLAN_ID}" estão ativos no Play Console.`
-          : `Produto "${PRODUCT_ID}" não encontrado. No Xcode: Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration = GymCode.storekit`
-      );
+    if (platform === 'android') {
+      const { products } = await NativePurchases.getProducts({
+        productIdentifiers: [PRODUCT_ID],
+        productType: PURCHASE_TYPE.SUBS,
+      });
+      if (!products?.length) {
+        throw new Error(
+          `Assinatura "${PRODUCT_ID}" não encontrada na Google Play. Confira se o produto e o plano "${PLAN_ID}" estão ativos no Play Console.`
+        );
+      }
     }
 
     const tx = await NativePurchases.purchaseProduct({
@@ -75,9 +76,14 @@ export async function purchaseProSubscription(): Promise<void> {
     if (/cancel/i.test(msg)) {
       throw new Error('Compra cancelada.');
     }
-    if (/cannot find product/i.test(msg)) {
+    if (platform === 'ios' && /cannot find product/i.test(msg)) {
       throw new Error(
-        `Produto "${PRODUCT_ID}" não encontrado na App Store. Confira o ID em App Store Connect e o StoreKit Configuration no Xcode.`
+        `Assinatura "${PRODUCT_ID}" indisponível na App Store. Verifique se o produto está ativo em App Store Connect e se o Acordo de Apps Pagos foi aceito.`
+      );
+    }
+    if (platform === 'android' && /cannot find product/i.test(msg)) {
+      throw new Error(
+        `Assinatura "${PRODUCT_ID}" não encontrada na Google Play. Confira o Play Console.`
       );
     }
     throw new Error(msg);

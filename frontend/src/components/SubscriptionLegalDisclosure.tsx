@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from 'react-i18next';
 import { APPLE_STANDARD_EULA_URL, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../lib/legalUrls';
+import { storePlatformKey } from '../lib/storePlatformText';
 
 type Props = {
   className?: string;
@@ -11,9 +12,12 @@ export function SubscriptionLegalDisclosure({ className = '' }: Props) {
   return (
     <div className={`text-xs text-dark-500 space-y-2 ${className}`}>
       <p>
-        <Trans i18nKey="legal.disclosure" components={{ strong: <strong className="text-dark-700" /> }} />
+        <Trans
+          i18nKey={storePlatformKey('legal.disclosure')}
+          components={{ strong: <strong className="text-dark-700" /> }}
+        />
       </p>
-      <p>{t('legal.cancelHow')}</p>
+      <p>{t(storePlatformKey('legal.cancelHow'))}</p>
       <p className="flex flex-wrap gap-x-3 gap-y-1">
         <a
           href={PRIVACY_POLICY_URL}

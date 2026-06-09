@@ -1,55 +1,77 @@
 # Reenvio Apple — correções da rejeição (jun/2026)
 
-## O que foi corrigido no app
+## Rejeição mais recente (09/06/2026 — versão 1.0 build 9)
 
-| Guideline | Correção |
-|-----------|----------|
-| **2.1(a) Crash iPad — Take Photo** | `NSCameraUsageDescription` e `NSPhotoLibraryUsageDescription` no `Info.plist`; upload de logo ajustado |
-| **5.1.1(v) Exclusão de conta** | Seção **Excluir conta permanentemente** visível em Perfil (personal e aluno) |
-| **3.1.2(c) Assinatura** | Links Privacidade, Termos e EULA Apple no painel de assinatura + detalhes do plano |
-| **2.1 Demo expirada** | Conta de demonstração abaixo (configurar no App Store Connect) |
+| Guideline | Problema | Correção |
+|-----------|----------|----------|
+| **3.1.2(c)** | Falta link de EULA nos **metadados** da App Store | Adicionar links na **descrição do app** no App Store Connect (ver abaixo) |
+| **2.1(b)** | Erro ao comprar assinatura no sandbox (iPad) | Fluxo iOS ajustado + conferir produto `gymcode_pro_monthly` e **Paid Apps Agreement** |
+| **2.3.10** | Menções à Google Play na tela de assinatura iOS | Textos da assinatura agora são **só App Store** no iOS |
 
 ---
 
-## Texto para colar em App Review Information (App Store Connect)
+## 1. Metadados App Store Connect (obrigatório — 3.1.2c)
 
-### Sign-in required — YES
-
-**User name:** `review@gymcode.demo`  
-**Password:** `(defina uma senha e crie a conta, ou use sua conta de teste)`
-
-**Notas para o revisor:**
+Na ficha do app → **App iOS** → **Informações do app** / **Descrição**, adicione **no final**:
 
 ```
-Demo account (personal trainer) — subscription EXPIRED (free plan, 2 students max):
+Termos de Uso: https://mygymcode.com/termos
+Política de Privacidade: https://mygymcode.com/privacidade
+EULA Apple (padrão): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+```
+
+**URL Política de Privacidade** (campo dedicado):
+
+```
+https://mygymcode.com/privacidade
+```
+
+Se usar EULA customizado em vez do padrão Apple: **App Store Connect → App → Informações do app → Contrato de licença (EULA)**.
+
+---
+
+## 2. Acordo de Apps Pagos (2.1b)
+
+**App Store Connect → Acordos, impostos e banking → Acordos**
+
+- Aceite o **Paid Apps Agreement** (Contrato de apps pagos)
+- Sem isso, compras sandbox falham na revisão
+
+---
+
+## 3. Assinatura no App Store Connect
+
+| Campo | Valor |
+|--------|--------|
+| Product ID | `gymcode_pro_monthly` |
+| Grupo | Gym Code Pro |
+| Localização | Português (Brasil) + English (U.S.) com nome e descrição |
+| Status | Ativo / pronto para envio |
+
+Teste no iPhone/iPad com **Sandbox Apple ID** antes de reenviar.
+
+---
+
+## 4. Conta demo para revisão
+
+**App Review Information → Sign-in required: Yes**
+
+```
+Personal trainer demo — EXPIRED subscription (free plan, 2 students max):
 
 Email: SEU_EMAIL_DE_TESTE
 Password: SUA_SENHA
 
-Steps to test subscription:
-1. Log in as personal trainer
-2. Go to Perfil (bottom tab)
-3. Scroll to "Plano Pro" → tap "Assinar Pro agora"
-4. Complete sandbox purchase (Sandbox Apple ID on device)
+Subscription test: Perfil → Plano Pro → Assinar Pro agora (sandbox).
 
-Account deletion:
-1. Perfil tab → section "Excluir conta" → "Excluir conta permanentemente"
-2. Follow 4-step confirmation (type EXCLUIR + password)
+Account deletion: Perfil → Excluir conta permanentemente.
 
 Privacy: https://mygymcode.com/privacidade
 Terms: https://mygymcode.com/termos
 Apple EULA: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-
-Logo upload (iPad fix): Perfil → Logo do personal → Escolher da galeria (camera now has permission strings).
 ```
 
-### Criar conta demo com assinatura expirada
-
-No servidor, a conta deve ter:
-- `maxStudentsAllowed = 2` (plano gratuito)
-- `storeSubscriptionId = null`
-
-Exemplo SQL (ajuste o e-mail):
+SQL para conta expirada:
 
 ```sql
 UPDATE personal_trainers
@@ -57,40 +79,41 @@ SET "maxStudentsAllowed" = 2, "storeSubscriptionId" = NULL
 WHERE email = 'review@gymcode.demo';
 ```
 
-Ou use sua conta `viniciusalves919@gmail.com` já rebaixada para gratuito.
+---
+
+## 5. Nova build
+
+```bash
+cd frontend
+npm run mobile:bundle:ios
+```
+
+Versão atual: **1.0.5** (build **10**)
+
+No App Store Connect: selecionar build **10** na versão **1.0.5** → **Enviar para análise**.
 
 ---
 
-## Metadados App Store Connect
+## 6. Resposta sugerida ao App Review (inglês)
 
-**URL Política de Privacidade:**
 ```
-https://mygymcode.com/privacidade
-```
+We addressed all three points:
 
-**Na descrição do app, adicionar ao final:**
-```
-Termos de Uso: https://mygymcode.com/termos
-EULA Apple: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+1. Guideline 3.1.2(c): Added Terms of Use, Privacy Policy, and Apple Standard EULA links to the App Store description and in-app subscription screen.
+
+2. Guideline 2.1(b): Fixed iOS subscription purchase flow; confirmed gymcode_pro_monthly is active and Paid Apps Agreement is accepted. Demo account has expired subscription for sandbox purchase testing.
+
+3. Guideline 2.3.10: Removed all Google Play references from the subscription UI on iOS — only App Store wording is shown.
+
+Please test with the demo account provided in App Review Information.
 ```
 
 ---
 
-## Nova build
+## Correções anteriores (ainda válidas)
 
-1. `cd frontend && npm run mobile:bundle:ios`  
-   (ou `npm run mobile:sync:ios` + Xcode → Archive → Upload)
-2. Versão **1.0.4**, build **8**
-3. Selecionar build na versão 1.0.4 no App Store Connect
-4. Responder à mensagem de rejeição no App Store Connect explicando as correções
-
----
-
-## Gravação para Apple (opcional mas recomendado)
-
-Grave no iPhone físico:
-1. Login com conta demo
-2. Perfil → Excluir conta → fluxo completo (pode cancelar no último passo)
-3. Perfil → Assinar Pro → tela com links legais visíveis
-
-Anexe em **App Review Information → Notes** ou responda ao ticket.
+| Guideline | Correção |
+|-----------|----------|
+| **2.1(a) Crash iPad** | `NSCameraUsageDescription` e `NSPhotoLibraryUsageDescription` no `Info.plist` |
+| **5.1.1(v) Exclusão de conta** | Perfil → Excluir conta permanentemente |
+| **3.1.2(c) In-app** | Links legais no painel de assinatura |

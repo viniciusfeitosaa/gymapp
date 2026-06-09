@@ -437,7 +437,11 @@
   "subscription": {
     "loadError": "Impossible de charger le statut de l'abonnement.",
     "activated": "Abonnement Pro activé avec succès !",
-    "cancelHint": "Pour annuler, ouvrez les paramètres d'abonnement de l'App Store ou Google Play.",
+    "cancelHint": {
+      "ios": "Para cancelar, abre Ajustes → Apple ID → Suscripciones.",
+      "android": "To cancel, open play.google.com/store/account/subscriptions.",
+      "web": "To cancel, open subscription settings in the App Store or Google Play."
+    },
     "openSettingsError": "Impossible d'ouvrir les paramètres d'abonnement.",
     "openDeviceSettings": "Ouvrez les paramètres d'abonnement de votre appareil.",
     "storeMessage": "Ouvrez l'app Gym Code dans le store et abonnez-vous au plan Pro.",
@@ -455,17 +459,37 @@
     "proActiveDesc": "You have unlimited students and all plan benefits.",
     "linkedToStore": "Subscription linked to your store account.",
     "manageOrCancel": "Manage or cancel subscription",
-    "cancelNote": "Cancel in App Store or Google Play settings. You keep Pro until the paid period ends.",
+    "cancelNote": {
+      "ios": "Cancela en Ajustes → Apple ID → Suscripciones. Mantienes Pro hasta el fin del período pagado.",
+      "android": "Cancel in play.google.com → Subscriptions. You keep Pro until the paid period ends.",
+      "web": "Cancel in App Store or Google Play settings. You keep Pro until the paid period ends."
+    },
     "proSubtitle": "Unlimited students and priority support",
-    "storeBadge": "App Store / Google Play",
+    "storeBadge": {
+      "ios": "App Store",
+      "android": "Google Play",
+      "web": "App Store / Google Play"
+    },
     "productName": "Gym Code Pro Monthly",
     "autoRenew": "Auto-renewal · 1 month period",
-    "priceNote": "Exact price is shown by App Store or Google Play before confirmation.",
+    "priceNote": {
+      "ios": "Exact price is shown by the App Store before confirmation.",
+      "android": "Exact price is shown by Google Play before confirmation.",
+      "web": "Exact price is shown by the App Store or Google Play before confirmation."
+    },
     "benefitUnlimited": "Unlimited students",
     "benefitAllFeatures": "All app features",
-    "benefitSecurePay": "Secure payment via Apple or Google",
+    "benefitSecurePay": {
+      "ios": "Secure payment via Apple",
+      "android": "Secure payment via Google",
+      "web": "Secure payment via Apple or Google"
+    },
     "subscribeNow": "Subscribe to Pro now",
-    "subscribeViaStore": "Subscribe via App Store / Google Play",
+    "subscribeViaStore": {
+      "ios": "Subscribe via App Store",
+      "android": "Subscribe via Google Play",
+      "web": "Subscribe via App Store / Google Play"
+    },
     "browserNote": "In the browser, you will be redirected to your phone store. Subscription only works in the Gym Code mobile app."
   },
   "register": {
@@ -543,8 +567,16 @@
     "confirmPhrase": "DELETE"
   },
   "legal": {
-    "disclosure": "<strong>Gym Code Pro Monthly</strong> — auto-renewing subscription every 1 month. Price shown on App Store/Google Play at purchase will be charged and renewed unless cancelled at least 24 hours before the current period ends.",
-    "cancelHow": "Cancel in Settings → Apple ID → Subscriptions (iOS) or play.google.com → Subscriptions (Android).",
+    "disclosure": {
+      "ios": "<strong>Gym Code Pro Monthly</strong> — auto-renewing subscription every 1 month. Price shown on the App Store at purchase will be charged and renewed unless cancelled at least 24 hours before the current period ends.",
+      "android": "<strong>Gym Code Pro Monthly</strong> — auto-renewing subscription every 1 month. Price shown on Google Play at purchase will be charged and renewed unless cancelled at least 24 hours before the current period ends.",
+      "web": "<strong>Gym Code Pro Monthly</strong> — auto-renewing subscription every 1 month. Price shown on the App Store or Google Play at purchase will be charged and renewed unless cancelled at least 24 hours before the current period ends."
+    },
+    "cancelHow": {
+      "ios": "Cancela en Ajustes → Apple ID → Suscripciones.",
+      "android": "Cancel in play.google.com → Subscriptions.",
+      "web": "Cancel in Settings → Apple ID → Subscriptions (iOS) or play.google.com → Subscriptions (Android)."
+    },
     "privacy": "Privacy Policy",
     "terms": "Terms of Use",
     "eula": "Apple EULA"

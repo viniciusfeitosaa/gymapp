@@ -200,7 +200,11 @@
   "subscription": {
     "loadError": "Não foi possível carregar o status da assinatura.",
     "activated": "Assinatura Pro ativada com sucesso!",
-    "cancelHint": "Para cancelar, abra as configurações de assinatura da App Store ou Google Play.",
+    "cancelHint": {
+      "ios": "Para cancelar, abra Ajustes → Apple ID → Assinaturas.",
+      "android": "Para cancelar, abra play.google.com/store/account/subscriptions.",
+      "web": "Para cancelar, abra as configurações de assinatura da App Store ou Google Play."
+    },
     "openSettingsError": "Não foi possível abrir as configurações de assinatura.",
     "openDeviceSettings": "Abra as configurações de assinatura do seu dispositivo.",
     "storeMessage": "Abra o app Gym Code na loja e assine o plano Pro. Sua conta será atualizada automaticamente após a compra.",
@@ -218,17 +222,37 @@
     "proActiveDesc": "Você tem acesso a alunos ilimitados e todos os benefícios do plano.",
     "linkedToStore": "Assinatura vinculada à sua conta nas lojas.",
     "manageOrCancel": "Gerenciar ou cancelar assinatura",
-    "cancelNote": "O cancelamento é feito nas configurações da App Store ou Google Play. Você mantém o Pro até o fim do período pago.",
+    "cancelNote": {
+      "ios": "O cancelamento é feito em Ajustes → Apple ID → Assinaturas. Você mantém o Pro até o fim do período pago.",
+      "android": "O cancelamento é feito em play.google.com → Assinaturas. Você mantém o Pro até o fim do período pago.",
+      "web": "O cancelamento é feito nas configurações da App Store ou Google Play. Você mantém o Pro até o fim do período pago."
+    },
     "proSubtitle": "Alunos ilimitados e suporte prioritário",
-    "storeBadge": "App Store / Google Play",
+    "storeBadge": {
+      "ios": "App Store",
+      "android": "Google Play",
+      "web": "App Store / Google Play"
+    },
     "productName": "Gym Code Pro Mensal",
     "autoRenew": "Renovação automática · período de 1 mês",
-    "priceNote": "O preço exato é exibido pela App Store ou Google Play antes da confirmação.",
+    "priceNote": {
+      "ios": "O preço exato é exibido pela App Store antes da confirmação.",
+      "android": "O preço exato é exibido pela Google Play antes da confirmação.",
+      "web": "O preço exato é exibido pela App Store ou Google Play antes da confirmação."
+    },
     "benefitUnlimited": "Alunos ilimitados",
     "benefitAllFeatures": "Todos os recursos do app",
-    "benefitSecurePay": "Pagamento seguro via Apple ou Google",
+    "benefitSecurePay": {
+      "ios": "Pagamento seguro via Apple",
+      "android": "Pagamento seguro via Google",
+      "web": "Pagamento seguro via Apple ou Google"
+    },
     "subscribeNow": "Assinar Pro agora",
-    "subscribeViaStore": "Assinar via App Store / Google Play",
+    "subscribeViaStore": {
+      "ios": "Assinar via App Store",
+      "android": "Assinar via Google Play",
+      "web": "Assinar via App Store / Google Play"
+    },
     "browserNote": "No navegador, você será direcionado à loja do seu celular. A assinatura só funciona no app móvel Gym Code."
   },
   "register": {
@@ -306,8 +330,16 @@
     "confirmPhrase": "EXCLUIR"
   },
   "legal": {
-    "disclosure": "<strong>Gym Code Pro Mensal</strong> — assinatura com renovação automática a cada 1 mês. O preço exibido na App Store/Google Play no momento da compra será cobrado na confirmação e renovado automaticamente, salvo cancelamento até 24 horas antes do fim do período atual.",
-    "cancelHow": "Cancele em Ajustes → Apple ID → Assinaturas (iOS) ou em play.google.com → Assinaturas (Android).",
+    "disclosure": {
+      "ios": "<strong>Gym Code Pro Mensal</strong> — assinatura com renovação automática a cada 1 mês. O preço exibido na App Store no momento da compra será cobrado na confirmação e renovado automaticamente, salvo cancelamento até 24 horas antes do fim do período atual.",
+      "android": "<strong>Gym Code Pro Mensal</strong> — assinatura com renovação automática a cada 1 mês. O preço exibido na Google Play no momento da compra será cobrado na confirmação e renovado automaticamente, salvo cancelamento até 24 horas antes do fim do período atual.",
+      "web": "<strong>Gym Code Pro Mensal</strong> — assinatura com renovação automática a cada 1 mês. O preço exibido na App Store ou Google Play no momento da compra será cobrado na confirmação e renovado automaticamente, salvo cancelamento até 24 horas antes do fim do período atual."
+    },
+    "cancelHow": {
+      "ios": "Cancele em Ajustes → Apple ID → Assinaturas.",
+      "android": "Cancele em play.google.com → Assinaturas.",
+      "web": "Cancele em Ajustes → Apple ID → Assinaturas (iOS) ou em play.google.com → Assinaturas (Android)."
+    },
     "privacy": "Política de Privacidade",
     "terms": "Termos de Uso",
     "eula": "EULA Apple"
