@@ -1,21 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import type { StudentBrandPersonal } from '../components/StudentBrandMark';
+import { brandThemeToCssVars, resolveBrandTheme, type BrandTheme } from '../lib/brandTheme';
 
 type PersonalTrainerFromApi = StudentBrandPersonal & { id?: string; phone?: string };
 
-/** Sincroniza logo/nome do personal e expõe dados de marca para a visão do aluno. */
+/** Sincroniza logo/nome/cores do personal e expõe dados de marca para a visão do aluno. */
 export function useStudentBrand() {
   const { user, userType, updateUser } = useAuth();
 
-  const personal: StudentBrandPersonal | null =
-    user?.personalTrainer?.name
-      ? {
-          name: user.personalTrainer.name,
-          logoUrl: user.personalTrainer.logoUrl,
-        }
-      : null;
+  const personal: StudentBrandPersonal | null = useMemo(() => {
+    if (!user?.personalTrainer?.name) return null;
+    return {
+      name: user.personalTrainer.name,
+      logoUrl: user.personalTrainer.logoUrl,
+      brandPrimaryColor: user.personalTrainer.brandPrimaryColor,
+      brandSecondaryColor: user.personalTrainer.brandSecondaryColor,
+    };
+  }, [user?.personalTrainer]);
+
+  const theme: BrandTheme = useMemo(
+    () => resolveBrandTheme(personal?.brandPrimaryColor, personal?.brandSecondaryColor),
+    [personal?.brandPrimaryColor, personal?.brandSecondaryColor]
+  );
+
+  const themeStyle = useMemo(() => brandThemeToCssVars(theme), [theme]);
 
   useEffect(() => {
     if (userType !== 'student' || !user?.id) return;
@@ -28,15 +38,21 @@ export function useStudentBrand() {
         );
         const pt = res.data?.student?.personalTrainer;
         if (!cancelled && pt?.name) {
-          const nextLogo = pt.logoUrl ?? undefined;
           const cur = user?.personalTrainer;
-          if (cur?.name !== pt.name || cur?.logoUrl !== nextLogo) {
+          const changed =
+            cur?.name !== pt.name ||
+            cur?.logoUrl !== (pt.logoUrl ?? undefined) ||
+            cur?.brandPrimaryColor !== (pt.brandPrimaryColor ?? undefined) ||
+            cur?.brandSecondaryColor !== (pt.brandSecondaryColor ?? undefined);
+          if (changed) {
             updateUser({
               personalTrainer: {
                 id: pt.id ?? cur?.id ?? '',
                 name: pt.name,
                 phone: pt.phone ?? cur?.phone,
-                logoUrl: nextLogo,
+                logoUrl: pt.logoUrl,
+                brandPrimaryColor: pt.brandPrimaryColor,
+                brandSecondaryColor: pt.brandSecondaryColor,
               },
             });
           }
@@ -59,5 +75,10 @@ export function useStudentBrand() {
     };
   }, [userType, personal?.name]);
 
-  return { personal, brandName: personal?.name ?? 'Meu Personal' };
+  return {
+    personal,
+    theme,
+    themeStyle,
+    brandName: personal?.name ?? 'Meu Personal',
+  };
 }

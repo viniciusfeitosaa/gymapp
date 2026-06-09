@@ -32,7 +32,7 @@ function loadEnvFile(rel) {
 loadEnvFile('.env');
 loadEnvFile('.env.local');
 
-const appId = (process.env.CAPACITOR_APP_ID || 'com.gymcode.app').trim();
+const appId = (process.env.CAPACITOR_APP_ID || 'com.mygymcode.app').trim();
 const appName = (process.env.CAPACITOR_APP_NAME || 'Gym Code').trim();
 const useBundled = process.env.CAPACITOR_USE_BUNDLED === '1';
 let serverUrl = (process.env.CAPACITOR_SERVER_URL || 'https://mygymcode.com/login').trim();

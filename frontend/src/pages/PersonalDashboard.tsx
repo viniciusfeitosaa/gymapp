@@ -410,8 +410,8 @@ export default function PersonalDashboard() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="native-bottom-nav md:hidden bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="native-bottom-nav-inner grid grid-cols-4">
+      <nav className="native-bottom-nav md:hidden bg-white border-t border-dark-200 shadow-strong z-50 box-border">
+        <div className="native-bottom-nav-inner grid grid-cols-4 min-h-[3.5rem]">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -2077,7 +2077,7 @@ function PerfilPage() {
               </div>
             )}
             {isPro && (
-              <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title="Plano Pro">
+              <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-400 text-amber-900 shadow-medium ring-2 ring-white" title={t('personal.profile.proPlanTitle')}>
                 <Crown className="w-3 h-3 md:w-4 md:h-4" />
               </span>
             )}
@@ -2085,7 +2085,7 @@ function PerfilPage() {
           <div>
             <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 flex items-center gap-2">
               {user?.name}
-              {isPro && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">Pro</span>}
+              {isPro && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">{t('personal.profile.proBadge')}</span>}
             </h3>
             <p className="text-dark-500 text-sm">{user?.email}</p>
           </div>
@@ -2102,7 +2102,7 @@ function PerfilPage() {
             {editing ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-dark-500 mb-1 block">Nome</label>
+                  <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.name')}</label>
                   <input
                     type="text"
                     value={form.name}
@@ -2111,22 +2111,22 @@ function PerfilPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-dark-500 mb-1 block">Email</label>
+                  <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.email')}</label>
                   <p className="text-dark-600 py-2">{user?.email}</p>
-                  <p className="text-xs text-dark-400">O email não pode ser alterado aqui.</p>
+                  <p className="text-xs text-dark-400">{t('personal.profile.emailReadonly')}</p>
                 </div>
                 <div>
-                  <label className="text-sm text-dark-500 mb-1 block">Telefone</label>
+                  <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.phone')}</label>
                   <input
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    placeholder="(11) 99999-9999"
+                    placeholder={t('personal.profile.phonePlaceholder')}
                     className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-dark-500 mb-1 block">CPF (opcional)</label>
+                  <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.taxId')}</label>
                   <input
                     type="text"
                     value={form.taxId}
@@ -2134,15 +2134,15 @@ function PerfilPage() {
                       const v = e.target.value.replace(/\D/g, '').slice(0, 11);
                       setForm((f) => ({ ...f, taxId: formatCpfDisplay(v) }));
                     }}
-                    placeholder="000.000.000-00"
+                    placeholder={t('personal.profile.taxIdPlaceholder')}
                     className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                   />
                 </div>
                 <div className="border-t border-dark-100 pt-4 mt-4">
-                  <p className="text-sm font-semibold text-dark-700 mb-3">Endereço (opcional)</p>
+                  <p className="text-sm font-semibold text-dark-700 mb-3">{t('personal.profile.addressOptional')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="md:col-span-2">
-                      <label className="text-sm text-dark-500 mb-1 block">CEP</label>
+                      <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.cep')}</label>
                       <input
                         type="text"
                         value={form.postalCode}
@@ -2150,47 +2150,47 @@ function PerfilPage() {
                           const v = e.target.value.replace(/\D/g, '').slice(0, 8);
                           setForm((f) => ({ ...f, postalCode: formatCepDisplay(v) }));
                         }}
-                        placeholder="00000-000"
+                        placeholder={t('personal.profile.cepPlaceholder')}
                         className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-dark-500 mb-1 block">Logradouro</label>
+                      <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.street')}</label>
                       <input
                         type="text"
                         value={form.address}
                         onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                        placeholder="Rua, avenida..."
+                        placeholder={t('personal.profile.streetPlaceholder')}
                         className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-dark-500 mb-1 block">Número</label>
+                      <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.number')}</label>
                       <input
                         type="text"
                         value={form.addressNumber}
                         onChange={(e) => setForm((f) => ({ ...f, addressNumber: e.target.value }))}
-                        placeholder="Nº ou S/N"
+                        placeholder={t('personal.profile.numberPlaceholder')}
                         className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-dark-500 mb-1 block">Complemento</label>
+                      <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.complement')}</label>
                       <input
                         type="text"
                         value={form.complement}
                         onChange={(e) => setForm((f) => ({ ...f, complement: e.target.value }))}
-                        placeholder="Apto, bloco..."
+                        placeholder={t('personal.profile.complementPlaceholder')}
                         className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-dark-500 mb-1 block">Bairro</label>
+                      <label className="text-sm text-dark-500 mb-1 block">{t('personal.profile.district')}</label>
                       <input
                         type="text"
                         value={form.province}
                         onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
-                        placeholder="Bairro"
+                        placeholder={t('personal.profile.districtPlaceholder')}
                         className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
                       />
                     </div>
@@ -2210,31 +2210,31 @@ function PerfilPage() {
                     onClick={() => { setEditing(false); setForm({ name: user?.name ?? '', phone: user?.phone ?? '', taxId: user?.taxId ? formatCpfDisplay(user.taxId) : '', address: user?.address ?? '', addressNumber: user?.addressNumber ?? '', complement: user?.complement ?? '', province: user?.province ?? '', postalCode: user?.postalCode ? formatCepDisplay(user.postalCode) : '' }); }}
                     className="px-4 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Nome</p>
+                  <p className="text-sm text-dark-500 mb-1">{t('personal.profile.name')}</p>
                   <p className="text-dark-900 font-semibold">{user?.name}</p>
                 </div>
                 <div className="bg-dark-50 rounded-lg p-4">
-                  <p className="text-sm text-dark-500 mb-1">Email</p>
+                  <p className="text-sm text-dark-500 mb-1">{t('personal.profile.email')}</p>
                   <p className="text-dark-900 font-semibold">{user?.email}</p>
                 </div>
                 {(user?.phone || user?.taxId) && (
                   <>
                     {user?.phone && (
                       <div className="bg-dark-50 rounded-lg p-4">
-                        <p className="text-sm text-dark-500 mb-1">Telefone</p>
+                        <p className="text-sm text-dark-500 mb-1">{t('personal.profile.phone')}</p>
                         <p className="text-dark-900 font-semibold">{user.phone}</p>
                       </div>
                     )}
                     {user?.taxId && (
                       <div className="bg-dark-50 rounded-lg p-4">
-                        <p className="text-sm text-dark-500 mb-1">CPF</p>
+                        <p className="text-sm text-dark-500 mb-1">{t('personal.profile.taxIdLabel')}</p>
                         <p className="text-dark-900 font-semibold">{formatCpfDisplay(user.taxId)}</p>
                       </div>
                     )}
@@ -2242,10 +2242,10 @@ function PerfilPage() {
                 )}
                 {(user?.address || user?.postalCode) && (
                   <div className="bg-dark-50 rounded-lg p-4">
-                    <p className="text-sm text-dark-500 mb-1">Endereço</p>
+                    <p className="text-sm text-dark-500 mb-1">{t('personal.profile.address')}</p>
                     <p className="text-dark-900 font-semibold">
                       {[user.address, user.addressNumber && `nº ${user.addressNumber}`, user.complement, user.province].filter(Boolean).join(', ')}
-                      {user.postalCode && ` — CEP ${formatCepDisplay(user.postalCode)}`}
+                      {user.postalCode && ` — ${t('personal.profile.postalCodeInline', { code: formatCepDisplay(user.postalCode) })}`}
                     </p>
                   </div>
                 )}
@@ -2255,7 +2255,7 @@ function PerfilPage() {
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-200 text-dark-700 font-medium text-sm hover:bg-dark-50"
                 >
                   <Edit2 className="w-3 h-3" />
-                  Editar perfil e endereço
+                  {t('personal.profile.editProfile')}
                 </button>
               </div>
             )}
@@ -2270,7 +2270,7 @@ function PerfilPage() {
                   className="w-full md:w-auto px-4 py-2.5 border border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  Falar com suporte
+                  {t('personal.profile.contactSupport')}
                 </button>
               )}
               <button
@@ -2278,7 +2278,7 @@ function PerfilPage() {
                 className="w-full md:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl transition-colors inline-flex items-center justify-center gap-2 shadow-medium"
               >
                 <LogOut className="w-4 h-4" />
-                Sair da Conta
+                {t('personal.profile.logoutAccount')}
               </button>
             </div>
           </div>
@@ -2779,7 +2779,7 @@ function AddWorkoutModal({
                               onClick={() => saveExercise(exercise)}
                               disabled={!exercise.name || !exercise.sets || !exercise.reps}
                               className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Salvar na biblioteca"
+                              title={t('personal.workouts.saveToLibrary')}
                             >
                               <Copy className="w-4 h-4" />
                             </button>
@@ -2787,7 +2787,7 @@ function AddWorkoutModal({
                               type="button"
                               onClick={() => setExerciseToDeleteIndex(index)}
                               className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                              title="Excluir exercício"
+                              title={t('personal.workouts.deleteExercise')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -3121,12 +3121,12 @@ function EditWorkoutModal({
     e.preventDefault();
     
     if (!formData.dayOfWeek) {
-      setError('Selecione um dia da semana');
+      setError(t('errors.selectDayRequired'));
       return;
     }
 
     if (exercises.length === 0) {
-      setError('Adicione pelo menos um exercício');
+      setError(t('errors.addOneExercise'));
       return;
     }
 
@@ -3140,7 +3140,7 @@ function EditWorkoutModal({
       });
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao atualizar treino');
+      setError(err.response?.data?.error || t('errors.updateWorkout'));
     } finally {
       setLoading(false);
     }
@@ -3150,7 +3150,7 @@ function EditWorkoutModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-strong max-w-4xl w-full p-6 md:p-8 my-8 max-h-[85vh] overflow-y-auto animate-scaleIn">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">Editar Treino</h3>
+          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.workouts.editTitle')}</h3>
           <button
             onClick={onClose}
             className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
@@ -3169,20 +3169,20 @@ function EditWorkoutModal({
           <div className="grid grid-cols-1 gap-4">
             <div className="hidden" aria-hidden="true">
               <label className="block text-sm font-semibold text-dark-700 mb-2">
-                Aluno *
+                {t('personal.workouts.selectStudent')} *
               </label>
               <CustomSelect
                 value={formData.studentId}
                 onChange={(studentId) => setFormData({ ...formData, studentId })}
                 options={students.map((s) => ({ value: s.id, label: s.name }))}
-                placeholder="Selecione um aluno"
-                aria-label="Aluno"
+                placeholder={t('personal.workouts.selectStudentPlaceholder')}
+                aria-label={t('common.student')}
               />
             </div>
 
             <div className="hidden" aria-hidden="true">
               <label className="block text-sm font-semibold text-dark-700 mb-3">
-                Dia da Semana *
+                {t('personal.workouts.weekdaySingle')}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {daysOfWeek.map((day) => (
@@ -3205,7 +3205,7 @@ function EditWorkoutModal({
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
-              Nome do Treino *
+              {t('personal.workouts.workoutName')}
             </label>
             <input
               type="text"
@@ -3213,27 +3213,27 @@ function EditWorkoutModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="input-modern"
-              placeholder="Ex: Treino A - Peito e Tríceps"
+              placeholder={t('personal.workouts.workoutNamePlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-2">
-              Descrição
+              {t('personal.workouts.description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="input-modern"
               rows={2}
-              placeholder="Descreva o objetivo deste treino..."
+              placeholder={t('personal.workouts.descriptionPlaceholder')}
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-lg font-display font-bold text-dark-900">
-                Exercícios ({exercises.length})
+                {t('personal.workouts.exercisesTitle')} ({exercises.length})
               </h4>
               <button
                 type="button"
@@ -3241,15 +3241,15 @@ function EditWorkoutModal({
                 className="btn-primary text-sm inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Adicionar Exercício
+                {t('personal.workouts.addExercise')}
               </button>
             </div>
 
             {exercises.length === 0 ? (
               <div className="bg-dark-50 border-2 border-dashed border-dark-200 rounded-xl p-8 text-center">
                 <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">Nenhum exercício adicionado</p>
-                <p className="text-sm text-dark-400 mt-1">Clique em "Adicionar Exercício" para começar</p>
+                <p className="text-dark-500">{t('personal.workouts.noExercisesAdded')}</p>
+                <p className="text-sm text-dark-400 mt-1">{t('personal.workouts.noExercisesHint')}</p>
               </div>
             ) : (
               <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
@@ -3328,7 +3328,7 @@ function EditWorkoutModal({
                               type="button"
                               onClick={() => setExerciseToDeleteIndex(index)}
                               className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                              title="Excluir exercício"
+                              title={t('personal.workouts.deleteExercise')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -3444,7 +3444,7 @@ function EditWorkoutModal({
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"

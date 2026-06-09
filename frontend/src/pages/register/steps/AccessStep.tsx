@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { Lock, Phone, FileText } from 'lucide-react';
 import type { RegisterFormData } from '../registerTypes';
-
 import { registerInputWithIconClass, registerLabelClass } from '../registerStyles';
 
 type Props = {
@@ -9,11 +9,13 @@ type Props = {
 };
 
 export default function AccessStep({ formData, onChange }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={registerLabelClass}>Senha</label>
+          <label className={registerLabelClass}>{t('login.password')}</label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />
             <input
@@ -29,7 +31,7 @@ export default function AccessStep({ formData, onChange }: Props) {
           </div>
         </div>
         <div>
-          <label className={registerLabelClass}>Confirmar senha</label>
+          <label className={registerLabelClass}>{t('register.confirmPassword')}</label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />
             <input
@@ -48,7 +50,8 @@ export default function AccessStep({ formData, onChange }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={registerLabelClass}>
-            Telefone <span className="font-normal text-[#86868B]">(opcional)</span>
+            {t('register.phone')}{' '}
+            <span className="font-normal text-[#86868B]">({t('register.optional')})</span>
           </label>
           <div className="relative">
             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />
@@ -65,7 +68,8 @@ export default function AccessStep({ formData, onChange }: Props) {
         </div>
         <div>
           <label className={registerLabelClass}>
-            CREF <span className="font-normal text-[#86868B]">(opcional)</span>
+            {t('register.cref')}{' '}
+            <span className="font-normal text-[#86868B]">({t('register.optional')})</span>
           </label>
           <div className="relative">
             <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868B]" />

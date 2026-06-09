@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Gym Code</string>
     <string name="title_activity_main">Gym Code</string>
-    <string name="package_name">com.gymcode.app</string>
-    <string name="custom_url_scheme">com.gymcode.app</string>
+    <string name="package_name">com.mygymcode.app</string>
+    <string name="custom_url_scheme">com.mygymcode.app</string>
 </resources>

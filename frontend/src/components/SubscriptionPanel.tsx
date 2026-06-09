@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Crown, ExternalLink, Loader2, Smartphone } from 'lucide-react';
 import {
   fetchSubscriptionStatus,
@@ -9,6 +10,7 @@ import { isNativeApp, nativePlatform } from '../lib/nativeStoreBilling';
 import { getPurchaseErrorMessage } from '../lib/purchaseErrors';
 import { openExternalUrl } from '../lib/openExternalUrl';
 import { openNativeSubscriptionManagement, purchaseProSubscription } from '../lib/storePurchase';
+import { SubscriptionLegalDisclosure } from './SubscriptionLegalDisclosure';
 
 type Props = {
   isPro: boolean;
@@ -27,6 +29,7 @@ function detectManagePlatform(): 'ios' | 'android' {
 }
 
 export function SubscriptionPanel({ isPro, onProActivated }: Props) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -40,11 +43,11 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
       const data = await fetchSubscriptionStatus();
       setStatus(data);
     } catch {
-      setError('Não foi possível carregar o status da assinatura.');
+      setError(t('subscription.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadStatus();
@@ -62,20 +65,20 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
       await openExternalUrl(url);
       setMessage(info.message);
     } catch (err: unknown) {
-      const apiErr = err as { response?: { data?: { error?: string; manageUrls?: SubscriptionStatus['manageUrls'] } } };
+      const apiErr = err as {
+        response?: { data?: { error?: string; manageUrls?: SubscriptionStatus['manageUrls'] } };
+      };
       const urls = apiErr.response?.data?.manageUrls;
       if (urls) {
         const platform = detectManagePlatform();
         try {
           await openExternalUrl(platform === 'ios' ? urls.ios : urls.android);
-          setMessage(
-            'Para cancelar, abra as configurações de assinatura da App Store ou Google Play.'
-          );
+          setMessage(t('subscription.cancelHint'));
         } catch {
-          setError('Não foi possível abrir as configurações de assinatura.');
+          setError(t('subscription.openSettingsError'));
         }
       } else {
-        setError(apiErr.response?.data?.error || 'Abra as configurações de assinatura do seu dispositivo.');
+        setError(apiErr.response?.data?.error || t('subscription.openDeviceSettings'));
       }
     } finally {
       setActionLoading(false);
@@ -90,7 +93,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
     try {
       if (isNativeApp()) {
         await purchaseProSubscription();
-        setMessage('Assinatura Pro ativada com sucesso!');
+        setMessage(t('subscription.activated'));
         await loadStatus();
         onProActivated?.();
         return;
@@ -105,13 +108,9 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
 
       if (listing) {
         window.open(listing, '_blank', 'noopener,noreferrer');
-        setMessage(
-          'Abra o app Gym Code na loja e assine o plano Pro. Sua conta será atualizada automaticamente após a compra.'
-        );
+        setMessage(t('subscription.storeMessage'));
       } else {
-        setMessage(
-          'Baixe o app Gym Code na App Store (iPhone) ou Google Play (Android) para assinar o plano Pro com pagamento seguro das lojas.'
-        );
+        setMessage(t('subscription.downloadAppMessage'));
       }
     } catch (err: unknown) {
       setError(getPurchaseErrorMessage(err));
@@ -124,7 +123,7 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
     return (
       <div className="flex items-center gap-2 text-dark-500 text-sm py-2">
         <Loader2 className="w-4 h-4 animate-spin" />
-        Carregando assinatura…
+        {t('subscription.loadingPlan')}
       </div>
     );
   }
@@ -136,13 +135,11 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600">
             <Crown className="w-4 h-4" />
           </span>
-          <span className="font-display font-bold text-amber-800">Plano Pro ativo</span>
+          <span className="font-display font-bold text-amber-800">{t('subscription.proActive')}</span>
         </div>
-        <p className="text-amber-700/90 text-sm">
-          Você tem acesso a alunos ilimitados e todos os benefícios do plano.
-        </p>
+        <p className="text-amber-700/90 text-sm">{t('subscription.proActiveDesc')}</p>
         {status?.storeSubscriptionId && (
-          <p className="text-xs text-dark-400">Assinatura vinculada à sua conta nas lojas.</p>
+          <p className="text-xs text-dark-400">{t('subscription.linkedToStore')}</p>
         )}
         <button
           type="button"
@@ -150,12 +147,15 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           disabled={actionLoading}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 bg-white text-amber-900 text-sm font-semibold hover:bg-amber-50 transition-colors disabled:opacity-60"
         >
-          {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-          Gerenciar ou cancelar assinatura
+          {actionLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <ExternalLink className="w-4 h-4" />
+          )}
+          {t('subscription.manageOrCancel')}
         </button>
-        <p className="text-xs text-dark-500">
-          O cancelamento é feito nas configurações da App Store ou Google Play. Você mantém o Pro até o fim do período pago.
-        </p>
+        <p className="text-xs text-dark-500">{t('subscription.cancelNote')}</p>
+        <SubscriptionLegalDisclosure />
         {message && <p className="text-sm text-emerald-700">{message}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
@@ -169,18 +169,31 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           <div>
             <h5 className="font-display font-bold text-dark-900 flex items-center gap-2">
               <Crown className="w-5 h-5 text-amber-500" />
-              Plano Pro
+              {t('subscription.proPlan')}
             </h5>
-            <p className="text-sm text-dark-500 mt-1">Alunos ilimitados e suporte prioritário</p>
+            <p className="text-sm text-dark-500 mt-1">{t('subscription.proSubtitle')}</p>
           </div>
           <span className="text-xs font-medium text-accent-700 bg-accent-100 px-2 py-1 rounded-full">
-            App Store / Google Play
+            {t('subscription.storeBadge')}
           </span>
         </div>
+        <div className="rounded-lg bg-white/80 border border-accent-100 p-3 mb-4 text-sm text-dark-700 space-y-1">
+          <p>
+            <strong>{t('subscription.productName')}</strong>
+          </p>
+          <p>{t('subscription.autoRenew')}</p>
+          <p className="text-dark-500 text-xs">{t('subscription.priceNote')}</p>
+        </div>
         <ul className="space-y-1.5 text-sm text-dark-600 mb-4">
-          <li className="flex items-center gap-2"><span className="text-emerald-500">✓</span> Alunos ilimitados</li>
-          <li className="flex items-center gap-2"><span className="text-emerald-500">✓</span> Todos os recursos do app</li>
-          <li className="flex items-center gap-2"><span className="text-emerald-500">✓</span> Pagamento seguro via Apple ou Google</li>
+          <li className="flex items-center gap-2">
+            <span className="text-emerald-500">✓</span> {t('subscription.benefitUnlimited')}
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-emerald-500">✓</span> {t('subscription.benefitAllFeatures')}
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-emerald-500">✓</span> {t('subscription.benefitSecurePay')}
+          </li>
         </ul>
         <button
           type="button"
@@ -193,15 +206,16 @@ export function SubscriptionPanel({ isPro, onProActivated }: Props) {
           ) : (
             <>
               <Smartphone className="w-5 h-5" />
-              {isNativeApp() ? 'Assinar Pro agora' : 'Assinar via App Store / Google Play'}
+              {isNativeApp() ? t('subscription.subscribeNow') : t('subscription.subscribeViaStore')}
             </>
           )}
         </button>
+        <SubscriptionLegalDisclosure className="mt-4" />
       </div>
       {!isNativeApp() && (
         <p className="text-xs text-dark-500 flex items-start gap-2">
           <Smartphone className="w-4 h-4 shrink-0 mt-0.5" />
-          No navegador, você será direcionado à loja do seu celular. A assinatura só funciona no app móvel Gym Code.
+          {t('subscription.browserNote')}
         </p>
       )}
       {message && <p className="text-sm text-emerald-700">{message}</p>}

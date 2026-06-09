@@ -177,7 +177,7 @@ export class AuthController {
       // Buscar Personal Trainer
       const personal = await prisma.personalTrainer.findUnique({
         where: { email: data.email },
-        select: { id: true, name: true, email: true, phone: true, taxId: true, cref: true, password: true, logoUrl: true, address: true, addressNumber: true, complement: true, province: true, postalCode: true, maxStudentsAllowed: true },
+        select: { id: true, name: true, email: true, phone: true, taxId: true, cref: true, password: true, logoUrl: true, brandPrimaryColor: true, brandSecondaryColor: true, address: true, addressNumber: true, complement: true, province: true, postalCode: true, maxStudentsAllowed: true },
       });
 
       if (!personal) {
@@ -213,6 +213,8 @@ export class AuthController {
           cref: personal.cref,
           maxStudentsAllowed: personal.maxStudentsAllowed ?? 2,
           logoUrl: personal.logoUrl ?? undefined,
+          brandPrimaryColor: personal.brandPrimaryColor ?? undefined,
+          brandSecondaryColor: personal.brandSecondaryColor ?? undefined,
           address: personal.address ?? undefined,
           addressNumber: personal.addressNumber ?? undefined,
           complement: personal.complement ?? undefined,
@@ -256,6 +258,8 @@ export class AuthController {
               name: true,
               phone: true,
               logoUrl: true,
+              brandPrimaryColor: true,
+              brandSecondaryColor: true,
             },
           },
         },
@@ -281,6 +285,8 @@ export class AuthController {
           id: student.id,
           name: student.name,
           trainingDays: student.trainingDays,
+          paymentDueDay: student.paymentDueDay,
+          isTrainingBlocked: student.isTrainingBlocked,
           personalTrainer: student.personalTrainer,
         },
         token,

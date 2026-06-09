@@ -241,7 +241,7 @@ export async function verifyStorePurchase(input: VerifyPurchaseInput): Promise<V
 }
 
 export function getStoreManageUrls() {
-  const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME?.trim() || 'com.gymcode.app';
+  const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME?.trim() || 'com.mygymcode.app';
   return {
     ios: 'https://apps.apple.com/account/subscriptions',
     android: `https://play.google.com/store/account/subscriptions?package=${encodeURIComponent(packageName)}`,

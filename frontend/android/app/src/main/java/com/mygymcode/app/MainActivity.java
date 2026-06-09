@@ -1,28 +1,32 @@
 package com.mygymcode.app;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.webkit.WebView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
+    private final Handler insetHandler = new Handler(Looper.getMainLooper());
+    private int lastTopPx = 0;
+    private int lastBottomPx = 0;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Evita que a WebView desenhe por baixo da barra de navegação do sistema (Android 15+).
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        attachWindowInsetsListener();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        attachWindowInsetsListener();
+        scheduleInsetPush();
     }
 
     private void attachWindowInsetsListener() {
@@ -34,13 +38,33 @@ public class MainActivity extends BridgeActivity {
         ViewCompat.setOnApplyWindowInsetsListener(content, (view, windowInsets) -> {
             Insets statusBars = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars());
             Insets navigationBars = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
-            pushInsetsToWebView(statusBars.top, navigationBars.bottom);
+            lastTopPx = statusBars.top;
+            lastBottomPx = navigationBars.bottom;
+            if (lastBottomPx <= 0) {
+                lastBottomPx = getNavigationBarHeightPx();
+            }
+            scheduleInsetPush();
             return windowInsets;
         });
         ViewCompat.requestApplyInsets(content);
     }
 
-    private void pushInsetsToWebView(int topPx, int bottomPx) {
+    private int getNavigationBarHeightPx() {
+        int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return getResources().getDimensionPixelSize(resourceId);
+        }
+        return 48;
+    }
+
+    private void scheduleInsetPush() {
+        int[] delays = {0, 100, 300, 600, 1200, 2500};
+        for (int delay : delays) {
+            insetHandler.postDelayed(this::pushInsetsToWebView, delay);
+        }
+    }
+
+    private void pushInsetsToWebView() {
         Bridge bridge = getBridge();
         if (bridge == null) {
             return;
@@ -50,19 +74,27 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
+        int bottom = lastBottomPx > 0 ? lastBottomPx : getNavigationBarHeightPx();
+        int top = lastTopPx;
+
         String js =
-            "document.documentElement.classList.add('capacitor-native','capacitor-android');"
-                + "document.documentElement.style.setProperty('--safe-top-env','"
-                + topPx
-                + "px');"
+            "(function(){"
+                + "document.documentElement.classList.add('capacitor-native','capacitor-android');"
+                + "if(window.gymCodeApplySafeArea){"
+                + "window.gymCodeApplySafeArea("
+                + top
+                + ","
+                + bottom
+                + ");"
+                + "}else{"
                 + "document.documentElement.style.setProperty('--safe-bottom-env','"
-                + bottomPx
+                + bottom
                 + "px');"
-                + "document.querySelectorAll('.native-bottom-nav').forEach(function(el){"
-                + "el.style.paddingBottom=(Math.max("
-                + bottomPx
-                + ",48)+4)+'px';"
-                + "});";
+                + "document.documentElement.style.setProperty('--safe-top-env','"
+                + top
+                + "px');"
+                + "}"
+                + "})();";
 
         webView.post(() -> webView.evaluateJavascript(js, null));
     }

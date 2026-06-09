@@ -1,5 +1,9 @@
 # Testar assinatura Pro no iOS (simulador / Xcode)
 
+> Cadastro na Apple do zero: veja **`docs/ios-app-store-setup.md`**.  
+> Google Play: veja **`docs/google-play-setup.md`**.
+
+
 ## Arquivo local (já no projeto)
 
 - `frontend/ios/App/Configuration/GymCode.storekit`
@@ -28,7 +32,7 @@ O app inicia um listener `Transaction.updates` no launch (`StoreKitTransactionOb
 
 ## Dispositivo físico / TestFlight
 
-Crie o mesmo Product ID em **App Store Connect** → assinaturas auto-renováveis → `gymcode_pro_monthly`, vinculado ao app `com.gymcode.app`. Use conta **Sandbox** em Ajustes → App Store.
+Crie o mesmo Product ID em **App Store Connect** → assinaturas auto-renováveis → `gymcode_pro_monthly`, vinculado ao app `com.mygymcode.app`. Use conta **Sandbox** em Ajustes → App Store.
 
 ## Backend (testes)
 

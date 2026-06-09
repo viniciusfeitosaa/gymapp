@@ -24,6 +24,13 @@ passwords.txt
 .password
 *apikey*
 config/secrets/
+secrets/google-play-service-account.json
+
+# Builds de loja (gerados localmente — não versionar)
+releases/*.aab
+releases/*.xcarchive
+releases/*-mapping.txt
+releases/ios-export/
 
 # ============ Node.js ============
 node_modules/

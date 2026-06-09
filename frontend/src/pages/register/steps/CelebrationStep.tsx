@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Sparkles } from 'lucide-react';
 
 type Props = {
@@ -5,7 +6,8 @@ type Props = {
 };
 
 export default function CelebrationStep({ name }: Props) {
-  const firstName = name.trim().split(/\s+/)[0] || 'Personal';
+  const { t } = useTranslation();
+  const firstName = name.trim().split(/\s+/)[0] || t('register.defaultTrainerName');
 
   return (
     <div className="text-center py-4">
@@ -14,10 +16,10 @@ export default function CelebrationStep({ name }: Props) {
       </div>
       <p className="text-sm font-medium text-[#6E6E73] flex items-center justify-center gap-1.5 mb-2">
         <Sparkles className="w-4 h-4 text-accent-500" />
-        Conta criada com sucesso
+        {t('register.accountCreated')}
       </p>
       <p className="text-lg text-[#1D1D1F] font-medium leading-relaxed max-w-sm mx-auto">
-        <span className="font-semibold">{firstName}</span>, sua jornada como personal começa agora.
+        {t('register.journeyStarts', { name: firstName })}
       </p>
     </div>
   );

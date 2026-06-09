@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>O Gym Code usa a câmera para você tirar foto da sua logo de personal trainer.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O Gym Code acessa suas fotos para você escolher a logo do seu perfil.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O Gym Code pode salvar imagens na sua biblioteca quando você exportar conteúdo.</string>
 </dict>
 </plist>

@@ -10,6 +10,7 @@ router.post('/', authenticatePersonal, studentController.createStudent.bind(stud
 router.get('/', authenticatePersonal, studentController.getStudents.bind(studentController));
 router.get('/:id', authenticatePersonal, studentController.getStudentById.bind(studentController));
 router.put('/:id', authenticatePersonal, studentController.updateStudent.bind(studentController));
+router.patch('/:id/training-block', authenticatePersonal, studentController.setTrainingBlock.bind(studentController));
 router.delete('/:id', authenticatePersonal, studentController.deleteStudent.bind(studentController));
 router.post('/:id/generate-code', authenticatePersonal, studentController.generateAccessCode.bind(studentController));
 

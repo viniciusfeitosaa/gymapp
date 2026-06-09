@@ -1,0 +1,29 @@
+diff --git a/node_modules/@capgo/native-purchases/android/src/main/java/ee/forgr/nativepurchases/NativePurchasesPlugin.java b/node_modules/@capgo/native-purchases/android/src/main/java/ee/forgr/nativepurchases/NativePurchasesPlugin.java
+index e6dbbd0..d264f94 100644
+--- a/node_modules/@capgo/native-purchases/android/src/main/java/ee/forgr/nativepurchases/NativePurchasesPlugin.java
++++ b/node_modules/@capgo/native-purchases/android/src/main/java/ee/forgr/nativepurchases/NativePurchasesPlugin.java
+@@ -38,10 +38,11 @@ public class NativePurchasesPlugin extends Plugin {
+   private static final Phaser semaphoreReady = new Phaser(1);
+   private BillingClient billingClient;
+ 
+-  private void isBillingSupported(PluginCall call) {
++  @PluginMethod
++  public void isBillingSupported(PluginCall call) {
+     JSObject ret = new JSObject();
+     ret.put("isBillingSupported", true);
+-    call.resolve();
++    call.resolve(ret);
+   }
+ 
+   @Override
+@@ -272,9 +273,7 @@ public class NativePurchasesPlugin extends Plugin {
+     ImmutableList<QueryProductDetailsParams.Product> productList =
+       ImmutableList.of(
+         QueryProductDetailsParams.Product.newBuilder()
+-          .setProductId(
+-            productType.equals("inapp") ? productIdentifier : planIdentifier
+-          )
++          .setProductId(productIdentifier)
+           .setProductType(
+             productType.equals("inapp")
+               ? BillingClient.ProductType.INAPP

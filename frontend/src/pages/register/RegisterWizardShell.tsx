@@ -1,29 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react';
 import type { RegisterStep } from './registerTypes';
 import { registerLinkClass, registerPrimaryButtonClass } from './registerStyles';
-
-const STEP_COPY: Record<
-  Exclude<RegisterStep, 'celebration'>,
-  { title: string; subtitle: string }
-> = {
-  welcome: {
-    title: 'Vamos montar seu espaço profissional',
-    subtitle: 'Em poucos passos você estará pronto para treinar alunos com organização.',
-  },
-  identity: {
-    title: 'Como podemos te chamar?',
-    subtitle: 'Seu nome aparecerá para os alunos no app.',
-  },
-  access: {
-    title: 'Proteja sua conta',
-    subtitle: 'Telefone e CREF são opcionais, mas ajudam na credibilidade.',
-  },
-  address: {
-    title: 'Quase lá',
-    subtitle: 'Endereço para cobranças futuras — pode pular se preferir.',
-  },
-};
+import { LanguagePicker } from '../../components/LanguagePicker';
 
 type Props = {
   step: RegisterStep;
@@ -52,18 +32,27 @@ export default function RegisterWizardShell({
   children,
   animClass,
 }: Props) {
+  const { t } = useTranslation();
   const isCelebration = step === 'celebration';
+
   const copy = isCelebration
     ? {
-        title: 'Tudo pronto!',
-        subtitle: 'Fichas, alunos e treinos no WhatsApp — tudo em um só lugar.',
+        title: t('register.celebrationTitle'),
+        subtitle: t('register.celebrationSubtitle'),
       }
-    : STEP_COPY[step];
+    : {
+        welcome: { title: t('register.welcomeTitle'), subtitle: t('register.welcomeSubtitle') },
+        identity: { title: t('register.identityTitle'), subtitle: t('register.identitySubtitle') },
+        access: { title: t('register.accessTitle'), subtitle: t('register.accessSubtitle') },
+        address: { title: t('register.addressTitle'), subtitle: t('register.addressSubtitle') },
+      }[step as Exclude<RegisterStep, 'celebration'>];
 
   const showProgress = progress > 0;
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      <LanguagePicker className="absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] left-auto z-20 sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] sm:right-[max(1.5rem,env(safe-area-inset-right,0px))]" />
+
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-accent-500/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-accent-400/10 rounded-full blur-3xl" />
@@ -83,7 +72,7 @@ export default function RegisterWizardShell({
                 ))}
               </div>
               <p className="text-xs font-medium text-[#86868B] tracking-wide">
-                Etapa {Math.min(progress, 4)} de 4
+                {t('register.stepOf', { current: Math.min(progress, 4), total: 4 })}
               </p>
             </div>
           )}
@@ -113,7 +102,7 @@ export default function RegisterWizardShell({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Cadastrando...
+                  {t('register.registering')}
                 </span>
               ) : (
                 primaryLabel
@@ -128,16 +117,16 @@ export default function RegisterWizardShell({
                 className="w-full py-2.5 text-[#6E6E73] hover:text-accent-600 font-medium text-sm inline-flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                Voltar
+                {t('register.back')}
               </button>
             )}
           </div>
 
           {showLoginLink && (
             <p className="text-center text-sm text-[#6E6E73] mt-6">
-              Já tem cadastro?{' '}
+              {t('register.hasAccount')}{' '}
               <Link to="/login" className={registerLinkClass}>
-                Faça login
+                {t('register.loginLink')}
               </Link>
             </p>
           )}

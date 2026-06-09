@@ -11,6 +11,7 @@ import { AccountDeletionSection } from '../components/AccountDeletionSection';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { StudentTrainingBlocked } from '../components/StudentTrainingBlocked';
 import { appLocaleToDateLocale } from '../i18n/dateLocale';
+import { useWeekdayShortMap, type WeekdayValue } from '../i18n/useWeekdayOptions';
 import { applyNativeSafeAreas } from '../lib/applyNativeSafeAreas';
 
 interface Exercise {
@@ -87,7 +88,7 @@ function FocusModeWorkout({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center animate-scaleIn">
             <p className="text-white/70 text-lg md:text-xl font-semibold mb-4 uppercase tracking-wider">
-              Preparar...
+              {t('student.prepare')}
             </p>
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-accent flex items-center justify-center shadow-strong animate-pulse">
               <span className="text-6xl md:text-7xl font-display font-bold text-white">
@@ -103,7 +104,7 @@ function FocusModeWorkout({
               <button
                 onClick={onClose}
                 className="z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-                aria-label="Sair"
+                aria-label={t('student.exit')}
               >
                 <X className="w-6 h-6" />
               </button>
@@ -133,7 +134,7 @@ function FocusModeWorkout({
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-semibold">Exercício</p>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-white/55 font-semibold">{t('student.exercise')}</p>
                       <h3 className="text-lg md:text-xl font-display font-bold text-white mt-0.5 leading-tight">
                         {ex.name}
                       </h3>
@@ -142,22 +143,22 @@ function FocusModeWorkout({
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
                     <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-white/60">Séries</p>
+                      <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.sets')}</p>
                       <p className="text-sm font-bold text-white">{ex.sets}</p>
                     </div>
                     <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-white/60">Reps</p>
+                      <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.reps')}</p>
                       <p className="text-sm font-bold text-white">{ex.reps}</p>
                     </div>
                     {ex.rest && (
                       <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-white/60">Descanso</p>
+                        <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.rest')}</p>
                         <p className="text-sm font-bold text-white">{ex.rest}</p>
                       </div>
                     )}
                     {ex.weight && (
                       <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-white/60">Peso</p>
+                        <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.weight')}</p>
                         <p className="text-sm font-bold text-white">{ex.weight}</p>
                       </div>
                     )}
@@ -165,7 +166,7 @@ function FocusModeWorkout({
 
                   {ex.notes && (
                     <div className="mt-4 rounded-2xl border border-amber-200/35 bg-gradient-to-r from-amber-400/12 to-orange-400/8 px-4 py-3 ring-1 ring-white/10">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-100/90">Execucao</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-100/90">{t('student.execution')}</p>
                       <p className="mt-1.5 text-sm leading-relaxed font-medium text-amber-50 whitespace-pre-line">{ex.notes}</p>
                     </div>
                   )}
@@ -173,7 +174,7 @@ function FocusModeWorkout({
 
                 {ex.imageUrl && (
                   <div className="relative z-10 mt-4 pt-4 border-t border-white/10">
-                    <p className="text-white/55 text-[11px] font-semibold uppercase tracking-[0.12em] mb-2">Referência visual</p>
+                    <p className="text-white/55 text-[11px] font-semibold uppercase tracking-[0.12em] mb-2">{t('student.visualReference')}</p>
                     <div className="rounded-2xl overflow-hidden border border-white/20 bg-black/30 shadow-inner ring-1 ring-white/10">
                       <img
                         src={ex.imageUrl}
@@ -192,7 +193,7 @@ function FocusModeWorkout({
                     <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                     </svg>
-                    Assistir execução no YouTube
+                    {t('student.watchOnYoutube')}
                   </button>
                 )}
               </div>
@@ -210,7 +211,7 @@ function FocusModeWorkout({
               ) : (
                 <>
                   <CheckCircle className="w-6 h-6" />
-                  Finalizar treino
+                  {t('student.finishWorkout')}
                 </>
               )}
             </button>
@@ -224,15 +225,15 @@ function FocusModeWorkout({
           className="fixed inset-0 z-[110] flex flex-col bg-black/95 backdrop-blur-sm animate-fadeIn"
           role="dialog"
           aria-modal="true"
-          aria-label="Player de vídeo"
+          aria-label={t('student.videoPlayer')}
         >
           <div className="flex items-center justify-between p-3 md:p-4 bg-black/50">
-            <p className="text-white font-semibold">Vídeo do exercício</p>
+            <p className="text-white font-semibold">{t('student.exerciseVideo')}</p>
             <button
               type="button"
               onClick={() => setVideoPlayer(null)}
               className="p-2 rounded-lg text-white hover:bg-white/20 transition-colors"
-              aria-label="Fechar vídeo"
+              aria-label={t('student.closeVideo')}
             >
               <X className="w-6 h-6" />
             </button>
@@ -241,7 +242,7 @@ function FocusModeWorkout({
             <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden bg-dark-900 shadow-strong flex-shrink-0">
               <iframe
                 src={videoPlayer.embedUrl}
-                title="Vídeo do exercício"
+                title={t('student.exerciseVideo')}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
@@ -256,7 +257,7 @@ function FocusModeWorkout({
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
-              Não consegue assistir aqui? Abrir no YouTube
+              {t('student.openOnYoutube')}
             </a>
           </div>
         </div>
@@ -365,8 +366,8 @@ export default function StudentDashboard() {
       )}
 
       {/* Navegação inferior (mobile e desktop) */}
-      <nav className="native-bottom-nav student-bottom-nav bg-white border-t border-dark-200 shadow-strong z-50">
-        <div className="student-bottom-nav-inner">
+      <nav className="native-bottom-nav student-bottom-nav bg-white border-t border-dark-200 shadow-strong z-50 box-border">
+        <div className="student-bottom-nav-inner min-h-[3.5rem]">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -591,7 +592,7 @@ function StudentDashboardHome({
             <div className="flex justify-end mb-3">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold shadow-medium">
                 <CheckCircle className="w-3 h-3" />
-                Concluído
+                {t('common.completed')}
               </div>
             </div>
           )}
@@ -603,7 +604,7 @@ function StudentDashboardHome({
                   className="btn-primary inline-flex items-center justify-center gap-1.5 text-sm py-2 px-4"
                 >
                   <Play className="w-3.5 h-3.5 shrink-0" />
-                  Iniciar
+                  {t('student.start')}
                 </button>
               </div>
             )}
@@ -623,7 +624,7 @@ function StudentDashboardHome({
             <div className="flex items-center gap-2 text-dark-700">
               <Dumbbell className="w-4 h-4" />
               <span className="text-sm font-semibold">
-                {todayWorkout.exercises?.length || 0} exercício(s)
+                {todayWorkout.exercises?.length || 0} {t('student.exerciseCount', { count: todayWorkout.exercises?.length || 0 })}
               </span>
             </div>
           </div>
@@ -663,7 +664,7 @@ function StudentDashboardHome({
             ))}
             {todayWorkout.exercises && todayWorkout.exercises.length > 3 && (
               <p className="text-sm text-dark-500 text-center pt-2">
-                + {todayWorkout.exercises.length - 3} exercício(s)
+                + {t('student.moreExercises', { count: todayWorkout.exercises.length - 3 })}
               </p>
             )}
           </div>
@@ -689,7 +690,7 @@ function StudentDashboardHome({
                     type="button"
                     onClick={() => setFocusedExercise(null)}
                     className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-                    aria-label="Fechar"
+                    aria-label={t('common.close')}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -709,29 +710,29 @@ function StudentDashboardHome({
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-dark-50 rounded-lg p-3">
-                      <p className="text-xs text-dark-500 mb-0.5">Séries</p>
+                      <p className="text-xs text-dark-500 mb-0.5">{t('student.sets')}</p>
                       <p className="text-base font-bold text-dark-900">{focusedExercise.sets}</p>
                     </div>
                     <div className="bg-dark-50 rounded-lg p-3">
-                      <p className="text-xs text-dark-500 mb-0.5">Repetições</p>
+                      <p className="text-xs text-dark-500 mb-0.5">{t('student.repetitions')}</p>
                       <p className="text-base font-bold text-dark-900">{focusedExercise.reps}</p>
                     </div>
                     {focusedExercise.rest && (
                       <div className="bg-dark-50 rounded-lg p-3">
-                        <p className="text-xs text-dark-500 mb-0.5">Descanso</p>
+                        <p className="text-xs text-dark-500 mb-0.5">{t('student.rest')}</p>
                         <p className="text-base font-bold text-dark-900">{focusedExercise.rest}</p>
                       </div>
                     )}
                     {focusedExercise.weight && (
                       <div className="bg-dark-50 rounded-lg p-3">
-                        <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                        <p className="text-xs text-dark-500 mb-0.5">{t('student.weight')}</p>
                         <p className="text-base font-bold text-dark-900">{focusedExercise.weight}</p>
                       </div>
                     )}
                   </div>
                   {focusedExercise.notes && (
                     <div className="bg-accent-50 rounded-lg p-3 border border-accent-100">
-                      <p className="text-xs text-dark-600 font-medium mb-0.5">💡 Observações</p>
+                      <p className="text-xs text-dark-600 font-medium mb-0.5">💡 {t('student.notes')}</p>
                       <p className="text-dark-800 text-sm">{focusedExercise.notes}</p>
                     </div>
                   )}
@@ -745,7 +746,7 @@ function StudentDashboardHome({
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                       </svg>
-                      Ver vídeo no YouTube
+                      {t('student.viewVideoYoutube')}
                     </a>
                   )}
                 </div>
@@ -754,7 +755,7 @@ function StudentDashboardHome({
                   onClick={() => setFocusedExercise(null)}
                   className="w-full mt-4 py-2.5 rounded-xl border-2 border-dark-200 text-dark-700 text-sm font-semibold hover:bg-dark-50 transition-colors"
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -766,17 +767,17 @@ function StudentDashboardHome({
             <Activity className="w-7 h-7 text-blue-600" />
           </div>
           <h3 className="text-xl font-display font-bold text-dark-900 mb-2">
-            Nenhum Treino para Hoje
+            {t('student.noWorkoutTodayTitle')}
           </h3>
           <p className="text-dark-500 text-sm mb-4 max-w-md mx-auto">
-            Aproveite seu dia de descanso ou veja seus outros treinos!
+            {t('student.noWorkoutTodayDesc')}
           </p>
           <button
             onClick={() => navigate('/student/treinos')}
             className="btn-primary inline-flex items-center gap-1.5 text-sm py-2 px-4"
           >
             <Calendar className="w-4 h-4" />
-            Ver Todos os Treinos
+            {t('student.viewAllWorkouts')}
           </button>
         </div>
       )}
@@ -791,6 +792,7 @@ function StudentTreinosPage({
   onStartFocusMode: (w: Workout) => void;
   refetchLogsRef: MutableRefObject<() => void>;
 }) {
+  const { t } = useTranslation();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [logs, setLogs] = useState<WorkoutLogItem[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -853,7 +855,7 @@ function StudentTreinosPage({
     return (
       <div className="card-modern p-12 text-center">
         <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto"></div>
-        <p className="text-dark-500 mt-4">Carregando treinos...</p>
+        <p className="text-dark-500 mt-4">{t('student.loadingWorkouts')}</p>
       </div>
     );
   }
@@ -862,9 +864,9 @@ function StudentTreinosPage({
     <div className="pb-20 md:pb-0">
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
-          Meus Treinos
+          {t('student.myWorkouts')}
         </h2>
-        <p className="text-dark-500 text-sm md:text-base">Veja seus treinos da semana</p>
+        <p className="text-dark-500 text-sm md:text-base">{t('student.weeklyWorkoutsHint')}</p>
       </div>
 
       {/* Grade de Dias */}
@@ -931,10 +933,10 @@ function StudentTreinosPage({
               <Dumbbell className="w-6 h-6 text-dark-400" />
             </div>
             <h4 className="text-lg font-bold text-dark-900 mb-2">
-              Sem Treino para {dayData.label}
+              {t('student.noWorkoutForDay', { day: dayData.label })}
             </h4>
             <p className="text-dark-500 text-sm">
-              Seu personal ainda não definiu treino para este dia
+              {t('student.noWorkoutForDayDesc')}
             </p>
           </div>
         );
@@ -954,6 +956,7 @@ function WorkoutDetailCard({
   onStartFocusMode: (w: Workout) => void;
   isCompleted?: boolean;
 }) {
+  const { t } = useTranslation();
   const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
   const [videoPlayer, setVideoPlayer] = useState<{ embedUrl: string; originalUrl: string } | null>(null);
 
@@ -963,7 +966,7 @@ function WorkoutDetailCard({
         <div className="flex justify-end mb-3">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold shadow-medium">
             <CheckCircle className="w-3 h-3" />
-            Concluído
+            {t('common.completed')}
           </div>
         </div>
       )}
@@ -979,7 +982,7 @@ function WorkoutDetailCard({
               onClick={() => onStartFocusMode(workout)}
               className="shrink-0 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-semibold transition-colors shadow-medium"
             >
-              Iniciar
+              {t('student.start')}
             </button>
           </div>
           <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 truncate" title={workout.name}>
@@ -997,7 +1000,7 @@ function WorkoutDetailCard({
         <div className="flex items-center gap-2 text-dark-700">
           <Dumbbell className="w-4 h-4" />
           <span className="text-sm font-semibold">
-            {workout.exercises?.length || 0} exercício(s)
+            {workout.exercises?.length || 0} {t('student.exerciseCount', { count: workout.exercises?.length || 0 })}
           </span>
         </div>
       </div>
@@ -1005,7 +1008,7 @@ function WorkoutDetailCard({
       {workout.exercises && workout.exercises.length > 0 && (
         <div className="space-y-4">
           <h5 className="text-base font-display font-bold text-dark-900">
-            Exercícios
+            {t('student.exercisesTitle')}
           </h5>
           <div className="space-y-2.5">
             {workout.exercises.map((exercise, idx) => (
@@ -1039,22 +1042,22 @@ function WorkoutDetailCard({
                     <h6 className="font-semibold text-sm text-dark-900 mb-1.5">{exercise.name}</h6>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                       <div>
-                        <span className="text-dark-500">Séries:</span>
+                        <span className="text-dark-500">{t('personal.workouts.setsLabel')}</span>
                         <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
                       </div>
                       <div>
-                        <span className="text-dark-500">Reps:</span>
+                        <span className="text-dark-500">{t('personal.workouts.repsLabel')}</span>
                         <span className="ml-2 font-semibold text-dark-900">{exercise.reps}</span>
                       </div>
                       {exercise.rest && (
                         <div>
-                          <span className="text-dark-500">Descanso:</span>
+                          <span className="text-dark-500">{t('personal.workouts.restLabel')}</span>
                           <span className="ml-2 font-semibold text-dark-900">{exercise.rest}</span>
                         </div>
                       )}
                       {exercise.weight && (
                         <div>
-                          <span className="text-dark-500">Peso:</span>
+                          <span className="text-dark-500">{t('personal.workouts.weightLabel')}</span>
                           <span className="ml-2 font-semibold text-dark-900">{exercise.weight}</span>
                         </div>
                       )}
@@ -1078,7 +1081,7 @@ function WorkoutDetailCard({
                           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                           </svg>
-                          Ver vídeo no YouTube
+                          {t('student.viewVideoYoutube')}
                         </button>
                       </span>
                     )}
@@ -1109,7 +1112,7 @@ function WorkoutDetailCard({
                 type="button"
                 onClick={() => setFocusedExercise(null)}
                 className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-                aria-label="Fechar"
+                aria-label={t('common.close')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1129,29 +1132,29 @@ function WorkoutDetailCard({
               )}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Séries</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.sets')}</p>
                   <p className="text-base font-bold text-dark-900">{focusedExercise.sets}</p>
                 </div>
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Repetições</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.repetitions')}</p>
                   <p className="text-base font-bold text-dark-900">{focusedExercise.reps}</p>
                 </div>
                 {focusedExercise.rest && (
                   <div className="bg-dark-50 rounded-lg p-3">
-                    <p className="text-xs text-dark-500 mb-0.5">Descanso</p>
+                    <p className="text-xs text-dark-500 mb-0.5">{t('student.rest')}</p>
                     <p className="text-base font-bold text-dark-900">{focusedExercise.rest}</p>
                   </div>
                 )}
                 {focusedExercise.weight && (
                   <div className="bg-dark-50 rounded-lg p-3">
-                    <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                    <p className="text-xs text-dark-500 mb-0.5">{t('student.weight')}</p>
                     <p className="text-base font-bold text-dark-900">{focusedExercise.weight}</p>
                   </div>
                 )}
               </div>
               {focusedExercise.notes && (
                 <div className="bg-accent-50 rounded-lg p-3 border border-accent-100">
-                  <p className="text-xs text-dark-600 font-medium mb-0.5">💡 Observações</p>
+                  <p className="text-xs text-dark-600 font-medium mb-0.5">💡 {t('student.notes')}</p>
                   <p className="text-dark-800 text-sm">{focusedExercise.notes}</p>
                 </div>
               )}
@@ -1168,7 +1171,7 @@ function WorkoutDetailCard({
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
-                  Ver vídeo no YouTube
+                  {t('student.viewVideoYoutube')}
                 </button>
               )}
             </div>
@@ -1177,7 +1180,7 @@ function WorkoutDetailCard({
               onClick={() => setFocusedExercise(null)}
               className="w-full mt-4 py-2.5 rounded-xl border-2 border-dark-200 text-dark-700 text-sm font-semibold hover:bg-dark-50 transition-colors"
             >
-              Fechar
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -1189,15 +1192,15 @@ function WorkoutDetailCard({
           className="fixed inset-0 z-[110] flex flex-col bg-black/95 backdrop-blur-sm animate-fadeIn"
           role="dialog"
           aria-modal="true"
-          aria-label="Player de vídeo"
+          aria-label={t('student.videoPlayer')}
         >
           <div className="flex items-center justify-between p-3 md:p-4 bg-black/50">
-            <p className="text-white font-semibold">Vídeo do exercício</p>
+            <p className="text-white font-semibold">{t('student.exerciseVideo')}</p>
             <button
               type="button"
               onClick={() => setVideoPlayer(null)}
               className="p-2 rounded-lg text-white hover:bg-white/20 transition-colors"
-              aria-label="Fechar vídeo"
+              aria-label={t('student.closeVideo')}
             >
               <X className="w-6 h-6" />
             </button>
@@ -1206,7 +1209,7 @@ function WorkoutDetailCard({
             <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden bg-dark-900 shadow-strong flex-shrink-0">
               <iframe
                 src={videoPlayer.embedUrl}
-                title="Vídeo do exercício"
+                title={t('student.exerciseVideo')}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
@@ -1221,7 +1224,7 @@ function WorkoutDetailCard({
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
-              Não consegue assistir aqui? Abrir no YouTube
+              {t('student.openOnYoutube')}
             </a>
           </div>
         </div>
@@ -1257,16 +1260,6 @@ function getYouTubeEmbedUrl(watchUrl: string): string | null {
   }
 }
 
-const DAY_LABELS: { [key: string]: string } = {
-  MONDAY: 'Segunda-feira',
-  TUESDAY: 'Terça-feira',
-  WEDNESDAY: 'Quarta-feira',
-  THURSDAY: 'Quinta-feira',
-  FRIDAY: 'Sexta-feira',
-  SATURDAY: 'Sábado',
-  SUNDAY: 'Domingo',
-};
-
 interface StudentProfile {
   id: string;
   name: string;
@@ -1295,6 +1288,8 @@ function StudentPerfilPage({
 }: {
   brandPersonal: { name: string; logoUrl?: string | null } | null;
 }) {
+  const { t, i18n } = useTranslation();
+  const weekdayShort = useWeekdayShortMap();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -1324,7 +1319,7 @@ function StudentPerfilPage({
   const trainingDaysLabel =
     profile?.trainingDays?.length &&
     profile.trainingDays
-      .map((d) => DAY_LABELS[d] || d)
+      .map((d) => weekdayShort[d as WeekdayValue] || d)
       .join(', ');
 
   if (loading) {
@@ -1332,7 +1327,7 @@ function StudentPerfilPage({
       <div className="pb-20 md:pb-0">
         <div className="card-modern p-12 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full mx-auto" />
-          <p className="text-dark-500 mt-4">Carregando perfil...</p>
+          <p className="text-dark-500 mt-4">{t('student.loadingProfile')}</p>
         </div>
       </div>
     );
@@ -1342,16 +1337,16 @@ function StudentPerfilPage({
     <div className="pb-20 md:pb-0">
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
-          Meu Perfil
+          {t('student.myProfile')}
         </h2>
-        <p className="text-dark-500 text-sm md:text-base">Suas informações</p>
+        <p className="text-dark-500 text-sm md:text-base">{t('student.profileSubtitle')}</p>
       </div>
 
       <div className="card-modern p-5 md:p-6 mb-6">
-        <p className="text-xs text-dark-500 mb-3 uppercase tracking-wide font-semibold">Seu personal</p>
+        <p className="text-xs text-dark-500 mb-3 uppercase tracking-wide font-semibold">{t('student.yourTrainer')}</p>
         <StudentBrandMark
           personal={brandPersonal ?? profile?.personalTrainer ?? user?.personalTrainer}
-          subtitle="Personal trainer"
+          subtitle={t('student.trainerSubtitle')}
           iconSize="md"
         />
       </div>
@@ -1365,10 +1360,10 @@ function StudentPerfilPage({
             <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5">
               {display?.name ?? user?.name}
             </h3>
-            <p className="text-dark-500 text-sm mb-1.5">Aluno</p>
+            <p className="text-dark-500 text-sm mb-1.5">{t('student.studentRole')}</p>
             {profile?.accessCode && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-50 border border-accent-200">
-                <span className="text-xs text-dark-600 font-medium">Código de acesso:</span>
+                <span className="text-xs text-dark-600 font-medium">{t('student.accessCodeLabel')}</span>
                 <span className="text-base font-display font-bold text-accent-700 tracking-wider">
                   {profile.accessCode}
                 </span>
@@ -1380,16 +1375,16 @@ function StudentPerfilPage({
         <div className="space-y-5">
           <div>
             <h4 className="text-base font-display font-bold text-dark-900 mb-3">
-              Informações
+              {t('student.infoSection')}
             </h4>
             <div className="space-y-2.5">
               <div className="bg-dark-50 rounded-lg p-3">
-                <p className="text-xs text-dark-500 mb-0.5">Nome</p>
+                <p className="text-xs text-dark-500 mb-0.5">{t('personal.profile.name')}</p>
                 <p className="text-dark-900 font-semibold text-sm">{display?.name ?? user?.name}</p>
               </div>
               {(profile?.accessCode || display?.accessCode) && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Código de acesso</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.accessCode')}</p>
                   <p className="text-dark-900 font-semibold text-sm tracking-wider">
                     {profile?.accessCode ?? display?.accessCode}
                   </p>
@@ -1397,45 +1392,45 @@ function StudentPerfilPage({
               )}
               {(profile?.email ?? user?.email) && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Email</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('personal.profile.email')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{profile?.email ?? user?.email}</p>
                 </div>
               )}
               {(profile?.phone ?? user?.phone) && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Telefone</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('personal.profile.phone')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{profile?.phone ?? user?.phone}</p>
                 </div>
               )}
               {profile?.birthDate && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Data de nascimento</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.birthDate')}</p>
                   <p className="text-dark-900 font-semibold text-sm">
-                    {new Date(profile.birthDate).toLocaleDateString('pt-BR')}
+                    {new Date(profile.birthDate).toLocaleDateString(appLocaleToDateLocale(i18n.language))}
                   </p>
                 </div>
               )}
               {(profile?.weight != null && profile?.weight > 0) && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Peso</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.weight')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{profile.weight} kg</p>
                 </div>
               )}
               {(profile?.height != null && profile?.height > 0) && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Altura</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.height')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{profile.height} cm</p>
                 </div>
               )}
               {trainingDaysLabel && (
                 <div className="bg-dark-50 rounded-lg p-3">
-                  <p className="text-xs text-dark-500 mb-0.5">Dias de treino</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.trainingDays')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{trainingDaysLabel}</p>
                 </div>
               )}
               {profile?.personalTrainer?.name && (
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs text-dark-500 mb-0.5">Personal Trainer</p>
+                  <p className="text-xs text-dark-500 mb-0.5">{t('student.personalTrainer')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{profile.personalTrainer.name}</p>
                 </div>
               )}
@@ -1448,7 +1443,7 @@ function StudentPerfilPage({
               className="w-full md:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors inline-flex items-center justify-center gap-1.5 shadow-medium"
             >
               <LogOut className="w-4 h-4" />
-              Sair da Conta
+              {t('student.logoutAccount')}
             </button>
           </div>
         </div>

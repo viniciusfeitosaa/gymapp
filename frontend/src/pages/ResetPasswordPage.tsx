@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Lock, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
 import { GymCodeIcon } from '../components/GymCodeIcon';
+import { LanguagePicker } from '../components/LanguagePicker';
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token') || '';
@@ -19,26 +22,26 @@ export default function ResetPasswordPage() {
     setError('');
 
     if (!token || token.length < 32) {
-      setError('Link inválido. Solicite um novo e-mail em Esqueci minha senha.');
+      setError(t('resetPassword.invalidLink'));
       return;
     }
     if (password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+      setError(t('resetPassword.passwordMinLength'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError(t('resetPassword.mismatch'));
       return;
     }
 
     setLoading(true);
     try {
       await api.post('/auth/reset-password', { token, password });
-      navigate('/login', { replace: true, state: { message: 'Senha alterada com sucesso. Faça login.' } });
+      navigate('/login', { replace: true, state: { message: t('resetPassword.success') } });
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Erro ao redefinir senha. Tente novamente.';
+        t('resetPassword.errorDefault');
       setError(msg);
     } finally {
       setLoading(false);
@@ -47,11 +50,12 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-dark flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-dark flex items-center justify-center p-4 relative">
+        <LanguagePicker className="absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] left-auto z-20 md:top-[max(1.5rem,env(safe-area-inset-top,0px))] md:right-[max(1.5rem,env(safe-area-inset-right,0px))]" />
         <div className="glass-effect rounded-2xl p-8 border border-white/10 max-w-md text-center">
-          <p className="text-red-400 mb-4 text-sm">Link inválido ou incompleto.</p>
+          <p className="text-red-400 mb-4 text-sm">{t('resetPassword.invalidLinkShort')}</p>
           <Link to="/forgot-password" className="text-accent-400 hover:text-accent-300 text-sm font-medium">
-            Solicitar novo link
+            {t('resetPassword.requestNewLink')}
           </Link>
         </div>
       </div>
@@ -60,6 +64,8 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-gradient-dark flex items-center justify-center p-3 md:p-4 relative">
+      <LanguagePicker className="absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] left-auto z-20 md:top-[max(1.5rem,env(safe-area-inset-top,0px))] md:right-[max(1.5rem,env(safe-area-inset-right,0px))]" />
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-5 w-48 h-48 md:w-72 md:h-72 bg-primary-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-5 w-64 h-64 md:w-96 md:h-96 bg-accent-500/20 rounded-full blur-3xl" />
@@ -72,9 +78,9 @@ export default function ResetPasswordPage() {
               <GymCodeIcon size={32} className="text-white" />
             </div>
             <h1 className="text-xl md:text-3xl font-display font-bold text-white mb-2">
-              Nova senha
+              {t('resetPassword.title')}
             </h1>
-            <p className="text-xs md:text-sm text-dark-300">Defina uma nova senha para sua conta.</p>
+            <p className="text-xs md:text-sm text-dark-300">{t('resetPassword.subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
@@ -86,7 +92,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label className="block text-xs md:text-sm font-semibold text-dark-200 mb-2">
-                Nova senha
+                {t('resetPassword.newPassword')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-dark-400" />
@@ -104,7 +110,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label className="block text-xs md:text-sm font-semibold text-dark-200 mb-2">
-                Confirmar senha
+                {t('resetPassword.confirmPassword')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-dark-400" />
@@ -125,7 +131,7 @@ export default function ResetPasswordPage() {
               disabled={loading}
               className="w-full py-3 md:py-3.5 bg-gradient-accent text-white font-semibold rounded-xl shadow-medium hover:shadow-strong transition-all disabled:opacity-50 text-sm md:text-base"
             >
-              {loading ? 'Salvando...' : 'Redefinir senha'}
+              {loading ? t('resetPassword.submitting') : t('resetPassword.submit')}
             </button>
           </form>
 
@@ -135,7 +141,7 @@ export default function ResetPasswordPage() {
               className="text-xs md:text-sm text-accent-400 hover:text-accent-300 font-medium transition-colors inline-flex items-center gap-1"
             >
               <ArrowLeft className="w-4 h-4" />
-              Voltar ao login
+              {t('resetPassword.backToLogin')}
             </Link>
           </div>
         </div>

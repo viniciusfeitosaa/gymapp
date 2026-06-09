@@ -18,10 +18,11 @@ html.capacitor-native {
   max-width: 100%;
 }
 
-/* Android: WebView não reporta env(safe-area-inset-bottom) — mínimo = barra de 3 botões */
+/* Android: inset vem do MainActivity/JS — sem min fixo que gera faixa branca extra */
 html.capacitor-native.capacitor-android {
   --safe-top-env: max(1.75rem, env(safe-area-inset-top, 0px));
-  --safe-bottom-env: max(56px, env(safe-area-inset-bottom, 0px));
+  --safe-bottom-env: env(safe-area-inset-bottom, 0px);
+  --safe-bottom-extra: 0px;
 }
 
 html.capacitor-native,
@@ -105,9 +106,14 @@ html.capacitor-native .native-bottom-nav {
   right: var(--safe-right);
   z-index: 50;
   width: auto;
-  /* Padding empurra os botões da navbar acima da barra do sistema Android */
-  padding-bottom: calc(var(--safe-bottom-env) + var(--safe-bottom-extra));
+  /* Sem padding extra na navbar — inset fica só no scroll do conteúdo */
+  padding-bottom: 0;
   box-sizing: border-box;
+  background-color: #fff;
+}
+
+html.capacitor-native.capacitor-android .native-bottom-nav {
+  padding-bottom: 0;
 }
 
 html.capacitor-native .native-bottom-nav-inner {
@@ -163,7 +169,78 @@ html.capacitor-native .student-bottom-nav-btn--active {
   color: #fff;
 }
 
-/* Web (sem classe capacitor-native) */
+/* Web / PWA no navegador (sem classe capacitor-native) */
+:root {
+  --web-bottom-nav-h: 3.5rem;
+  --web-bottom-safe: 0px;
+}
+
+.native-app-layout {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+}
+
+.native-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+@media (max-width: 767px) {
+  .native-app-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .native-app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    flex-shrink: 0;
+  }
+
+  .native-app-layout:not(.student-app-layout) .native-app-header + .native-app-main {
+    margin-top: 3.5rem;
+  }
+
+  .student-app-layout .native-app-main {
+    margin-top: 6.25rem;
+  }
+
+  .native-app-main {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--web-bottom-nav-h) + var(--web-bottom-safe) + 0.75rem) !important;
+  }
+
+  .native-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    box-sizing: border-box;
+    background-color: #fff;
+    padding-bottom: var(--web-bottom-safe);
+  }
+
+  .native-bottom-nav-inner {
+    display: grid;
+    width: 100%;
+    height: var(--web-bottom-nav-h);
+    min-height: var(--web-bottom-nav-h);
+    align-items: stretch;
+  }
+}
+
 .student-bottom-nav {
   display: flex;
   flex-direction: column;

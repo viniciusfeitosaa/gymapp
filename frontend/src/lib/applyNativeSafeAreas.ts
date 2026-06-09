@@ -1,16 +1,25 @@
 import { Capacitor } from '@capacitor/core';
 
-/** Altura mínima da barra de navegação Android (3 botões), em px. */
-const ANDROID_NAV_MIN_PX = 56;
+/** Fallback só quando o sistema não reporta inset (≈48dp). */
+const ANDROID_NAV_FALLBACK_PX = 48;
+
+declare global {
+  interface Window {
+    /** Chamado pelo MainActivity.java com insets reais do sistema. */
+    gymCodeApplySafeArea?: (topPx: number, bottomPx: number) => void;
+  }
+}
+
+let envBottomProbe: HTMLDivElement | null = null;
 
 function readCssSafeBottom(): number {
-  const probe = document.createElement('div');
-  probe.style.cssText =
-    'position:fixed;bottom:0;left:0;width:0;height:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
-  document.body.appendChild(probe);
-  const value = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
-  probe.remove();
-  return value;
+  if (!envBottomProbe) {
+    envBottomProbe = document.createElement('div');
+    envBottomProbe.style.cssText =
+      'position:fixed;bottom:0;left:0;width:0;height:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
+    document.documentElement.appendChild(envBottomProbe);
+  }
+  return parseFloat(getComputedStyle(envBottomProbe).paddingBottom) || 0;
 }
 
 function measureVisualBottomInset(): number {
@@ -19,47 +28,82 @@ function measureVisualBottomInset(): number {
   return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
 }
 
-function resolveAndroidBottomInset(): number {
-  const fromEnv = readCssSafeBottom();
+function resolveBottomInset(nativeBottomPx?: number): number {
+  if (nativeBottomPx != null && nativeBottomPx > 0) {
+    return nativeBottomPx;
+  }
   const fromViewport = measureVisualBottomInset();
-  // WebView Android costuma reportar 0 — garantimos sempre o mínimo da barra do sistema.
-  return Math.max(ANDROID_NAV_MIN_PX, fromEnv, fromViewport);
+  if (fromViewport > 0) return fromViewport;
+  const fromEnv = readCssSafeBottom();
+  if (fromEnv > 0) return fromEnv;
+  return ANDROID_NAV_FALLBACK_PX;
 }
 
-function applyInsets(): void {
-  if (Capacitor.getPlatform() !== 'android') return;
+let applyingInsets = false;
 
-  const bottom = resolveAndroidBottomInset();
-  document.documentElement.style.setProperty('--safe-bottom-env', `${bottom}px`);
+function applyInsets(nativeTopPx?: number, nativeBottomPx?: number): void {
+  if (Capacitor.getPlatform() !== 'android' || applyingInsets) return;
 
-  document.querySelectorAll<HTMLElement>('.native-bottom-nav').forEach((el) => {
-    el.style.paddingBottom = `${bottom + 4}px`;
-  });
+  applyingInsets = true;
+  try {
+    const bottom = resolveBottomInset(nativeBottomPx);
+
+    document.documentElement.style.setProperty('--safe-bottom-env', `${bottom}px`);
+    if (nativeTopPx != null && nativeTopPx > 0) {
+      document.documentElement.style.setProperty('--safe-top-env', `${nativeTopPx}px`);
+    }
+
+    // CSS controla o padding — remove inline de testes anteriores
+    document.querySelectorAll<HTMLElement>('.native-bottom-nav').forEach((el) => {
+      el.style.removeProperty('padding-bottom');
+    });
+  } finally {
+    applyingInsets = false;
+  }
 }
 
 function scheduleAndroidInsetUpdates(): void {
   applyInsets();
-  requestAnimationFrame(applyInsets);
-  window.setTimeout(applyInsets, 50);
-  window.setTimeout(applyInsets, 250);
-  window.setTimeout(applyInsets, 1000);
+  requestAnimationFrame(() => applyInsets());
+  window.setTimeout(() => applyInsets(), 100);
+  window.setTimeout(() => applyInsets(), 400);
+}
+
+let navObserver: MutationObserver | null = null;
+
+function watchBottomNavMount(): void {
+  if (navObserver || Capacitor.getPlatform() !== 'android') return;
+
+  const tryApply = () => {
+    if (!document.querySelector('.native-bottom-nav')) return false;
+    applyInsets();
+    navObserver?.disconnect();
+    navObserver = null;
+    return true;
+  };
+
+  if (tryApply()) return;
+
+  navObserver = new MutationObserver(() => {
+    tryApply();
+  });
+  navObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 export function applyNativeSafeAreas(): void {
   if (!Capacitor.isNativePlatform()) return;
 
   if (Capacitor.getPlatform() === 'android') {
+    window.gymCodeApplySafeArea = (topPx, bottomPx) => applyInsets(topPx, bottomPx);
+    watchBottomNavMount();
     scheduleAndroidInsetUpdates();
-  } else {
-    applyInsets();
   }
 
   if (Capacitor.getPlatform() !== 'android') return;
 
   const vv = window.visualViewport;
-  vv?.addEventListener('resize', applyInsets);
-  vv?.addEventListener('scroll', applyInsets);
-  window.addEventListener('resize', applyInsets);
+  vv?.addEventListener('resize', () => applyInsets());
+  window.addEventListener('resize', () => applyInsets());
   window.addEventListener('orientationchange', scheduleAndroidInsetUpdates);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {

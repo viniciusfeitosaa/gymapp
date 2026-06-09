@@ -1,6 +1,14 @@
 import { Response } from 'express';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { assertStudentCanAccessTraining, TrainingBlockedError } from '../utils/studentAccess';
+
+function handleTrainingBlocked(res: Response, error: unknown) {
+  if (error instanceof TrainingBlockedError) {
+    return res.status(error.status).json({ error: error.message, code: error.code });
+  }
+  return null;
+}
 
 const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
@@ -428,6 +436,7 @@ export class WorkoutController {
   async getMyWorkouts(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
+      await assertStudentCanAccessTraining(studentId);
 
       const workouts = await prisma.workout.findMany({
         where: { studentId },
@@ -439,6 +448,8 @@ export class WorkoutController {
 
       res.json(workouts);
     } catch (error) {
+      const blocked = handleTrainingBlocked(res, error);
+      if (blocked) return blocked;
       console.error('Get my workouts error:', error);
       res.status(500).json({ error: 'Erro ao buscar treinos' });
     }
@@ -448,6 +459,7 @@ export class WorkoutController {
   async getTodayWorkout(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
+      await assertStudentCanAccessTraining(studentId);
       // Usa timezone configurável para evitar virada de dia antecipada em produção (ex.: servidor UTC).
       const weekdayInTimezone = new Intl.DateTimeFormat('en-US', {
         weekday: 'long',
@@ -470,6 +482,8 @@ export class WorkoutController {
 
       res.json(workout);
     } catch (error) {
+      const blocked = handleTrainingBlocked(res, error);
+      if (blocked) return blocked;
       console.error('Get today workout error:', error);
       res.status(500).json({ error: 'Erro ao buscar treino do dia' });
     }
@@ -479,6 +493,7 @@ export class WorkoutController {
   async getMyLogs(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
+      await assertStudentCanAccessTraining(studentId);
 
       const logs = await prisma.workoutLog.findMany({
         where: { studentId, completed: true },
@@ -491,6 +506,8 @@ export class WorkoutController {
 
       res.json(logs);
     } catch (error) {
+      const blocked = handleTrainingBlocked(res, error);
+      if (blocked) return blocked;
       console.error('Get my logs error:', error);
       res.status(500).json({ error: 'Erro ao buscar registros' });
     }
@@ -500,6 +517,7 @@ export class WorkoutController {
   async getStreakStats(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
+      await assertStudentCanAccessTraining(studentId);
 
       const [logs, workouts] = await Promise.all([
         prisma.workoutLog.findMany({
@@ -562,6 +580,8 @@ export class WorkoutController {
 
       res.json({ streak, points, totalWorkouts: logs.length, missedLast7 });
     } catch (error) {
+      const blocked = handleTrainingBlocked(res, error);
+      if (blocked) return blocked;
       console.error('Get streak stats error:', error);
       res.status(500).json({ error: 'Erro ao buscar estatísticas' });
     }
@@ -571,6 +591,7 @@ export class WorkoutController {
   async logWorkout(req: AuthRequest, res: Response) {
     try {
       const studentId = req.userId!;
+      await assertStudentCanAccessTraining(studentId);
       const { workoutId } = req.params;
       const { duration, notes } = req.body;
 
@@ -593,6 +614,8 @@ export class WorkoutController {
 
       res.status(201).json(log);
     } catch (error) {
+      const blocked = handleTrainingBlocked(res, error);
+      if (blocked) return blocked;
       console.error('Log workout error:', error);
       res.status(500).json({ error: 'Erro ao registrar treino' });
     }

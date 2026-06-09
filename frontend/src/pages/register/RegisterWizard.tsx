@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../services/api';
 import RegisterWizardShell from './RegisterWizardShell';
 import {
@@ -24,6 +25,7 @@ function prevStep(step: RegisterStep): RegisterStep {
 }
 
 export default function RegisterWizard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState<RegisterStep>('welcome');
   const [formData, setFormData] = useState<RegisterFormData>(createInitialFormData);
@@ -96,7 +98,7 @@ export default function RegisterWizard() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Erro ao realizar cadastro. Tente novamente.';
+        t('register.errorDefault');
       setError(msg);
     } finally {
       setLoading(false);
@@ -143,12 +145,12 @@ export default function RegisterWizard() {
 
   const primaryLabel =
     step === 'welcome'
-      ? 'Começar'
+      ? t('register.start')
       : step === 'address'
-        ? 'Criar minha conta'
+        ? t('register.createAccount')
         : step === 'celebration'
-          ? 'Entrar no Gym Code'
-          : 'Continuar';
+          ? t('register.enterApp')
+          : t('register.continue');
 
   const showBack = step !== 'welcome' && step !== 'celebration';
   const showLoginLink = step !== 'welcome' && step !== 'celebration';

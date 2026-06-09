@@ -46,10 +46,11 @@ services:
       APPLE_APP_SHARED_SECRET: ${APPLE_APP_SHARED_SECRET:-}
       APPLE_SANDBOX: ${APPLE_SANDBOX:-0}
       STORE_BILLING_SANDBOX_TRUST: ${STORE_BILLING_SANDBOX_TRUST:-0}
-      GOOGLE_PLAY_PACKAGE_NAME: ${GOOGLE_PLAY_PACKAGE_NAME:-com.gymcode.app}
+      GOOGLE_PLAY_PACKAGE_NAME: ${GOOGLE_PLAY_PACKAGE_NAME:-com.mygymcode.app}
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}
     volumes:
       - gymapp_uploads:/app/uploads
+      - ./secrets:/run/secrets:ro
     depends_on:
       postgres:
         condition: service_healthy

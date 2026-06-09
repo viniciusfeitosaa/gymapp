@@ -12,6 +12,12 @@ const deleteMyAccountSchema = z.object({
   }),
 });
 
+const paymentDueDaySchema = z
+  .number()
+  .int('Dia de pagamento deve ser um número inteiro')
+  .min(1, 'Dia de pagamento deve ser entre 1 e 31')
+  .max(31, 'Dia de pagamento deve ser entre 1 e 31');
+
 const createStudentSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
   phone: z.string().optional(),
@@ -20,6 +26,22 @@ const createStudentSchema = z.object({
   weight: z.number().optional(),
   height: z.number().optional(),
   trainingDays: z.array(z.string()).optional(),
+  paymentDueDay: paymentDueDaySchema.optional().nullable(),
+});
+
+const updateStudentSchema = z.object({
+  name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres').optional(),
+  phone: z.string().optional().nullable(),
+  email: z.string().email('Email inválido').optional().nullable(),
+  birthDate: z.string().optional().nullable(),
+  weight: z.number().optional().nullable(),
+  height: z.number().optional().nullable(),
+  trainingDays: z.array(z.string()).optional(),
+  paymentDueDay: paymentDueDaySchema.optional().nullable(),
+});
+
+const trainingBlockSchema = z.object({
+  isTrainingBlocked: z.boolean(),
 });
 
 // Letras maiúsculas A–Z (26). Código: 4 números + 1 letra → 10⁴ × 26 × 5 pos = 1.300.000 combinações
@@ -80,6 +102,7 @@ export class StudentController {
           weight: data.weight,
           height: data.height,
           trainingDays: data.trainingDays || [],
+          paymentDueDay: data.paymentDueDay ?? undefined,
           accessCode: await this.generateUniqueCode(),
           personalTrainerId: personalId,
         },
@@ -183,9 +206,14 @@ export class StudentController {
         return res.status(404).json({ error: 'Aluno não encontrado' });
       }
 
+      const data = updateStudentSchema.parse(req.body);
+
       const updatedStudent = await prisma.student.update({
         where: { id },
-        data: req.body,
+        data: {
+          ...data,
+          birthDate: data.birthDate ? new Date(data.birthDate) : data.birthDate === null ? null : undefined,
+        },
       });
 
       res.json({
@@ -193,8 +221,46 @@ export class StudentController {
         student: updatedStudent,
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
       console.error('Update student error:', error);
       res.status(500).json({ error: 'Erro ao atualizar aluno' });
+    }
+  }
+
+  // Bloquear / desbloquear treinos do aluno
+  async setTrainingBlock(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const personalId = req.userId!;
+      const { isTrainingBlocked } = trainingBlockSchema.parse(req.body);
+
+      const student = await prisma.student.findFirst({
+        where: { id, personalTrainerId: personalId },
+      });
+
+      if (!student) {
+        return res.status(404).json({ error: 'Aluno não encontrado' });
+      }
+
+      const updatedStudent = await prisma.student.update({
+        where: { id },
+        data: { isTrainingBlocked },
+      });
+
+      res.json({
+        message: isTrainingBlocked
+          ? 'Treinos bloqueados para este aluno.'
+          : 'Treinos liberados para este aluno.',
+        student: updatedStudent,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Set training block error:', error);
+      res.status(500).json({ error: 'Erro ao atualizar bloqueio' });
     }
   }
 
@@ -269,6 +335,8 @@ export class StudentController {
               phone: true,
               email: true,
               logoUrl: true,
+              brandPrimaryColor: true,
+              brandSecondaryColor: true,
             },
           },
           progressRecords: {

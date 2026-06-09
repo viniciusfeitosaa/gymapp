@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { User, Mail } from 'lucide-react';
 import type { RegisterFormData } from '../registerTypes';
-
 import { registerInputWithIconClass, registerLabelClass } from '../registerStyles';
 
 type Props = {
@@ -9,10 +9,12 @@ type Props = {
 };
 
 export default function IdentityStep({ formData, onChange }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div>
-        <label className={registerLabelClass}>Nome completo</label>
+        <label className={registerLabelClass}>{t('register.fullName')}</label>
         <div className="relative">
           <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#86868B]" />
           <input
@@ -21,14 +23,14 @@ export default function IdentityStep({ formData, onChange }: Props) {
             value={formData.name}
             onChange={onChange}
             className={registerInputWithIconClass}
-            placeholder="Seu nome completo"
+            placeholder={t('register.fullNamePlaceholder')}
             autoComplete="name"
             required
           />
         </div>
       </div>
       <div>
-        <label className={registerLabelClass}>E-mail</label>
+        <label className={registerLabelClass}>{t('login.email')}</label>
         <div className="relative">
           <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#86868B]" />
           <input
@@ -37,7 +39,7 @@ export default function IdentityStep({ formData, onChange }: Props) {
             value={formData.email}
             onChange={onChange}
             className={registerInputWithIconClass}
-            placeholder="seu@email.com"
+            placeholder={t('login.emailPlaceholder')}
             autoComplete="email"
             required
           />

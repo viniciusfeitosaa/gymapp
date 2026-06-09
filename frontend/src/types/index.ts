@@ -6,17 +6,24 @@ export interface User {
   taxId?: string;
   maxStudentsAllowed?: number; // 2 = gratuito, 999 = Pro (para exibir cancelar assinatura)
   logoUrl?: string;
+  brandPrimaryColor?: string | null;
+  brandSecondaryColor?: string | null;
   address?: string;
   addressNumber?: string;
   complement?: string;
   province?: string;
   postalCode?: string;
   accessCode?: string;
+  trainingDays?: string[];
+  paymentDueDay?: number | null;
+  isTrainingBlocked?: boolean;
   personalTrainer?: {
     id: string;
     name: string;
     phone?: string;
     logoUrl?: string | null;
+    brandPrimaryColor?: string | null;
+    brandSecondaryColor?: string | null;
   };
 }
 
@@ -30,6 +37,8 @@ export interface Student {
   weight?: number;
   height?: number;
   trainingDays: string[];
+  paymentDueDay?: number | null;
+  isTrainingBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

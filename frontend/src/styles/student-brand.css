@@ -1,0 +1,88 @@
+/**
+ * Tema do personal na visão do aluno (scoped em .student-app-layout).
+ */
+.student-app-layout {
+  --student-brand-primary: #f97316;
+  --student-brand-secondary: #ea580c;
+}
+
+.student-app-layout .bg-gradient-accent,
+.student-app-layout .student-brand-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--student-brand-primary) 0%,
+    var(--student-brand-secondary) 100%
+  ) !important;
+}
+
+.student-app-layout .student-brand-header {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--student-brand-primary) 10%, white),
+    white,
+    color-mix(in srgb, var(--student-brand-primary) 10%, white)
+  ) !important;
+  border-bottom-color: color-mix(in srgb, var(--student-brand-primary) 18%, white) !important;
+}
+
+.student-app-layout .student-bottom-nav-btn--active,
+.student-app-layout .student-brand-nav-active {
+  background: linear-gradient(
+    135deg,
+    var(--student-brand-primary) 0%,
+    var(--student-brand-secondary) 100%
+  ) !important;
+  color: #fff !important;
+}
+
+.student-app-layout .text-accent-600,
+.student-app-layout .text-accent-700 {
+  color: var(--student-brand-primary) !important;
+}
+
+.student-app-layout .bg-accent-500,
+.student-app-layout .hover\:bg-accent-600:hover {
+  background-color: var(--student-brand-primary) !important;
+}
+
+.student-app-layout .border-accent-500 {
+  border-color: var(--student-brand-primary) !important;
+}
+
+.student-app-layout .border-accent-200,
+.student-app-layout .border-accent-100 {
+  border-color: color-mix(in srgb, var(--student-brand-primary) 28%, white) !important;
+}
+
+.student-app-layout .bg-accent-50 {
+  background-color: color-mix(in srgb, var(--student-brand-primary) 12%, white) !important;
+}
+
+.student-app-layout .text-accent-700 {
+  color: color-mix(in srgb, var(--student-brand-primary) 85%, black) !important;
+}
+
+.student-app-layout .border-accent-500.border-t-transparent {
+  border-top-color: transparent !important;
+  border-right-color: var(--student-brand-primary) !important;
+  border-bottom-color: var(--student-brand-primary) !important;
+  border-left-color: var(--student-brand-primary) !important;
+}
+
+.student-app-layout .shadow-accent-500\/30 {
+  --tw-shadow-color: color-mix(in srgb, var(--student-brand-primary) 30%, transparent);
+}
+
+.student-app-layout .student-brand-avatar {
+  background: linear-gradient(
+    135deg,
+    var(--student-brand-primary) 0%,
+    var(--student-brand-secondary) 100%
+  ) !important;
+}
+
+/* Preview no painel do personal (mesmas variáveis) */
+.student-brand-preview {
+  --student-brand-primary: #f97316;
+  --student-brand-secondary: #ea580c;
+}

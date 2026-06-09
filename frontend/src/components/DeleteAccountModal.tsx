@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { AlertTriangle, X } from 'lucide-react';
 import { api } from '../services/api';
 
+/** Frase fixa exigida pelo backend — igual em todos os idiomas. */
 const CONFIRMATION_PHRASE = 'EXCLUIR';
 
 type DeleteAccountModalProps = {
@@ -19,6 +21,7 @@ export function DeleteAccountModal({
   onClose,
   onDeleted,
 }: DeleteAccountModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [phrase, setPhrase] = useState('');
   const [secret, setSecret] = useState('');
@@ -45,7 +48,7 @@ export function DeleteAccountModal({
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Não foi possível excluir a conta. Tente novamente.';
+        t('account.deleteError');
       setError(message);
     } finally {
       setDeleting(false);
@@ -62,14 +65,14 @@ export function DeleteAccountModal({
       >
         <div className="flex items-center justify-between p-5 border-b border-dark-100">
           <h3 id="delete-account-title" className="text-lg font-display font-bold text-dark-900">
-            Excluir conta
+            {t('account.deleteTitle')}
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={deleting}
             className="p-2 rounded-lg text-dark-500 hover:bg-dark-50"
-            aria-label="Fechar"
+            aria-label={t('account.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -97,20 +100,20 @@ export function DeleteAccountModal({
                 <AlertTriangle className="w-7 h-7 text-red-600" />
               </div>
               <p className="text-dark-700 text-sm text-center">
-                Esta ação é <strong>permanente e irreversível</strong>.
+                <Trans i18nKey="account.permanentWarning" components={{ strong: <strong /> }} />
               </p>
               <ul className="text-sm text-dark-600 space-y-2 list-disc pl-5">
                 {isPersonal ? (
                   <>
-                    <li>Sua conta de personal trainer será removida</li>
-                    <li>Todos os seus alunos serão excluídos</li>
-                    <li>Fichas de treino, mensagens e históricos serão apagados</li>
+                    <li>{t('account.personalBullet1')}</li>
+                    <li>{t('account.personalBullet2')}</li>
+                    <li>{t('account.personalBullet3')}</li>
                   </>
                 ) : (
                   <>
-                    <li>Seu perfil de aluno será removido</li>
-                    <li>Seu histórico de treinos e evolução será apagado</li>
-                    <li>Você precisará de um novo cadastro para voltar a usar o app</li>
+                    <li>{t('account.studentBullet1')}</li>
+                    <li>{t('account.studentBullet2')}</li>
+                    <li>{t('account.studentBullet3')}</li>
                   </>
                 )}
               </ul>
@@ -120,14 +123,14 @@ export function DeleteAccountModal({
                   onClick={onClose}
                   className="flex-1 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep(2)}
                   className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm"
                 >
-                  Continuar
+                  {t('common.continue')}
                 </button>
               </div>
             </>
@@ -136,8 +139,11 @@ export function DeleteAccountModal({
           {step === 2 && (
             <>
               <p className="text-dark-700 text-sm">
-                Para confirmar, digite <strong className="text-red-600">{CONFIRMATION_PHRASE}</strong> no campo
-                abaixo:
+                <Trans
+                  i18nKey="account.confirmPhraseIntro"
+                  values={{ phrase: CONFIRMATION_PHRASE }}
+                  components={{ strong: <strong className="text-red-600" /> }}
+                />
               </p>
               <input
                 type="text"
@@ -153,7 +159,7 @@ export function DeleteAccountModal({
                   onClick={() => setStep(1)}
                   className="flex-1 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                 >
-                  Voltar
+                  {t('common.back')}
                 </button>
                 <button
                   type="button"
@@ -161,7 +167,7 @@ export function DeleteAccountModal({
                   disabled={!phraseOk}
                   className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50"
                 >
-                  Continuar
+                  {t('common.continue')}
                 </button>
               </div>
             </>
@@ -170,12 +176,12 @@ export function DeleteAccountModal({
           {step === 3 && (
             <>
               <p className="text-dark-700 text-sm">
-                {isPersonal
-                  ? 'Digite sua senha para confirmar sua identidade:'
-                  : 'Digite seu código de acesso (5 caracteres):'}
+                {isPersonal ? t('account.confirmPasswordIntro') : t('account.confirmCodeIntro')}
               </p>
               {isPersonal && userEmail && (
-                <p className="text-xs text-dark-500">Conta: {userEmail}</p>
+                <p className="text-xs text-dark-500">
+                  {t('account.accountLabel', { email: userEmail })}
+                </p>
               )}
               <input
                 type={isPersonal ? 'password' : 'text'}
@@ -183,7 +189,7 @@ export function DeleteAccountModal({
                 onChange={(e) =>
                   setSecret(isPersonal ? e.target.value : e.target.value.toUpperCase())
                 }
-                placeholder={isPersonal ? 'Sua senha' : 'Ex: A1234'}
+                placeholder={isPersonal ? t('account.yourPassword') : t('account.accessCodeExample')}
                 maxLength={isPersonal ? undefined : 5}
                 autoComplete={isPersonal ? 'current-password' : 'off'}
                 className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
@@ -194,7 +200,7 @@ export function DeleteAccountModal({
                   onClick={() => setStep(2)}
                   className="flex-1 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                 >
-                  Voltar
+                  {t('common.back')}
                 </button>
                 <button
                   type="button"
@@ -202,7 +208,7 @@ export function DeleteAccountModal({
                   disabled={!secretOk}
                   className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50"
                 >
-                  Continuar
+                  {t('common.continue')}
                 </button>
               </div>
             </>
@@ -217,10 +223,7 @@ export function DeleteAccountModal({
                   onChange={(e) => setAcknowledged(e.target.checked)}
                   className="mt-1 rounded border-dark-300 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm text-dark-700">
-                  Entendo que todos os meus dados serão apagados permanentemente e não poderei recuperar
-                  esta conta.
-                </span>
+                <span className="text-sm text-dark-700">{t('account.acknowledge')}</span>
               </label>
               <div className="flex gap-2 pt-2">
                 <button
@@ -229,7 +232,7 @@ export function DeleteAccountModal({
                   disabled={deleting}
                   className="flex-1 py-2.5 rounded-xl border border-dark-200 text-dark-700 font-medium text-sm"
                 >
-                  Voltar
+                  {t('common.back')}
                 </button>
                 <button
                   type="button"
@@ -237,7 +240,7 @@ export function DeleteAccountModal({
                   disabled={!canSubmit}
                   className="flex-1 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white font-semibold text-sm disabled:opacity-50"
                 >
-                  {deleting ? 'Excluindo...' : 'Excluir permanentemente'}
+                  {deleting ? t('common.deleting') : t('account.deletePermanent')}
                 </button>
               </div>
             </>

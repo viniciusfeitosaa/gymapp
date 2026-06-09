@@ -8,16 +8,34 @@ import { isNativeApp, nativePlatform } from './nativeStoreBilling';
 const PRODUCT_ID = import.meta.env.VITE_SUBSCRIPTION_PRODUCT_ID || 'gymcode_pro_monthly';
 const PLAN_ID = import.meta.env.VITE_SUBSCRIPTION_PLAN_ID || 'monthly';
 
+async function assertBillingSupported(): Promise<void> {
+  const platform = nativePlatform();
+  try {
+    const result = await NativePurchases.isBillingSupported();
+    if (result?.isBillingSupported === false) {
+      throw new Error(
+        platform === 'ios'
+          ? 'Compras não suportadas neste dispositivo (iOS 15+ necessário).'
+          : 'Compras não suportadas neste dispositivo.'
+      );
+    }
+  } catch (err) {
+    const msg = getPurchaseErrorMessage(err);
+    // Fallback: versões antigas do plugin Android não expunham isBillingSupported
+    if (platform === 'android' && /not implemented/i.test(msg)) {
+      return;
+    }
+    throw err instanceof Error ? err : new Error(msg);
+  }
+}
+
 export async function purchaseProSubscription(): Promise<void> {
   if (!isNativeApp()) {
     throw new Error('Compras in-app disponíveis apenas no app móvel.');
   }
 
   try {
-    const { isBillingSupported } = await NativePurchases.isBillingSupported();
-    if (!isBillingSupported) {
-      throw new Error('Compras não suportadas neste dispositivo (iOS 15+ necessário).');
-    }
+    await assertBillingSupported();
 
     const platform = nativePlatform();
     const { products } = await NativePurchases.getProducts({
@@ -26,7 +44,9 @@ export async function purchaseProSubscription(): Promise<void> {
     });
     if (!products?.length) {
       throw new Error(
-        `Produto "${PRODUCT_ID}" não encontrado. No Xcode: Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration = GymCode.storekit`
+        platform === 'android'
+          ? `Assinatura "${PRODUCT_ID}" não encontrada na Google Play. Confira se o produto e o plano "${PLAN_ID}" estão ativos no Play Console.`
+          : `Produto "${PRODUCT_ID}" não encontrado. No Xcode: Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration = GymCode.storekit`
       );
     }
 

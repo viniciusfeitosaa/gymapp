@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { z } from 'zod';
+import { validateBrandColorField } from '../utils/brandColors';
 import { deletePersonalLogoFiles, savePersonalLogo } from '../utils/personalLogo';
 
 const personalProfileSelect = {
@@ -14,6 +15,8 @@ const personalProfileSelect = {
   cref: true,
   maxStudentsAllowed: true,
   logoUrl: true,
+  brandPrimaryColor: true,
+  brandSecondaryColor: true,
   address: true,
   addressNumber: true,
   complement: true,
@@ -45,6 +48,11 @@ const uploadLogoSchema = z.object({
   logo: z.string().min(50, 'Imagem inválida'),
 });
 
+const updateBrandSchema = z.object({
+  brandPrimaryColor: z.string().optional().nullable(),
+  brandSecondaryColor: z.string().optional().nullable(),
+});
+
 export class PersonalController {
   async updateProfile(req: AuthRequest, res: Response) {
     try {
@@ -74,6 +82,38 @@ export class PersonalController {
       }
       console.error('Update personal profile error:', error);
       res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+  }
+
+  async updateBrand(req: AuthRequest, res: Response) {
+    try {
+      const personalId = req.userId!;
+      const body = updateBrandSchema.parse(req.body);
+
+      const data: Record<string, string | null> = {};
+      if (body.brandPrimaryColor !== undefined) {
+        data.brandPrimaryColor = validateBrandColorField(body.brandPrimaryColor, 'Cor principal');
+      }
+      if (body.brandSecondaryColor !== undefined) {
+        data.brandSecondaryColor = validateBrandColorField(body.brandSecondaryColor, 'Cor secundária');
+      }
+
+      const personal = await prisma.personalTrainer.update({
+        where: { id: personalId },
+        data,
+        select: personalProfileSelect,
+      });
+
+      res.json(personal);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      if (error instanceof Error && error.message) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error('Update personal brand error:', error);
+      res.status(500).json({ error: 'Erro ao salvar cores da marca' });
     }
   }
 
