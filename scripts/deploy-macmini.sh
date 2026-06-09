@@ -31,21 +31,8 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
     cp -R "$HOME/.docker/cli-plugins/." "$CI_DOCKER_CONFIG/cli-plugins/"
   fi
   export CI_DOCKER_CONFIG
-  python3 - <<'PY'
-import json, os, pathlib
-src = pathlib.Path(os.path.expanduser("~/.docker/config.json"))
-dst = pathlib.Path(os.environ["CI_DOCKER_CONFIG"]) / "config.json"
-cfg = json.loads(src.read_text()) if src.is_file() else {}
-cfg.pop("credHelpers", None)
-cfg["credsStore"] = ""
-cfg["currentContext"] = "default"
-cfg.pop("features", None)
-cfg.get("plugins", {}).pop("scout", None)
-for plugin in cfg.get("plugins", {}).values():
-    if isinstance(plugin, dict):
-        plugin.pop("hooks", None)
-dst.write_text(json.dumps(cfg, indent=2) + "\n")
-PY
+  # Config mínima sem credsStore/osxkeychain (runner não tem sessão interativa)
+  printf '%s\n' '{"auths":{}}' > "$CI_DOCKER_CONFIG/config.json"
   export DOCKER_CONFIG="$CI_DOCKER_CONFIG"
   export DOCKER_HOST="${DOCKER_HOST:-unix://${HOME}/.docker/run/docker.sock}"
   export COMPOSE_PULL_POLICY=never
@@ -118,9 +105,15 @@ PULL_FLAG=""
 if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   PULL_FLAG="--pull never"
   export COMPOSE_BAKE=false
-  echo "📥 Garantindo imagens base em cache (sem Keychain)..."
-  docker pull node:18-alpine
-  docker pull nginx:alpine
+  echo "📦 Verificando imagens base em cache local (sem pull no CI)..."
+  for img in node:18-alpine nginx:alpine postgres:16-alpine; do
+    if ! docker image inspect "$img" >/dev/null 2>&1; then
+      echo "❌ Imagem ausente no Mac Mini: $img"
+      echo "   Rode uma vez no terminal (com Keychain desbloqueado):"
+      echo "   docker pull $img"
+      exit 1
+    fi
+  done
 fi
 docker compose -f docker-compose.prod.yml $COMPOSE_PROFILES up -d --build $PULL_FLAG
 
