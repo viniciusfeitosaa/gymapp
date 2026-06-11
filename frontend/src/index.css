@@ -39,7 +39,16 @@
   }
   
   .input-modern {
-    @apply w-full px-3 py-2.5 md:px-4 md:py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-100/20 outline-none transition-all duration-200 placeholder:text-slate-500 text-white text-sm md:text-base;
+    @apply w-full px-3 py-2.5 md:px-4 md:py-3 bg-white border border-dark-200 rounded-xl text-dark-900 text-sm md:text-base font-medium;
+    @apply placeholder:text-dark-400 outline-none transition-all duration-200 shadow-sm;
+    @apply hover:border-primary-300 focus:border-accent-500 focus:ring-4 focus:ring-accent-500/15;
+    @apply disabled:bg-dark-50 disabled:text-dark-400 disabled:cursor-not-allowed;
+  }
+
+  .input-modern[type='date'],
+  .input-modern[type='number'],
+  .input-modern[type='time'] {
+    color-scheme: light;
   }
 
   .select-modern {
@@ -66,6 +75,50 @@
     @apply text-slate-500;
   }
   
+  .modal-overlay {
+    @apply fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4;
+  }
+
+  .modal-overlay-nested {
+    @apply fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4;
+  }
+
+  .modal-panel {
+    @apply w-full sm:max-w-2xl bg-white shadow-strong flex flex-col min-h-0;
+    @apply rounded-t-2xl sm:rounded-2xl;
+    height: min(100dvh, 100%);
+    max-height: 100dvh;
+  }
+
+  @media (min-width: 640px) {
+    .modal-panel {
+      height: auto;
+      max-height: min(90dvh, calc(100dvh - 2rem));
+    }
+  }
+
+  .modal-panel-header {
+    @apply flex-shrink-0 flex justify-between items-start gap-3 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 md:px-8 border-b border-dark-100;
+  }
+
+  .modal-panel-body {
+    @apply flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 md:px-8;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-panel-md {
+    @apply sm:max-w-md;
+  }
+
+  .modal-title {
+    @apply text-xl sm:text-2xl font-display font-bold text-dark-900 pr-2;
+  }
+
+  .modal-panel-lg {
+    @apply sm:max-w-4xl;
+  }
+
   .card-modern {
     @apply bg-white rounded-xl md:rounded-2xl shadow-soft border border-slate-200 hover:shadow-medium transition-all duration-300;
   }

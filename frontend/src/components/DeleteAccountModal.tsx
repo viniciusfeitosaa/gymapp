@@ -151,7 +151,7 @@ export function DeleteAccountModal({
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder={CONFIRMATION_PHRASE}
                 autoComplete="off"
-                className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900 uppercase tracking-wider text-center font-semibold"
+                className="input-modern uppercase tracking-wider text-center font-semibold"
               />
               <div className="flex gap-2 pt-2">
                 <button
@@ -192,7 +192,7 @@ export function DeleteAccountModal({
                 placeholder={isPersonal ? t('account.yourPassword') : t('account.accessCodeExample')}
                 maxLength={isPersonal ? undefined : 5}
                 autoComplete={isPersonal ? 'current-password' : 'off'}
-                className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                className="input-modern"
               />
               <div className="flex gap-2 pt-2">
                 <button

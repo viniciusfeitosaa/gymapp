@@ -33,7 +33,8 @@ webAxios.interceptors.response.use(
   (response) => response,
   (error) => {
     const isLoginAttempt = error.config?.url?.includes('login');
-    if (error.response?.status === 401 && !isLoginAttempt) {
+    const data = error.response?.data;
+    if (shouldForceLogout(error.response?.status ?? 0, error.config?.url ?? '', data) && !isLoginAttempt) {
       notifyUnauthorized();
     }
     return Promise.reject(error);
@@ -66,6 +67,15 @@ async function webRequest<T>(
     }
     throw err;
   }
+}
+
+function shouldForceLogout(status: number, path: string, data: unknown): boolean {
+  if (path.includes('login')) return false;
+  if (status === 401) return true;
+  if (status === 403 && data && typeof data === 'object' && 'error' in data) {
+    return (data as { error?: string }).error === 'Token inválido';
+  }
+  return false;
 }
 
 function useNativeHttp(): boolean {

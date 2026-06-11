@@ -3,17 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2, Lock, Unlock, Calendar, Loader2 } from 'lucide-react';
+import { LogOut, Users, Dumbbell, Plus, X, Copy, Check, Trash2, AlertTriangle, Home, User as UserIcon, Edit2, Pen, CheckCircle, TrendingUp, TrendingDown, MessageCircle, Crown, Share2, Lock, Unlock, Calendar, Loader2, Palette, Search, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import { formatPaymentDueDay, isPaymentLikelyOverdue } from '../lib/paymentDueDay';
 import { CustomSelect } from '../components/CustomSelect';
 import { GymCodeIcon } from '../components/GymCodeIcon';
-import { AccountDeletionSection } from '../components/AccountDeletionSection';
+import { ModalPortal } from '../components/ModalPortal';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { AccountDeletionSection } from '../components/AccountDeletionSection';
 import { SubscriptionPanel } from '../components/SubscriptionPanel';
 import { PersonalBrandSettings } from '../components/PersonalBrandSettings';
 import { PersonalLogoUpload } from '../components/PersonalLogoUpload';
+import { ExerciseImageUpload } from '../components/ExerciseImageUpload';
 import { resolveAssetUrl } from '../lib/resolveAssetUrl';
-import { parseStoredJson } from '../lib/storageJson';
 import { appLocaleToDateLocale } from '../i18n/dateLocale';
 import { useWeekdayOptions, useWeekdayShortMap } from '../i18n/useWeekdayOptions';
 import { applyNativeSafeAreas } from '../lib/applyNativeSafeAreas';
@@ -56,6 +57,60 @@ interface Workout {
   };
   exercises: Exercise[];
   createdAt: string;
+}
+
+type CatalogExercise = Exercise & {
+  key: string;
+  usageCount: number;
+  workoutNames: string[];
+};
+
+function buildExerciseCatalog(workouts: Workout[]): CatalogExercise[] {
+  const byKey = new Map<string, CatalogExercise>();
+
+  for (const workout of workouts) {
+    for (const exercise of workout.exercises ?? []) {
+      const name = exercise.name?.trim();
+      if (!name) continue;
+
+      const key = name.toLowerCase();
+      const existing = byKey.get(key);
+
+      if (!existing) {
+        byKey.set(key, {
+          ...exercise,
+          name,
+          key,
+          usageCount: 1,
+          workoutNames: [workout.name],
+          order: exercise.order ?? 0,
+        });
+        continue;
+      }
+
+      existing.usageCount += 1;
+      if (!existing.workoutNames.includes(workout.name)) {
+        existing.workoutNames.push(workout.name);
+      }
+    }
+  }
+
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+function filterExerciseCatalog(
+  catalog: CatalogExercise[],
+  search: string,
+  studentFilter: string,
+  workouts: Workout[]
+): CatalogExercise[] {
+  const sourceWorkouts = studentFilter
+    ? workouts.filter((workout) => workout.studentId === studentFilter)
+    : workouts;
+  const base = studentFilter ? buildExerciseCatalog(sourceWorkouts) : catalog;
+  const query = search.trim().toLowerCase();
+  if (!query) return base;
+  return base.filter((exercise) => exercise.name.toLowerCase().includes(query));
 }
 
 type SuggestedExerciseImage = {
@@ -454,19 +509,59 @@ function ResumoSemanaCard({ thisWeekCount, diff }: { thisWeekCount: number; diff
   const { t } = useTranslation();
 
   return (
-    <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-emerald-50 to-teal-50/80 border border-emerald-100/80 shadow-sm">
-        <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.weekSummary')}</h3>
-        <p className="text-sm text-dark-500 mb-4">{t('personal.weekSummaryDesc')}</p>
-        <p className="text-3xl md:text-4xl font-display font-bold text-dark-900 mb-2">{thisWeekCount}</p>
-        <p className="text-sm text-dark-600 mb-1">
-          {t('personal.vsLastWeek', { diff: diff >= 0 ? `+${diff}` : `${diff}` })}
-        </p>
+    <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50/40 p-5 shadow-soft">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-medium">
+          <Activity className="h-5 w-5" />
+        </div>
         {diff !== 0 && (
-          <span className={`inline-flex items-center gap-1 text-sm font-medium ${diff > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            {diff > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+              diff > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {diff > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
             {diff > 0 ? t('common.trendUp') : t('common.trendDown')}
           </span>
         )}
+      </div>
+      <h3 className="text-base font-display font-bold text-dark-900">{t('personal.weekSummary')}</h3>
+      <p className="mt-0.5 text-xs text-dark-500">{t('personal.weekSummaryDesc')}</p>
+      <p className="mt-4 text-4xl font-display font-bold leading-none text-dark-900">{thisWeekCount}</p>
+      <p className="mt-2 text-sm text-dark-600">
+        {t('personal.vsLastWeek', { diff: diff >= 0 ? `+${diff}` : `${diff}` })}
+      </p>
+    </div>
+  );
+}
+
+function DashboardStatCard({
+  icon: Icon,
+  value,
+  label,
+  tone,
+}: {
+  icon: typeof Users;
+  value: number;
+  label: string;
+  tone: 'blue' | 'orange';
+}) {
+  const toneClasses =
+    tone === 'blue'
+      ? { wrap: 'border-blue-100 bg-gradient-to-br from-blue-50 to-white', icon: 'bg-blue-500 text-white' }
+      : { wrap: 'border-accent-100 bg-gradient-to-br from-accent-50 to-white', icon: 'bg-accent-500 text-white' };
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-soft ${toneClasses.wrap}`}>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-soft ${toneClasses.icon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-2xl font-display font-bold leading-none text-dark-900">{value}</p>
+          <p className="mt-1 text-xs font-medium text-dark-500">{label}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -519,12 +614,23 @@ function DashboardHome() {
   
   return (
     <div className="w-full">
-      <div className="mb-6 md:mb-8">
-        <h2 className="text-2xl md:text-4xl font-display font-bold text-dark-900 mb-1 md:mb-2 flex items-center gap-2">
-          {t('personal.hello', { name: user?.name?.split(' ')[0] || '' })}
-          {isPro && <span className="text-amber-500" aria-hidden><Crown className="w-6 h-6 md:w-8 md:h-8" /></span>}
-        </h2>
-        <p className="text-dark-500 text-sm md:text-lg">{t('personal.welcomePanel')}</p>
+      <div className="mb-5 md:mb-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-display font-bold text-dark-900">
+            {t('personal.hello', { name: user?.name?.split(' ')[0] || '' })}
+          </h2>
+          {isPro && (
+            <span className="text-amber-500" aria-hidden>
+              <Crown className="h-5 w-5 md:h-6 md:w-6" />
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-dark-500 md:text-base">{t('personal.welcomePanel')}</p>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3">
+        <DashboardStatCard icon={Users} value={totalAlunos} label={t('personal.activeStudents')} tone="blue" />
+        <DashboardStatCard icon={Dumbbell} value={totalTreinos} label={t('personal.workoutsCreated')} tone="orange" />
       </div>
 
       {/* Resumo da semana, Quem treina hoje, Top 3 */}
@@ -569,26 +675,36 @@ function DashboardHome() {
           .slice(0, 3)
           .map(([id, count]) => ({ id, count, name: students.find((s) => s.id === id)?.name ?? recentLogs.find((l) => l.student.id === id)?.student?.name ?? t('common.student') }));
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
-            {/* 1. Resumo da semana + comparação */}
+          <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
             <ResumoSemanaCard thisWeekCount={thisWeekCount} diff={diff} />
 
-            {/* 2. Quem treina hoje */}
-            <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-sky-50 to-blue-50/80 border border-sky-100/80 shadow-sm">
-              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.whoTrainsToday')}</h3>
-              <p className="text-sm text-dark-500 mb-4">{t('personal.whoTrainsTodayDesc')}</p>
+            <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-blue-50/40 p-5 shadow-soft">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white shadow-medium">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-display font-bold text-dark-900">{t('personal.whoTrainsToday')}</h3>
+              <p className="mt-0.5 text-xs text-dark-500">{t('personal.whoTrainsTodayDesc')}</p>
               {whoTrainsToday.length === 0 ? (
-                <p className="text-dark-500 text-sm">{t('personal.noWorkoutToday')}</p>
+                <p className="mt-4 rounded-xl border border-dashed border-sky-200 bg-white/70 px-3 py-4 text-center text-sm text-dark-500">
+                  {t('personal.noWorkoutToday')}
+                </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="mt-4 space-y-2">
                   {whoTrainsToday.map(({ id, name, phone, completed }) => (
-                    <li key={id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/70 backdrop-blur-sm border border-sky-200/60">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${completed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                        <span className="font-medium text-dark-900 truncate">{name}</span>
+                    <li
+                      key={id}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-sky-100 bg-white/80 px-3 py-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${completed ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                        />
+                        <span className="truncate text-sm font-semibold text-dark-900">{name}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={`text-xs font-medium ${completed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span
+                          className={`text-[11px] font-semibold ${completed ? 'text-emerald-600' : 'text-amber-600'}`}
+                        >
                           {completed ? t('common.completed') : t('common.pending')}
                         </span>
                         {!completed && phone && (
@@ -596,10 +712,10 @@ function DashboardHome() {
                             href={`https://wa.me/55${phone.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                            className="rounded-lg bg-emerald-100 p-2 text-emerald-700 transition-colors hover:bg-emerald-200"
                             title={t('personal.whatsappReminder')}
                           >
-                            <MessageCircle className="w-4 h-4" />
+                            <MessageCircle className="h-4 w-4" />
                           </a>
                         )}
                       </div>
@@ -609,23 +725,29 @@ function DashboardHome() {
               )}
             </div>
 
-            {/* 3. Top 3 alunos em destaque */}
-            <div className="card-modern p-6 md:p-8 bg-gradient-to-br from-amber-50 to-orange-50/80 border border-amber-100/80 shadow-sm">
-              <h3 className="text-lg font-display font-bold text-dark-900 mb-1">{t('personal.topStudents')}</h3>
-              <p className="text-sm text-dark-500 mb-4">{t('personal.topStudentsDesc')}</p>
+            <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50/40 p-5 shadow-soft">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-medium">
+                <Crown className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-display font-bold text-dark-900">{t('personal.topStudents')}</h3>
+              <p className="mt-0.5 text-xs text-dark-500">{t('personal.topStudentsDesc')}</p>
               {top3.length === 0 ? (
-                <p className="text-dark-500 text-sm">{t('personal.noCompletionsWeek')}</p>
+                <p className="mt-4 rounded-xl border border-dashed border-amber-200 bg-white/70 px-3 py-4 text-center text-sm text-dark-500">
+                  {t('personal.noCompletionsWeek')}
+                </p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="mt-4 space-y-2">
                   {top3.map(({ id, name, count }, i) => (
-                    <li key={id} className="flex items-center gap-3 p-3 rounded-xl bg-white/70 backdrop-blur-sm border border-amber-200/60">
-                      <div className="w-8 h-8 rounded-full bg-accent-100 text-accent-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                    <li
+                      key={id}
+                      className="flex items-center gap-3 rounded-xl border border-amber-100 bg-white/80 px-3 py-2.5"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-500 text-sm font-bold text-white shadow-soft">
                         {i + 1}
                       </div>
-                      <span className="font-medium text-dark-900 truncate flex-1">{name}</span>
-                      <span className="text-sm font-semibold text-accent-600 flex-shrink-0">
-                        {count}{' '}
-                        {t(count === 1 ? 'personal.workout_one' : 'personal.workout_other')}
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-dark-900">{name}</span>
+                      <span className="shrink-0 text-xs font-bold text-accent-700">
+                        {count} {t(count === 1 ? 'personal.workout_one' : 'personal.workout_other')}
                       </span>
                     </li>
                   ))}
@@ -636,76 +758,57 @@ function DashboardHome() {
         );
       })()}
 
-      {/* Cards de Resumo */}
-        <div className="flex flex-col gap-4">
-          <div className="card-modern p-4 md:p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-            <p className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1">{totalAlunos}</p>
-            <p className="text-sm text-dark-500">{t('personal.activeStudents')}</p>
+      <div className="rounded-2xl border border-dark-100 bg-white p-5 shadow-soft md:p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-medium">
+            <CheckCircle className="h-5 w-5" />
           </div>
-
-          <div className="card-modern p-4 md:p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Dumbbell className="w-5 h-5 text-accent-600" />
-              </div>
-            </div>
-            <p className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1">{totalTreinos}</p>
-            <p className="text-sm text-dark-500">{t('personal.workoutsCreated')}</p>
+          <div>
+            <h3 className="text-base font-display font-bold text-dark-900 md:text-lg">{t('personal.recentActivity')}</h3>
+            <p className="text-xs text-dark-500">{t('personal.noActivityHint')}</p>
           </div>
-
         </div>
-
-      <div className="card-modern p-8 md:p-10 mt-8">
-        <h3 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-6">
-          {t('personal.recentActivity')}
-        </h3>
         {(() => {
           const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
           const logsLast24h = recentLogs.filter((log) => new Date(log.date) >= last24h);
           return logsLast24h.length === 0 ? (
-          <div className="text-center py-12 text-dark-400">
-            <Dumbbell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>{t('personal.noActivity24h')}</p>
-            <p className="text-sm mt-1">{t('personal.noActivityHint')}</p>
-          </div>
-        ) : (
-          <div className="max-h-[52vh] overflow-y-auto pr-1">
-            <ul className="space-y-4">
-            {logsLast24h.map((log) => (
-              <li
-                key={log.id}
-                className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100"
-              >
-                <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-dark-900">
-                    {t('personal.completedWorkout', {
-                      name: log.student?.name,
-                      workout: log.workout?.name,
-                    })}
-                  </p>
-                  <p className="text-sm text-dark-500">
-                    {new Date(log.date).toLocaleDateString(appLocaleToDateLocale(i18n.language), {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              </li>
-            ))}
-            </ul>
-          </div>
-        );
+            <div className="rounded-xl border border-dashed border-dark-200 bg-dark-50/60 py-10 text-center text-dark-400">
+              <Dumbbell className="mx-auto mb-3 h-10 w-10 opacity-40" />
+              <p className="text-sm font-medium text-dark-500">{t('personal.noActivity24h')}</p>
+            </div>
+          ) : (
+            <div className="max-h-[52vh] overflow-y-auto pr-1">
+              <ul className="space-y-2">
+                {logsLast24h.map((log) => (
+                  <li
+                    key={log.id}
+                    className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-soft">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-dark-900">
+                        {t('personal.completedWorkout', {
+                          name: log.student?.name,
+                          workout: log.workout?.name,
+                        })}
+                      </p>
+                      <p className="text-xs text-dark-500">
+                        {new Date(log.date).toLocaleDateString(appLocaleToDateLocale(i18n.language), {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
         })()}
       </div>
     </div>
@@ -893,6 +996,31 @@ function AlunosPage() {
   );
 }
 
+function StudentTrainingDaysBadges({
+  trainingDays,
+  className = 'mt-3',
+}: {
+  trainingDays: string[];
+  className?: string;
+}) {
+  const dayShortMap = useWeekdayShortMap();
+
+  if (!trainingDays.length) return null;
+
+  return (
+    <div className={`flex flex-wrap gap-1 ${className}`}>
+      {trainingDays.map((day) => (
+        <span
+          key={day}
+          className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded leading-tight"
+        >
+          {dayShortMap[day as keyof typeof dayShortMap] || day}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function StudentCard({
   student,
   onEdit,
@@ -907,7 +1035,6 @@ function StudentCard({
   togglingBlock: boolean;
 }) {
   const { t } = useTranslation();
-  const dayShortMap = useWeekdayShortMap();
   const [codeCopied, setCodeCopied] = useState(false);
   const paymentLabel = formatPaymentDueDay(student.paymentDueDay);
   const paymentOverdue = isPaymentLikelyOverdue(student.paymentDueDay) && !student.isTrainingBlocked;
@@ -992,13 +1119,7 @@ function StudentCard({
         <p className="text-sm text-dark-500 mb-3">{student.phone}</p>
       )}
       {student.trainingDays && student.trainingDays.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-3">
-          {student.trainingDays.map((day) => (
-              <span key={day} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded leading-tight">
-                {dayShortMap[day as keyof typeof dayShortMap] || day}
-              </span>
-            ))}
-        </div>
+        <StudentTrainingDaysBadges trainingDays={student.trainingDays} />
       )}
 
       <div className="mt-4 pt-3 border-t border-dark-100 space-y-2">
@@ -1045,7 +1166,7 @@ function StudentCard({
 
 function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
-  const daysOfWeek = useWeekdayOptions();
+  const daysOfWeek = useWeekdayOptions(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -1143,19 +1264,21 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 md:p-8 my-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.addStudent.title')}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <ModalPortal>
+      <div className="modal-overlay">
+        <div className="modal-panel">
+          <div className="modal-panel-header">
+            <h3 className="modal-title">{t('personal.addStudent.title')}</h3>
+            <button
+              onClick={onClose}
+              className="shrink-0 p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="modal-panel-body">
+            <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
               {error}
@@ -1204,7 +1327,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">
                 {t('personal.studentForm.birthDate')}
@@ -1256,7 +1379,7 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               max={31}
               value={formData.paymentDueDay}
               onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
-              className="input-modern max-w-[10rem]"
+              className="input-modern w-full sm:max-w-[10rem]"
               placeholder={t('personal.studentForm.paymentDueDayPlaceholder')}
             />
             <p className="text-xs text-dark-500 mt-1.5">
@@ -1268,25 +1391,26 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <label className="block text-sm font-semibold text-dark-700 mb-3">
               {t('personal.studentForm.trainingDays')}
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {daysOfWeek.map((day) => (
                 <button
                   key={day.value}
                   type="button"
                   onClick={() => toggleDay(day.value)}
-                  className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                  className={`px-2 py-2 sm:px-4 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
                     formData.trainingDays.includes(day.value)
                       ? 'bg-gradient-accent text-white shadow-medium'
                       : 'bg-dark-50 text-dark-600 hover:bg-dark-100'
                   }`}
                 >
-                  {day.label}
+                  <span className="sm:hidden">{day.short}</span>
+                  <span className="hidden sm:inline">{day.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
@@ -1302,15 +1426,17 @@ function AddStudentModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               {loading ? t('common.creating') : t('personal.createStudent')}
             </button>
           </div>
-        </form>
+            </form>
+          </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
 function EditStudentModal({ student, onClose, onSuccess }: { student: Student; onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
-  const daysOfWeek = useWeekdayOptions();
+  const daysOfWeek = useWeekdayOptions(true);
   const [formData, setFormData] = useState({
     name: student.name,
     email: student.email || '',
@@ -1360,15 +1486,17 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 md:p-8 my-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.editStudent.title')}</h3>
-          <button onClick={onClose} className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <ModalPortal>
+      <div className="modal-overlay">
+        <div className="modal-panel">
+          <div className="modal-panel-header">
+            <h3 className="modal-title">{t('personal.editStudent.title')}</h3>
+            <button onClick={onClose} className="shrink-0 p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="modal-panel-body">
+            <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>
           )}
@@ -1386,7 +1514,7 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
               <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input-modern" placeholder={t('personal.studentForm.phonePlaceholder')} />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.studentForm.birthDate')}</label>
               <input type="date" value={formData.birthDate} onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })} className="input-modern" />
@@ -1408,28 +1536,31 @@ function EditStudentModal({ student, onClose, onSuccess }: { student: Student; o
               max={31}
               value={formData.paymentDueDay}
               onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
-              className="input-modern max-w-[10rem]"
+              className="input-modern w-full sm:max-w-[10rem]"
               placeholder={t('personal.studentForm.paymentDueDayPlaceholder')}
             />
             <p className="text-xs text-dark-500 mt-1.5">{t('personal.studentForm.paymentDueDayHintShort')}</p>
           </div>
           <div>
             <label className="block text-sm font-semibold text-dark-700 mb-3">{t('personal.studentForm.trainingDays')}</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {daysOfWeek.map((day) => (
-                <button key={day.value} type="button" onClick={() => toggleDay(day.value)} className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${formData.trainingDays.includes(day.value) ? 'bg-gradient-accent text-white shadow-medium' : 'bg-dark-50 text-dark-600 hover:bg-dark-100'}`}>
-                  {day.label}
+                <button key={day.value} type="button" onClick={() => toggleDay(day.value)} className={`px-2 py-2 sm:px-4 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm transition-all ${formData.trainingDays.includes(day.value) ? 'bg-gradient-accent text-white shadow-medium' : 'bg-dark-50 text-dark-600 hover:bg-dark-100'}`}>
+                  <span className="sm:hidden">{day.short}</span>
+                  <span className="hidden sm:inline">{day.label}</span>
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border-2 border-dark-200 text-dark-700 font-semibold rounded-xl hover:bg-dark-50 transition-colors">{t('common.cancel')}</button>
             <button type="submit" disabled={loading || !formData.name} className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? t('common.saving') : t('common.saveChanges')}</button>
           </div>
-        </form>
+            </form>
+          </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -1484,6 +1615,147 @@ function DeleteConfirmModal({
   );
 }
 
+function ExerciseLibraryPanel({
+  workouts,
+  students,
+  expandedKey,
+  onToggleExpand,
+  search,
+  onSearchChange,
+  studentFilter,
+  onStudentFilterChange,
+}: {
+  workouts: Workout[];
+  students: Student[];
+  expandedKey: string | null;
+  onToggleExpand: (key: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  studentFilter: string;
+  onStudentFilterChange: (value: string) => void;
+}) {
+  const { t } = useTranslation();
+  const catalog = useMemo(() => buildExerciseCatalog(workouts), [workouts]);
+  const filteredExercises = useMemo(
+    () => filterExerciseCatalog(catalog, search, studentFilter, workouts),
+    [catalog, search, studentFilter, workouts]
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="card-modern p-4 md:p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-accent text-white flex items-center justify-center shrink-0 shadow-medium">
+            <Dumbbell className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-display font-bold text-dark-900">
+              {t('personal.workouts.exerciseLibrarySectionTitle')}
+            </h3>
+            <p className="text-sm text-dark-500 mt-0.5">
+              {t('personal.workouts.exerciseLibrarySectionDesc')}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 flex items-center gap-2.5 input-modern px-3 py-2.5 md:px-4 md:py-3 focus-within:border-accent-500 focus-within:ring-4 focus-within:ring-accent-500/15">
+            <Search className="w-4 h-4 text-dark-400 shrink-0 pointer-events-none" aria-hidden />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={t('personal.workouts.exerciseLibrarySearchPlaceholder')}
+              className="flex-1 min-w-0 bg-transparent border-0 outline-none p-0 text-sm md:text-base font-medium text-dark-900 placeholder:text-dark-400"
+            />
+          </div>
+          <div className="sm:w-56">
+            <CustomSelect
+              value={studentFilter}
+              onChange={onStudentFilterChange}
+              options={[
+                { value: '', label: t('personal.workouts.libraryFilterAllStudents') },
+                ...students.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+              placeholder={t('personal.workouts.libraryFilterAllStudents')}
+              aria-label={t('personal.workouts.libraryFilterAllStudents')}
+            />
+          </div>
+        </div>
+      </div>
+
+      {filteredExercises.length === 0 ? (
+        <div className="card-modern p-8 md:p-12 text-center">
+          <div className="w-16 h-16 bg-dark-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Dumbbell className="w-8 h-8 text-dark-400" />
+          </div>
+          <h4 className="text-lg font-display font-bold text-dark-900 mb-2">
+            {t('personal.workouts.exerciseLibraryEmpty')}
+          </h4>
+          <p className="text-dark-500 text-sm max-w-md mx-auto">
+            {t('personal.workouts.exerciseLibraryEmptyHint')}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredExercises.map((exercise) => {
+            const isExpanded = expandedKey === exercise.key;
+
+            return (
+              <div key={exercise.key} className="card-modern overflow-hidden">
+                <div className="p-4 md:p-5">
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onToggleExpand(exercise.key)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <h4 className="font-display font-bold text-dark-900">{exercise.name}</h4>
+                      <p className="text-sm text-dark-600 mt-1">
+                        {t('personal.workouts.setsRepsSummary', {
+                          sets: exercise.sets,
+                          reps: exercise.reps,
+                        })}
+                        {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
+                        {exercise.weight ? ` · ${exercise.weight}` : ''}
+                      </p>
+                      <p className="text-xs text-dark-500 mt-2">
+                        {t('personal.workouts.exerciseLibraryUsage', { count: exercise.usageCount })}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onToggleExpand(exercise.key)}
+                      className="p-2 text-dark-500 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors shrink-0"
+                      title={isExpanded ? t('personal.workouts.hideDetails') : t('personal.workouts.showDetails')}
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-dark-100 pt-4 space-y-3">
+                    {exercise.notes && (
+                      <p className="text-sm text-dark-600">{exercise.notes}</p>
+                    )}
+                    <p className="text-sm text-dark-500">
+                      {t('personal.workouts.exerciseLibraryUsedIn', {
+                        names: exercise.workoutNames.join(', '),
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TreinosPage() {
   const { t } = useTranslation();
   const daysOfWeek = useWeekdayOptions(true);
@@ -1491,6 +1763,10 @@ function TreinosPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [treinosView, setTreinosView] = useState<'student' | 'library'>('student');
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [libraryStudentFilter, setLibraryStudentFilter] = useState('');
+  const [expandedExerciseKey, setExpandedExerciseKey] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalPreselectedDay, setAddModalPreselectedDay] = useState<string | null>(null);
   const [workoutToEdit, setWorkoutToEdit] = useState<Workout | null>(null);
@@ -1508,6 +1784,10 @@ function TreinosPage() {
       setSelectedStudent(students[0].id);
     }
   }, [students]);
+
+  useEffect(() => {
+    setSelectedDay(null);
+  }, [selectedStudent]);
 
   const loadData = async () => {
     try {
@@ -1544,11 +1824,12 @@ function TreinosPage() {
 
   // Filtrar treinos do aluno selecionado
   const studentWorkouts = workouts.filter(w => w.studentId === selectedStudent);
+  const selectedStudentData = students.find((s) => s.id === selectedStudent);
+  const exerciseCatalogCount = useMemo(() => buildExerciseCatalog(workouts).length, [workouts]);
 
-  // Agrupar treinos por dia da semana
-  const workoutsByDay = daysOfWeek.map(day => ({
+  const workoutsByDay = daysOfWeek.map((day) => ({
     ...day,
-    workout: studentWorkouts.find(w => w.dayOfWeek === day.value)
+    workout: studentWorkouts.find((w) => w.dayOfWeek === day.value),
   }));
 
   if (loading) {
@@ -1568,6 +1849,35 @@ function TreinosPage() {
         <p className="text-dark-500 text-sm md:text-lg">{t('personal.workouts.subtitle')}</p>
       </div>
 
+      {students.length > 0 && (
+        <div className="flex gap-2 p-1 bg-dark-100 rounded-xl mb-6">
+          <button
+            type="button"
+            onClick={() => setTreinosView('student')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              treinosView === 'student'
+                ? 'bg-white text-dark-900 shadow-soft'
+                : 'text-dark-500 hover:text-dark-700'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            {t('personal.workouts.viewByStudent')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTreinosView('library')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              treinosView === 'library'
+                ? 'bg-white text-dark-900 shadow-soft'
+                : 'text-dark-500 hover:text-dark-700'
+            }`}
+          >
+            <Dumbbell className="w-4 h-4" />
+            {t('personal.workouts.viewExerciseLibrary', { count: exerciseCatalogCount })}
+          </button>
+        </div>
+      )}
+
       {students.length === 0 ? (
         <div className="card-modern p-6 md:p-12 text-center">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-dark-100 to-dark-200 rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6">
@@ -1580,6 +1890,17 @@ function TreinosPage() {
             {t('personal.workouts.emptyStudentsDesc')}
           </p>
         </div>
+      ) : treinosView === 'library' ? (
+        <ExerciseLibraryPanel
+          workouts={workouts}
+          students={students}
+          expandedKey={expandedExerciseKey}
+          onToggleExpand={(key) => setExpandedExerciseKey((prev) => (prev === key ? null : key))}
+          search={librarySearch}
+          onSearchChange={setLibrarySearch}
+          studentFilter={libraryStudentFilter}
+          onStudentFilterChange={setLibraryStudentFilter}
+        />
       ) : (
         <>
           {/* Seletor de Aluno */}
@@ -1597,51 +1918,69 @@ function TreinosPage() {
                   aria-label={t('personal.workouts.selectStudent')}
                 />
               </div>
-              <button 
-                onClick={() => {
-                  setAddModalPreselectedDay(null);
-                  setShowAddModal(true);
-                }}
-                className="btn-primary inline-flex items-center gap-2 self-end"
-              >
-                <Plus className="w-4 h-4" />
-                {t('personal.workouts.newWorkout')}
-              </button>
             </div>
+
+            {selectedStudentData?.trainingDays && selectedStudentData.trainingDays.length > 0 && (
+              <div className="mt-4 rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-3">
+                <p className="text-xs font-semibold text-blue-900 mb-2">
+                  {t('personal.workouts.studentTrainingDaysLabel')}
+                </p>
+                <StudentTrainingDaysBadges
+                  trainingDays={selectedStudentData.trainingDays}
+                  className="mt-0"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Grade de Dias da Semana - Visão Compacta */}
           <div className="card-modern p-4 md:p-6 mb-6">
             <h3 className="text-lg font-display font-bold text-dark-900 mb-4">
               {t('personal.workouts.selectWeekday')}
             </h3>
             <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-              {workoutsByDay.map((day) => (
-                <button
-                  key={day.value}
-                  onClick={() => setSelectedDay(day.value)}
-                  className={`p-2 rounded-lg transition-all ${
-                    selectedDay === day.value
-                      ? 'bg-gradient-accent text-white shadow-strong scale-105'
-                      : day.workout
-                      ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200'
-                      : 'bg-dark-50 hover:bg-dark-100 border-2 border-dashed border-dark-200'
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className={`text-sm font-bold mb-0.5 ${
-                      selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-700' : 'text-dark-400'
-                    }`}>
+              {workoutsByDay.map((day) => {
+                const isSelected = selectedDay === day.value;
+                const hasWorkout = Boolean(day.workout);
+
+                return (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => setSelectedDay(day.value)}
+                    className={`p-2 sm:p-2.5 rounded-xl transition-all text-center ${
+                      isSelected
+                        ? 'bg-gradient-accent text-white shadow-strong scale-[1.02]'
+                        : hasWorkout
+                          ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200'
+                          : 'bg-dark-50 hover:bg-dark-100 border-2 border-dashed border-dark-200'
+                    }`}
+                  >
+                    <div
+                      className={`text-sm font-bold ${
+                        isSelected ? 'text-white' : hasWorkout ? 'text-blue-800' : 'text-dark-500'
+                      }`}
+                    >
                       {day.short}
                     </div>
-                    <div className={`text-[10px] font-semibold ${
-                      selectedDay === day.value ? 'text-white' : day.workout ? 'text-blue-600' : 'text-dark-400'
-                    }`}>
+                    <div
+                      className={`text-[10px] font-semibold mt-0.5 leading-tight ${
+                        isSelected ? 'text-white/90' : hasWorkout ? 'text-blue-600' : 'text-dark-400'
+                      }`}
+                    >
                       {day.label}
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <p
+                      className={`text-[10px] mt-1 leading-tight line-clamp-2 ${
+                        isSelected ? 'text-white/90' : hasWorkout ? 'text-blue-600' : 'text-dark-400'
+                      }`}
+                    >
+                      {hasWorkout
+                        ? day.workout!.name
+                        : t('personal.workouts.dayNoWorkoutShort')}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1732,7 +2071,7 @@ function TreinosPage() {
                                   {exercise.imageUrl && (
                                     <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50 mb-3">
                                       <img
-                                        src={exercise.imageUrl}
+                                        src={resolveAssetUrl(exercise.imageUrl) || exercise.imageUrl}
                                         alt={exercise.name}
                                         className="w-full h-auto max-h-48 object-contain"
                                       />
@@ -1906,6 +2245,7 @@ function PerfilPage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const [showPlans, setShowPlans] = useState(false);
+  const [showPersonalization, setShowPersonalization] = useState(false);
   const [editing, setEditing] = useState(false);
   const isPro = (user?.maxStudentsAllowed ?? 2) > 2;
   const supportWhatsappNumber = (import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '5585992654339').replace(/\D/g, '');
@@ -2013,7 +2353,7 @@ function PerfilPage() {
                     {isPro ? t('subscription.active') : t('subscription.freePrice')}
                   </span>
                 </div>
-                <ul className="space-y-2 text-sm text-dark-600 mb-4">
+                <ul className="space-y-2 text-sm text-dark-600">
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-500">✓</span>
                     {isPro
@@ -2030,13 +2370,13 @@ function PerfilPage() {
                     <span className="text-emerald-500">✓</span> {t('personal.benefitMessages')}
                   </li>
                 </ul>
-                {!isPro && (
-                  <SubscriptionPanel
-                    isPro={false}
-                    onProActivated={() => updateUser({ maxStudentsAllowed: 999 })}
-                  />
-                )}
               </div>
+              {!isPro && (
+                <SubscriptionPanel
+                  isPro={false}
+                  onProActivated={() => updateUser({ maxStudentsAllowed: 999 })}
+                />
+              )}
             </div>
           </div>
         )}
@@ -2051,16 +2391,33 @@ function PerfilPage() {
         </div>
       )}
 
-      <div className="mb-6 space-y-6">
-        <PersonalLogoUpload user={user} onUpdated={updateUser} />
-        <PersonalBrandSettings user={user} onUpdated={updateUser} />
+      <div className="card-modern p-6 md:p-8 mb-6">
+        <button
+          type="button"
+          onClick={() => setShowPersonalization((v) => !v)}
+          className="w-full flex items-center justify-between gap-4 text-left hover:opacity-90 transition-opacity"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-accent-100 to-accent-200 rounded-xl flex items-center justify-center">
+              <Palette className="w-6 h-6 text-accent-600" />
+            </div>
+            <div>
+              <h4 className="text-lg font-display font-bold text-dark-900">{t('personal.personalizationSection')}</h4>
+              <p className="text-dark-500 text-sm">{t('personal.personalizationSectionDesc')}</p>
+            </div>
+          </div>
+          <span className={`text-2xl text-dark-400 transition-transform ${showPersonalization ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+
+        {showPersonalization && (
+          <div className="mt-6 pt-6 border-t border-dark-100 space-y-6">
+            <PersonalLogoUpload user={user} onUpdated={updateUser} />
+            <PersonalBrandSettings user={user} onUpdated={updateUser} />
+          </div>
+        )}
       </div>
 
-      <div className="mb-6">
-        <AccountDeletionSection userType="personal" onDelete={() => setShowDeleteAccount(true)} />
-      </div>
-
-      <div className="card-modern p-5 md:p-6">
+      <div className="card-modern p-5 md:p-6 mb-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
             {resolveAssetUrl(user?.logoUrl) ? (
@@ -2107,7 +2464,7 @@ function PerfilPage() {
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                    className="input-modern"
                   />
                 </div>
                 <div>
@@ -2122,7 +2479,7 @@ function PerfilPage() {
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     placeholder={t('personal.profile.phonePlaceholder')}
-                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                    className="input-modern"
                   />
                 </div>
                 <div>
@@ -2135,7 +2492,7 @@ function PerfilPage() {
                       setForm((f) => ({ ...f, taxId: formatCpfDisplay(v) }));
                     }}
                     placeholder={t('personal.profile.taxIdPlaceholder')}
-                    className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                    className="input-modern"
                   />
                 </div>
                 <div className="border-t border-dark-100 pt-4 mt-4">
@@ -2151,7 +2508,7 @@ function PerfilPage() {
                           setForm((f) => ({ ...f, postalCode: formatCepDisplay(v) }));
                         }}
                         placeholder={t('personal.profile.cepPlaceholder')}
-                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                        className="input-modern"
                       />
                     </div>
                     <div>
@@ -2161,7 +2518,7 @@ function PerfilPage() {
                         value={form.address}
                         onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                         placeholder={t('personal.profile.streetPlaceholder')}
-                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                        className="input-modern"
                       />
                     </div>
                     <div>
@@ -2171,7 +2528,7 @@ function PerfilPage() {
                         value={form.addressNumber}
                         onChange={(e) => setForm((f) => ({ ...f, addressNumber: e.target.value }))}
                         placeholder={t('personal.profile.numberPlaceholder')}
-                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                        className="input-modern"
                       />
                     </div>
                     <div>
@@ -2181,7 +2538,7 @@ function PerfilPage() {
                         value={form.complement}
                         onChange={(e) => setForm((f) => ({ ...f, complement: e.target.value }))}
                         placeholder={t('personal.profile.complementPlaceholder')}
-                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                        className="input-modern"
                       />
                     </div>
                     <div>
@@ -2191,7 +2548,7 @@ function PerfilPage() {
                         value={form.province}
                         onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
                         placeholder={t('personal.profile.districtPlaceholder')}
-                        className="w-full rounded-lg border border-dark-200 px-4 py-2.5 text-dark-900"
+                        className="input-modern"
                       />
                     </div>
                   </div>
@@ -2286,6 +2643,10 @@ function PerfilPage() {
         </div>
       </div>
 
+      <div className="mb-6">
+        <AccountDeletionSection userType="personal" onDelete={() => setShowDeleteAccount(true)} />
+      </div>
+
       {showDeleteAccount && (
         <DeleteAccountModal
           userType="personal"
@@ -2353,7 +2714,246 @@ function DeleteWorkoutModal({
   );
 }
 
-function AddWorkoutModal({ 
+function WorkoutExerciseEditorCard({
+  exercise,
+  index,
+  isExpanded,
+  isConfirmingDelete,
+  showSaveToLibrary = false,
+  onExpand,
+  onCollapse,
+  onConfirmDelete,
+  onCancelDelete,
+  onDelete,
+  onSaveToLibrary,
+  onUpdate,
+}: {
+  exercise: Exercise;
+  index: number;
+  isExpanded: boolean;
+  isConfirmingDelete: boolean;
+  showSaveToLibrary?: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
+  onDelete: () => void;
+  onSaveToLibrary?: () => void;
+  onUpdate: (field: keyof Exercise, value: Exercise[keyof Exercise]) => void;
+}) {
+  const { t } = useTranslation();
+  const displayName = exercise.name || t('personal.exercise.defaultName', { number: index + 1 });
+
+  return (
+    <div
+      className={`rounded-xl border p-4 sm:p-5 transition-colors ${
+        isExpanded ? 'bg-white border-accent-200 shadow-sm' : 'bg-dark-50 border-dark-200'
+      }`}
+    >
+      {isConfirmingDelete ? (
+        <div className="py-1">
+          <p className="text-dark-700 font-medium mb-4">
+            {t('personal.workouts.deleteExerciseConfirm', { name: displayName })}
+          </p>
+          <div className="flex flex-col-reverse sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={onCancelDelete}
+              className="flex-1 px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex-1 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
+            >
+              {t('common.delete')}
+            </button>
+          </div>
+        </div>
+      ) : !isExpanded ? (
+        <div className="flex items-start justify-between gap-3">
+          <button type="button" onClick={onExpand} className="min-w-0 flex-1 text-left">
+            <p className="font-semibold text-dark-900 truncate">{displayName}</p>
+            <p className="text-sm text-dark-500 mt-0.5">
+              {t('personal.workouts.setsRepsSummary', { sets: exercise.sets, reps: exercise.reps })}
+              {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
+              {exercise.weight ? ` · ${exercise.weight}` : ''}
+            </p>
+          </button>
+          <div className="flex gap-1.5 shrink-0">
+            {showSaveToLibrary && onSaveToLibrary && (
+              <button
+                type="button"
+                onClick={onSaveToLibrary}
+                disabled={!exercise.name || !exercise.sets || !exercise.reps}
+                className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t('personal.workouts.saveToLibrary')}
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onExpand}
+              className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
+              title={t('personal.workouts.editExercise')}
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onConfirmDelete}
+              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+              title={t('personal.workouts.deleteExercise')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-accent-700">{displayName}</p>
+            <div className="flex gap-1.5 shrink-0">
+              {showSaveToLibrary && onSaveToLibrary && (
+                <button
+                  type="button"
+                  onClick={onSaveToLibrary}
+                  disabled={!exercise.name || !exercise.sets || !exercise.reps}
+                  className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={t('personal.workouts.saveToLibrary')}
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onConfirmDelete}
+                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
+                title={t('personal.workouts.deleteExercise')}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <ExerciseImageUpload
+            imageUrl={exercise.imageUrl}
+            onChange={(url) => onUpdate('imageUrl', url)}
+          />
+          {exercise.name.trim().length >= 3 && (
+            <ExerciseImageSuggestions
+              exerciseName={exercise.name}
+              selectedImageUrl={exercise.imageUrl}
+              onSelect={(url) => onUpdate('imageUrl', url)}
+            />
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.name')}</label>
+            <input
+              type="text"
+              required
+              value={exercise.name}
+              onChange={(e) => onUpdate('name', e.target.value)}
+              className="input-modern"
+              placeholder={t('personal.exercise.namePlaceholder')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.sets')}</label>
+              <input
+                type="number"
+                required
+                min={1}
+                value={exercise.sets}
+                onChange={(e) => onUpdate('sets', parseInt(e.target.value, 10) || 1)}
+                className="input-modern"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.reps')}</label>
+              <input
+                type="text"
+                required
+                value={exercise.reps}
+                onChange={(e) => onUpdate('reps', e.target.value)}
+                className="input-modern"
+                placeholder={t('personal.exercise.repsPlaceholder')}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.rest')}</label>
+              <input
+                type="text"
+                value={exercise.rest}
+                onChange={(e) => onUpdate('rest', e.target.value)}
+                className="input-modern"
+                placeholder={t('personal.exercise.restPlaceholder')}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.weight')}</label>
+              <input
+                type="text"
+                value={exercise.weight}
+                onChange={(e) => onUpdate('weight', e.target.value)}
+                className="input-modern"
+                placeholder={t('personal.exercise.weightPlaceholder')}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-3 border-t border-dark-100">
+            <p className="text-xs font-semibold uppercase tracking-wide text-dark-400">
+              {t('personal.exercise.mediaOptional')}
+            </p>
+            <div>
+              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.videoUrl')}</label>
+              <input
+                type="url"
+                value={exercise.videoUrl}
+                onChange={(e) => onUpdate('videoUrl', e.target.value)}
+                className="input-modern"
+                placeholder={t('personal.exercise.videoPlaceholder')}
+              />
+              <ExerciseVideoSuggestions
+                exerciseName={exercise.name}
+                selectedVideoUrl={exercise.videoUrl}
+                onSelect={(url) => onUpdate('videoUrl', url)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.notes')}</label>
+            <textarea
+              value={exercise.notes}
+              onChange={(e) => onUpdate('notes', e.target.value)}
+              className="input-modern"
+              rows={2}
+              placeholder={t('personal.exercise.notesPlaceholder')}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={onCollapse}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
+          >
+            {t('common.save')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddWorkoutModal({
   students, 
   workouts,
   preSelectedStudentId,
@@ -2369,7 +2969,7 @@ function AddWorkoutModal({
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const daysOfWeek = useWeekdayOptions();
+  const daysOfWeek = useWeekdayOptions(true);
   const [formData, setFormData] = useState({
     studentId: preSelectedStudentId || '',
     name: '',
@@ -2386,20 +2986,17 @@ function AddWorkoutModal({
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [expandedExerciseIndex, setExpandedExerciseIndex] = useState<number | null>(null);
   const [exerciseToDeleteIndex, setExerciseToDeleteIndex] = useState<number | null>(null);
-  const [savedExercises, setSavedExercises] = useState<Exercise[]>([]);
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
-  const [showWorkoutLibrary, setShowWorkoutLibrary] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [recentlyAddedKey, setRecentlyAddedKey] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Carregar exercícios salvos do localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('savedExercises');
-    const parsed = parseStoredJson<typeof savedExercises>(saved);
-    if (parsed) setSavedExercises(parsed);
-  }, []);
-
-  const dayLabelByValue = Object.fromEntries(daysOfWeek.map((d) => [d.value, d.label])) as Record<string, string>;
+  const exerciseCatalog = useMemo(() => buildExerciseCatalog(workouts), [workouts]);
+  const filteredLibraryExercises = useMemo(
+    () => filterExerciseCatalog(exerciseCatalog, librarySearch, '', workouts),
+    [exerciseCatalog, librarySearch, workouts]
+  );
 
   const toggleDay = (day: string) => {
     const alreadyAllocated = daysWithExistingWorkout.includes(day);
@@ -2427,6 +3024,7 @@ function AddWorkoutModal({
   }, [formData.studentId]);
 
   const addExercise = () => {
+    const nextIndex = exercises.length;
     setExercises([
       ...exercises,
       {
@@ -2438,9 +3036,10 @@ function AddWorkoutModal({
         notes: '',
         videoUrl: '',
         imageUrl: '',
-        order: exercises.length,
+        order: nextIndex,
       },
     ]);
+    setExpandedExerciseIndex(nextIndex);
   };
 
   const removeExercise = (index: number) => {
@@ -2450,51 +3049,33 @@ function AddWorkoutModal({
     else if (expandedExerciseIndex !== null && expandedExerciseIndex > index) setExpandedExerciseIndex(expandedExerciseIndex - 1);
   };
 
-  const saveExercise = (exercise: Exercise) => {
-    const updated = [...savedExercises, { ...exercise, id: Date.now().toString() }];
-    setSavedExercises(updated);
-    localStorage.setItem('savedExercises', JSON.stringify(updated));
-  };
+  const addFromLibrary = (exercise: CatalogExercise) => {
+    const nextIndex = exercises.length;
 
-  const addFromLibrary = (exercise: Exercise) => {
-    setExercises([
-      ...exercises,
+    setExercises((prev) => [
+      ...prev,
       {
-        ...exercise,
-        order: exercises.length,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        rest: exercise.rest || '',
+        weight: exercise.weight || '',
+        notes: exercise.notes || '',
+        videoUrl: exercise.videoUrl || '',
+        imageUrl: exercise.imageUrl || '',
+        order: prev.length,
       },
     ]);
-    setShowExerciseLibrary(false);
+    setExpandedExerciseIndex(nextIndex);
+    setExerciseToDeleteIndex(null);
+    setRecentlyAddedKey(exercise.key);
+    window.setTimeout(() => setRecentlyAddedKey((current) => (current === exercise.key ? null : current)), 1500);
   };
 
-  const workoutTemplates = workouts
-    .filter((w) => w.exercises && w.exercises.length > 0)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const applyWorkoutTemplate = (template: Workout) => {
-    setFormData((prev) => ({
-      ...prev,
-      name: template.name || prev.name,
-      description: template.description || '',
-    }));
-
-    setExercises(
-      (template.exercises || []).map((ex, index) => ({
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        rest: ex.rest || '',
-        weight: ex.weight || '',
-        notes: ex.notes || '',
-        videoUrl: ex.videoUrl || '',
-        imageUrl: ex.imageUrl || '',
-        order: index,
-      }))
-    );
-
-    setExpandedExerciseIndex(null);
-    setExerciseToDeleteIndex(null);
-    setShowWorkoutLibrary(false);
+  const closeExerciseLibrary = () => {
+    setShowExerciseLibrary(false);
+    setLibrarySearch('');
+    setRecentlyAddedKey(null);
   };
 
   const updateExercise = (index: number, field: keyof Exercise, value: any) => {
@@ -2541,19 +3122,28 @@ function AddWorkoutModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-strong max-w-4xl w-full p-6 md:p-8 my-8 max-h-[85vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.workouts.createTitle')}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+    <ModalPortal>
+      <>
+        <div
+          className={`modal-overlay ${showExerciseLibrary ? 'pointer-events-none' : ''}`}
+          aria-hidden={showExerciseLibrary}
+        >
+          <div
+            className={`modal-panel modal-panel-lg ${showExerciseLibrary ? 'pointer-events-none select-none opacity-50' : ''}`}
           >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+            <div className="modal-panel-header">
+              <h3 className="modal-title">{t('personal.workouts.createTitle')}</h3>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="modal-panel-body">
+              <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
               {error}
@@ -2650,31 +3240,19 @@ function AddWorkoutModal({
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
               <h4 className="text-lg font-display font-bold text-dark-900">
                 {t('personal.workouts.exercisesTitle')} ({exercises.length})
               </h4>
-              <div className="flex gap-2">
-                {workoutTemplates.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowWorkoutLibrary(true)}
-                    className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-sm rounded-lg hover:bg-indigo-100 transition-colors inline-flex items-center gap-2"
-                  >
-                    <Copy className="w-4 h-4" />
-                    {t('personal.workouts.workoutLibrary', { count: workoutTemplates.length })}
-                  </button>
-                )}
-                {savedExercises.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowExerciseLibrary(true)}
-                    className="hidden px-4 py-2 bg-blue-50 text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-100 transition-colors inline-flex items-center gap-2"
-                  >
-                    <Copy className="w-4 h-4" />
-                    {t('personal.workouts.exerciseLibrary', { count: savedExercises.length })}
-                  </button>
-                )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowExerciseLibrary(true)}
+                  className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold text-sm rounded-lg hover:bg-indigo-100 transition-colors inline-flex items-center gap-2"
+                >
+                  <Dumbbell className="w-4 h-4" />
+                  {t('personal.workouts.exerciseLibrary', { count: exerciseCatalog.length })}
+                </button>
                 <button
                   type="button"
                   onClick={addExercise}
@@ -2693,211 +3271,27 @@ function AddWorkoutModal({
                 <p className="text-sm text-dark-400 mt-1">{t('personal.workouts.noExercisesHint')}</p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
-                {exercises.map((exercise, index) => {
-                  const isExpanded = expandedExerciseIndex === index;
-                  const isConfirmingDelete = exerciseToDeleteIndex === index;
-                  return (
-                    <div key={index} className="bg-dark-50 rounded-xl p-4 relative border-2 border-transparent">
-                      {isConfirmingDelete ? (
-                        <div className="py-2">
-                          <p className="text-dark-700 font-medium mb-4">
-                            {t('personal.workouts.deleteExerciseConfirm', {
-                              name: exercise.name || t('personal.exercise.defaultName', { number: index + 1 }),
-                            })}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExerciseToDeleteIndex(null)}
-                              className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
-                            >
-                              {t('common.cancel')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeExercise(index)}
-                              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
-                            >
-                              {t('common.delete')}
-                            </button>
-                          </div>
-                        </div>
-                      ) : !isExpanded ? (
-                        <>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex gap-2 shrink-0 self-end">
-                              <button
-                                type="button"
-                                onClick={() => saveExercise(exercise)}
-                                disabled={!exercise.name || !exercise.sets || !exercise.reps}
-                                className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={t('personal.workouts.saveToLibrary')}
-                              >
-                                <Copy className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExpandedExerciseIndex(index)}
-                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                                title={t('personal.workouts.editExercise')}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExerciseToDeleteIndex(index)}
-                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                                title={t('personal.workouts.deleteExercise')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || t('personal.exercise.defaultName', { number: index + 1 })}
-                              </p>
-                              <p className="text-sm text-dark-500 mt-0.5">
-                                {t('personal.workouts.setsRepsSummary', { sets: exercise.sets, reps: exercise.reps })}
-                                {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="absolute top-3 right-3 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedExerciseIndex(null)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
-                            >
-                              {t('common.save')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => saveExercise(exercise)}
-                              disabled={!exercise.name || !exercise.sets || !exercise.reps}
-                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={t('personal.workouts.saveToLibrary')}
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExerciseToDeleteIndex(index)}
-                              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                              title={t('personal.workouts.deleteExercise')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-32">
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.name')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={exercise.name}
-                                onChange={(e) => updateExercise(index, 'name', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.namePlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.sets')}</label>
-                              <input
-                                type="number"
-                                required
-                                min={1}
-                                value={exercise.sets}
-                                onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
-                                className="input-modern"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.reps')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={exercise.reps}
-                                onChange={(e) => updateExercise(index, 'reps', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.repsPlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.rest')}</label>
-                              <input
-                                type="text"
-                                value={exercise.rest}
-                                onChange={(e) => updateExercise(index, 'rest', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.restPlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.weight')}</label>
-                              <input
-                                type="text"
-                                value={exercise.weight}
-                                onChange={(e) => updateExercise(index, 'weight', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.weightPlaceholder')}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.videoUrl')}</label>
-                              <input
-                                type="url"
-                                value={exercise.videoUrl}
-                                onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.videoPlaceholder')}
-                              />
-                              <ExerciseVideoSuggestions
-                                exerciseName={exercise.name}
-                                selectedVideoUrl={exercise.videoUrl}
-                                onSelect={(url) => updateExercise(index, 'videoUrl', url)}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.imageUrl')}</label>
-                              <input
-                                type="url"
-                                value={exercise.imageUrl}
-                                onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.imagePlaceholder')}
-                              />
-                              <p className="text-xs text-dark-500 mt-1">{t('personal.exercise.imageHint')}</p>
-                              <ExerciseImageSuggestions
-                                exerciseName={exercise.name}
-                                selectedImageUrl={exercise.imageUrl}
-                                onSelect={(url) => updateExercise(index, 'imageUrl', url)}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.notes')}</label>
-                              <textarea
-                                value={exercise.notes}
-                                onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                                className="input-modern"
-                                rows={2}
-                                placeholder={t('personal.exercise.notesPlaceholder')}
-                              />
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="space-y-3">
+                {exercises.map((exercise, index) => (
+                  <WorkoutExerciseEditorCard
+                    key={index}
+                    exercise={exercise}
+                    index={index}
+                    isExpanded={expandedExerciseIndex === index}
+                    isConfirmingDelete={exerciseToDeleteIndex === index}
+                    onExpand={() => setExpandedExerciseIndex(index)}
+                    onCollapse={() => setExpandedExerciseIndex(null)}
+                    onConfirmDelete={() => setExerciseToDeleteIndex(index)}
+                    onCancelDelete={() => setExerciseToDeleteIndex(null)}
+                    onDelete={() => removeExercise(index)}
+                    onUpdate={(field, value) => updateExercise(index, field, value)}
+                  />
+                ))}
               </div>
             )}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-dark-100">
             <button
               type="button"
               onClick={onClose}
@@ -2916,141 +3310,124 @@ function AddWorkoutModal({
                   ? t('personal.createWorkouts', { count: formData.daysOfWeek.length })
                   : t('personal.createWorkout')}
             </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Modal da Biblioteca de Exercícios */}
-      {showExerciseLibrary && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-2xl shadow-strong max-w-2xl w-full p-6 max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-display font-bold text-dark-900">
-                {t('personal.workouts.exerciseLibraryTitle')}
-              </h3>
-              <button
-                onClick={() => setShowExerciseLibrary(false)}
-                className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
+              </form>
+            </div>
+          </div>
+        </div>
 
-            <div className="space-y-3">
-              {savedExercises.map((exercise, index) => (
-                <div
-                  key={index}
-                  className="bg-gradient-to-br from-dark-50 to-dark-100 rounded-lg p-4 hover:shadow-medium transition-all cursor-pointer border-2 border-transparent hover:border-accent-500"
-                  onClick={() => addFromLibrary(exercise)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-dark-900">{exercise.name}</h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const updated = savedExercises.filter((_, i) => i !== index);
-                        setSavedExercises(updated);
-                        localStorage.setItem('savedExercises', JSON.stringify(updated));
-                      }}
-                      className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex gap-3 text-sm text-dark-600">
-                    <span>{t('personal.workouts.librarySets', { sets: exercise.sets })}</span>
-                    <span>•</span>
-                    <span>{exercise.reps} reps</span>
-                    {exercise.weight && (
-                      <>
-                        <span>•</span>
-                        <span>{exercise.weight}</span>
-                      </>
-                    )}
-                  </div>
-                  {exercise.notes && (
-                    <p className="text-xs text-dark-500 mt-2">{exercise.notes}</p>
-                  )}
+        {showExerciseLibrary && (
+          <div className="modal-overlay-nested pointer-events-auto">
+            <div
+              className="modal-panel modal-panel-lg pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="modal-panel-header">
+                <div>
+                  <h3 className="modal-title">{t('personal.workouts.exerciseLibraryTitle')}</h3>
+                  <p className="text-sm text-dark-500 mt-1">
+                    {t('personal.workouts.exerciseLibraryAddedCount', { count: exercises.length })}
+                  </p>
                 </div>
-              ))}
-            </div>
-
-            {savedExercises.length === 0 && (
-              <div className="text-center py-8">
-                <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">{t('personal.workouts.noSavedExercises')}</p>
-                <p className="text-sm text-dark-400 mt-1">
-                  Clique no ícone de salvar ao criar exercícios
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal da Biblioteca de Treinos */}
-      {showWorkoutLibrary && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-2xl shadow-strong max-w-3xl w-full p-6 max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-display font-bold text-dark-900">
-                {t('personal.workouts.libraryTitle')}
-              </h3>
-              <button
-                onClick={() => setShowWorkoutLibrary(false)}
-                className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-dark-500 mb-4">
-              {t('personal.workouts.librarySelectHint')}
-            </p>
-
-            <div className="space-y-3">
-              {workoutTemplates.map((template) => (
                 <button
-                  key={template.id}
                   type="button"
-                  onClick={() => applyWorkoutTemplate(template)}
-                  className="w-full text-left bg-gradient-to-br from-dark-50 to-dark-100 rounded-lg p-4 hover:shadow-medium transition-all border-2 border-transparent hover:border-accent-500"
+                  onClick={closeExerciseLibrary}
+                  className="shrink-0 p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
                 >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-dark-900 truncate">{template.name}</h4>
-                      <p className="text-xs text-dark-500 mt-1">
-                        {t('personal.workouts.libraryExerciseDay', {
-                          count: template.exercises.length,
-                          day: dayLabelByValue[template.dayOfWeek] || template.dayOfWeek,
-                        })}
-                      </p>
-                      {template.student?.name && (
-                        <p className="text-xs text-dark-500 mt-1 truncate">
-                          {t('personal.workouts.studentLabel', { name: template.student.name })}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-xs font-semibold text-accent-600 shrink-0">{t('personal.workouts.useWorkout')}</span>
-                  </div>
+                  <X className="w-5 h-5" />
                 </button>
-              ))}
-            </div>
-
-            {workoutTemplates.length === 0 && (
-              <div className="text-center py-8">
-                <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
-                <p className="text-dark-500">{t('personal.workouts.noWorkoutsAvailable')}</p>
               </div>
-            )}
+
+              <div className="modal-panel-body">
+                <p className="text-sm text-dark-500 mb-4">
+                  {t('personal.workouts.exerciseLibrarySelectHint')}
+                </p>
+
+                <div className="flex items-center gap-2.5 input-modern px-3 py-2.5 mb-4 focus-within:border-accent-500 focus-within:ring-4 focus-within:ring-accent-500/15">
+                  <Search className="w-4 h-4 text-dark-400 shrink-0 pointer-events-none" aria-hidden />
+                  <input
+                    type="search"
+                    value={librarySearch}
+                    onChange={(e) => setLibrarySearch(e.target.value)}
+                    placeholder={t('personal.workouts.exerciseLibrarySearchPlaceholder')}
+                    className="flex-1 min-w-0 bg-transparent border-0 outline-none p-0 text-sm font-medium text-dark-900 placeholder:text-dark-400"
+                  />
+                </div>
+
+                {filteredLibraryExercises.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Dumbbell className="w-12 h-12 text-dark-300 mx-auto mb-3" />
+                    <p className="text-dark-500">{t('personal.workouts.exerciseLibraryEmpty')}</p>
+                    <p className="text-sm text-dark-400 mt-1">
+                      {t('personal.workouts.exerciseLibraryEmptyHint')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredLibraryExercises.map((exercise) => {
+                      const wasAdded = recentlyAddedKey === exercise.key;
+
+                      return (
+                        <div
+                          key={exercise.key}
+                          className="flex items-start gap-3 rounded-xl bg-dark-50 p-4 border border-dark-100"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-dark-900">{exercise.name}</h4>
+                            <p className="text-sm text-dark-600 mt-1">
+                              {t('personal.workouts.setsRepsSummary', {
+                                sets: exercise.sets,
+                                reps: exercise.reps,
+                              })}
+                              {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
+                              {exercise.weight ? ` · ${exercise.weight}` : ''}
+                            </p>
+                            <p className="text-xs text-dark-500 mt-2">
+                              {t('personal.workouts.exerciseLibraryUsage', { count: exercise.usageCount })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              addFromLibrary(exercise);
+                            }}
+                            className={`shrink-0 px-3 py-2 font-semibold text-sm rounded-lg transition-colors inline-flex items-center gap-1.5 ${
+                              wasAdded
+                                ? 'bg-green-50 text-green-700'
+                                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                            }`}
+                          >
+                            {wasAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {wasAdded ? t('personal.workouts.addedFromLibrary') : t('personal.workouts.addFromLibrary')}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="pt-4 mt-4 border-t border-dark-100">
+                  <button
+                    type="button"
+                    onClick={closeExerciseLibrary}
+                    className="w-full btn-primary"
+                  >
+                    {t('personal.workouts.exerciseLibraryDone', { count: exercises.length })}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </>
+    </ModalPortal>
   );
 }
 
-function EditWorkoutModal({ 
+function EditWorkoutModal({
   workout,
   students,
   onClose, 
@@ -3062,7 +3439,7 @@ function EditWorkoutModal({
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const daysOfWeek = useWeekdayOptions();
+  const daysOfWeek = useWeekdayOptions(true);
   const [formData, setFormData] = useState({
     studentId: workout.studentId,
     name: workout.name,
@@ -3088,6 +3465,7 @@ function EditWorkoutModal({
   const [loading, setLoading] = useState(false);
 
   const addExercise = () => {
+    const nextIndex = exercises.length;
     setExercises([
       ...exercises,
       {
@@ -3099,9 +3477,10 @@ function EditWorkoutModal({
         notes: '',
         videoUrl: '',
         imageUrl: '',
-        order: exercises.length,
+        order: nextIndex,
       },
     ]);
+    setExpandedExerciseIndex(nextIndex);
   };
 
   const removeExercise = (index: number) => {
@@ -3147,19 +3526,21 @@ function EditWorkoutModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-strong max-w-4xl w-full p-6 md:p-8 my-8 max-h-[85vh] overflow-y-auto animate-scaleIn">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-display font-bold text-dark-900">{t('personal.workouts.editTitle')}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <ModalPortal>
+      <div className="modal-overlay">
+        <div className="modal-panel modal-panel-lg animate-scaleIn">
+          <div className="modal-panel-header">
+            <h3 className="modal-title">{t('personal.workouts.editTitle')}</h3>
+            <button
+              onClick={onClose}
+              className="shrink-0 p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="modal-panel-body">
+            <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
               {error}
@@ -3252,193 +3633,27 @@ function EditWorkoutModal({
                 <p className="text-sm text-dark-400 mt-1">{t('personal.workouts.noExercisesHint')}</p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-[38vh] overflow-y-auto pr-1">
-                {exercises.map((exercise, index) => {
-                  const isExpanded = expandedExerciseIndex === index;
-                  const isConfirmingDelete = exerciseToDeleteIndex === index;
-                  return (
-                    <div key={index} className="bg-dark-50 rounded-xl p-4 relative border-2 border-transparent">
-                      {isConfirmingDelete ? (
-                        <div className="py-2">
-                          <p className="text-dark-700 font-medium mb-4">
-                            {t('personal.workouts.deleteExerciseConfirm', {
-                              name: exercise.name || t('personal.exercise.defaultName', { number: index + 1 }),
-                            })}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExerciseToDeleteIndex(null)}
-                              className="px-4 py-2 rounded-lg border-2 border-dark-200 text-dark-700 font-semibold hover:bg-dark-50 transition-colors"
-                            >
-                              {t('common.cancel')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeExercise(index)}
-                              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors shadow-medium"
-                            >
-                              {t('common.delete')}
-                            </button>
-                          </div>
-                        </div>
-                      ) : !isExpanded ? (
-                        <>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex gap-2 shrink-0 self-end">
-                              <button
-                                type="button"
-                                onClick={() => setExpandedExerciseIndex(index)}
-                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                                title={t('personal.workouts.editExercise')}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setExerciseToDeleteIndex(index)}
-                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                                title={t('personal.workouts.deleteExercise')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-dark-900 truncate">
-                                {exercise.name || t('personal.exercise.defaultName', { number: index + 1 })}
-                              </p>
-                              <p className="text-sm text-dark-500 mt-0.5">
-                                {t('personal.workouts.setsRepsSummary', { sets: exercise.sets, reps: exercise.reps })}
-                                {exercise.rest ? ` · ${t('personal.workouts.restSummary', { rest: exercise.rest })}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="absolute top-3 right-3 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedExerciseIndex(null)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold transition-colors"
-                            >
-                              {t('common.save')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExerciseToDeleteIndex(index)}
-                              className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                              title={t('personal.workouts.deleteExercise')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-24">
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.name')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={exercise.name}
-                                onChange={(e) => updateExercise(index, 'name', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.namePlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.sets')}</label>
-                              <input
-                                type="number"
-                                required
-                                min={1}
-                                value={exercise.sets}
-                                onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
-                                className="input-modern"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.reps')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={exercise.reps}
-                                onChange={(e) => updateExercise(index, 'reps', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.repsPlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.rest')}</label>
-                              <input
-                                type="text"
-                                value={exercise.rest}
-                                onChange={(e) => updateExercise(index, 'rest', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.restPlaceholder')}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.weight')}</label>
-                              <input
-                                type="text"
-                                value={exercise.weight}
-                                onChange={(e) => updateExercise(index, 'weight', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.weightPlaceholder')}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.videoUrl')}</label>
-                              <input
-                                type="url"
-                                value={exercise.videoUrl}
-                                onChange={(e) => updateExercise(index, 'videoUrl', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.videoPlaceholder')}
-                              />
-                              <ExerciseVideoSuggestions
-                                exerciseName={exercise.name}
-                                selectedVideoUrl={exercise.videoUrl}
-                                onSelect={(url) => updateExercise(index, 'videoUrl', url)}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.imageUrl')}</label>
-                              <input
-                                type="url"
-                                value={exercise.imageUrl}
-                                onChange={(e) => updateExercise(index, 'imageUrl', e.target.value)}
-                                className="input-modern"
-                                placeholder={t('personal.exercise.imagePlaceholder')}
-                              />
-                              <p className="text-xs text-dark-500 mt-1">{t('personal.exercise.imageHint')}</p>
-                              <ExerciseImageSuggestions
-                                exerciseName={exercise.name}
-                                selectedImageUrl={exercise.imageUrl}
-                                onSelect={(url) => updateExercise(index, 'imageUrl', url)}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-semibold text-dark-700 mb-2">{t('personal.exercise.notes')}</label>
-                              <textarea
-                                value={exercise.notes}
-                                onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                                className="input-modern"
-                                rows={2}
-                                placeholder={t('personal.exercise.notesPlaceholder')}
-                              />
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="space-y-3">
+                {exercises.map((exercise, index) => (
+                  <WorkoutExerciseEditorCard
+                    key={index}
+                    exercise={exercise}
+                    index={index}
+                    isExpanded={expandedExerciseIndex === index}
+                    isConfirmingDelete={exerciseToDeleteIndex === index}
+                    onExpand={() => setExpandedExerciseIndex(index)}
+                    onCollapse={() => setExpandedExerciseIndex(null)}
+                    onConfirmDelete={() => setExerciseToDeleteIndex(index)}
+                    onCancelDelete={() => setExerciseToDeleteIndex(null)}
+                    onDelete={() => removeExercise(index)}
+                    onUpdate={(field, value) => updateExercise(index, field, value)}
+                  />
+                ))}
               </div>
             )}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-dark-100">
             <button
               type="button"
               onClick={onClose}
@@ -3454,9 +3669,11 @@ function EditWorkoutModal({
               {loading ? t('common.saving') : t('common.saveChanges')}
             </button>
           </div>
-        </form>
+            </form>
+          </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

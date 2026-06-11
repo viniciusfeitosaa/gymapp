@@ -51,9 +51,13 @@ export default function RegisterWizard() {
 
   const goBack = useCallback(() => {
     setError('');
+    if (step === 'welcome') {
+      navigate('/login');
+      return;
+    }
     setSlideDir('back');
     setStep((s) => prevStep(s));
-  }, []);
+  }, [step, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -152,7 +156,7 @@ export default function RegisterWizard() {
           ? t('register.enterApp')
           : t('register.continue');
 
-  const showBack = step !== 'welcome' && step !== 'celebration';
+  const showBack = step !== 'celebration';
   const showLoginLink = step !== 'welcome' && step !== 'celebration';
 
   let stepContent: React.ReactNode;

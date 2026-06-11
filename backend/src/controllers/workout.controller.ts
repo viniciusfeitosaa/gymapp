@@ -1,7 +1,13 @@
 import { Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { assertStudentCanAccessTraining, TrainingBlockedError } from '../utils/studentAccess';
+import { saveExerciseImage } from '../utils/exerciseImage';
+
+const uploadExerciseImageSchema = z.object({
+  image: z.string().min(1, 'Imagem é obrigatória'),
+});
 
 function handleTrainingBlocked(res: Response, error: unknown) {
   if (error instanceof TrainingBlockedError) {
@@ -79,6 +85,23 @@ const scoreImageRelevance = (title: string, author: string | undefined, rawQuery
 };
 
 export class WorkoutController {
+  async uploadExerciseImage(req: AuthRequest, res: Response) {
+    try {
+      const { image } = uploadExerciseImageSchema.parse(req.body);
+      const imageUrl = await saveExerciseImage(image);
+      res.json({ imageUrl });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      if (error instanceof Error && error.message) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error('Upload exercise image error:', error);
+      res.status(500).json({ error: 'Erro ao enviar imagem do exercício' });
+    }
+  }
+
   // Buscar sugestões de imagens por termo (Pexels com fallback Wikimedia Commons)
   async getImageSuggestions(req: AuthRequest, res: Response) {
     try {

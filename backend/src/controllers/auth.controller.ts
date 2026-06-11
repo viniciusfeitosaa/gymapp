@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../config/database';
 import { z } from 'zod';
+import { signAuthToken } from '../utils/authToken';
 import { buildPasswordResetEmail, isEmailConfigured, sendMail } from '../services/email.service';
 
 // Schemas de validação
@@ -139,11 +139,7 @@ export class AuthController {
       });
 
       // Gerar token JWT
-      const token = jwt.sign(
-        { userId: personal.id, userType: 'personal' },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const token = signAuthToken({ userId: personal.id, userType: 'personal' });
 
       res.status(201).json({
         message: 'Personal Trainer cadastrado com sucesso!',
@@ -196,11 +192,7 @@ export class AuthController {
       clearLockout(lockKey);
 
       // Gerar token JWT
-      const token = jwt.sign(
-        { userId: personal.id, userType: 'personal' },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const token = signAuthToken({ userId: personal.id, userType: 'personal' });
 
       res.json({
         message: 'Login realizado com sucesso!',
@@ -273,11 +265,7 @@ export class AuthController {
       clearLockout(lockKey);
 
       // Gerar token JWT
-      const token = jwt.sign(
-        { userId: student.id, userType: 'student' },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const token = signAuthToken({ userId: student.id, userType: 'student' });
 
       res.json({
         message: 'Login realizado com sucesso!',

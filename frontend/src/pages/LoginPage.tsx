@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Sparkles } from 'lucide-react';
+import { dashboardPathForUserType } from '../lib/authRedirect';
+import { User, Lock, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { GymCodeIcon } from '../components/GymCodeIcon';
 import { LanguagePicker } from '../components/LanguagePicker';
 
@@ -17,16 +18,22 @@ export default function LoginPage() {
   const [userType, setUserType] = useState<'personal' | 'student' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [failedStudentAttempts, setFailedStudentAttempts] = useState(0);
   const [studentBlockedUntil, setStudentBlockedUntil] = useState<number | null>(null);
 
-  const { login, loginStudent } = useAuth();
+  const { login, loginStudent, isAuthenticated, userType: authUserType, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const lockoutMessage = t('errors.tooManyAttempts');
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !authUserType) return;
+    navigate(dashboardPathForUserType(authUserType), { replace: true });
+  }, [authLoading, isAuthenticated, authUserType, navigate]);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -259,13 +266,25 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-dark-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500 text-sm md:text-base"
+                  className="w-full pl-10 md:pl-12 pr-10 md:pr-12 py-2.5 md:py-3.5 bg-dark-800/50 border-2 border-dark-700 rounded-xl focus:border-accent-500 focus:ring-4 focus:ring-accent-500/20 outline-none transition-all text-white placeholder:text-slate-500 text-sm md:text-base"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-dark-400 hover:text-slate-300 transition-colors"
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 md:w-5 md:h-5" />
+                  ) : (
+                    <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                  )}
+                </button>
               </div>
             </div>
           </>

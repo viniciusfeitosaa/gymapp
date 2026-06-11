@@ -108,7 +108,7 @@ export function PersonalBrandSettings({ user, onUpdated }: Props) {
                 type="text"
                 value={primary}
                 onChange={(e) => setPrimary(e.target.value)}
-                className="flex-1 rounded-lg border border-dark-200 px-3 py-2 text-sm font-mono uppercase"
+                className="input-modern flex-1 font-mono uppercase text-sm"
                 maxLength={7}
               />
             </div>
@@ -126,7 +126,7 @@ export function PersonalBrandSettings({ user, onUpdated }: Props) {
                 type="text"
                 value={secondary}
                 onChange={(e) => setSecondary(e.target.value)}
-                className="flex-1 rounded-lg border border-dark-200 px-3 py-2 text-sm font-mono uppercase"
+                className="input-modern flex-1 font-mono uppercase text-sm"
                 maxLength={7}
               />
             </div>

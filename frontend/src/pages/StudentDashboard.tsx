@@ -13,6 +13,7 @@ import { StudentTrainingBlocked } from '../components/StudentTrainingBlocked';
 import { appLocaleToDateLocale } from '../i18n/dateLocale';
 import { useWeekdayShortMap, type WeekdayValue } from '../i18n/useWeekdayOptions';
 import { applyNativeSafeAreas } from '../lib/applyNativeSafeAreas';
+import { resolveAssetUrl } from '../lib/resolveAssetUrl';
 
 interface Exercise {
   id?: string;
@@ -177,7 +178,7 @@ function FocusModeWorkout({
                     <p className="text-white/55 text-[11px] font-semibold uppercase tracking-[0.12em] mb-2">{t('student.visualReference')}</p>
                     <div className="rounded-2xl overflow-hidden border border-white/20 bg-black/30 shadow-inner ring-1 ring-white/10">
                       <img
-                        src={ex.imageUrl}
+                        src={resolveAssetUrl(ex.imageUrl) || ex.imageUrl}
                         alt={ex.name}
                         className="w-full h-auto object-cover max-h-56"
                       />
@@ -353,7 +354,7 @@ export default function StudentDashboard() {
         {currentPath === 'treinos' && !trainingBlocked && (
           <StudentTreinosPage onStartFocusMode={setFocusWorkout} refetchLogsRef={refetchLogsRef} />
         )}
-        {currentPath === 'perfil' && <StudentPerfilPage brandPersonal={brandPersonal} />}
+        {currentPath === 'perfil' && <StudentPerfilPage />}
       </main>
 
       {/* Modo focado: countdown + exercícios */}
@@ -511,7 +512,7 @@ function StudentDashboardHome({
     <div className="pb-20 md:pb-0">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-dark-900 mb-1.5">
+          <h2 className="text-xl md:text-2xl font-display font-bold text-dark-900 mb-1.5">
             {t('student.welcome', {
               name: user?.name?.split(' ')[0] || t('student.defaultName'),
             })}
@@ -624,7 +625,7 @@ function StudentDashboardHome({
             <div className="flex items-center gap-2 text-dark-700">
               <Dumbbell className="w-4 h-4" />
               <span className="text-sm font-semibold">
-                {todayWorkout.exercises?.length || 0} {t('student.exerciseCount', { count: todayWorkout.exercises?.length || 0 })}
+                {t('student.exerciseCount', { count: todayWorkout.exercises?.length || 0 })}
               </span>
             </div>
           </div>
@@ -650,7 +651,7 @@ function StudentDashboardHome({
                 <div className="flex-1 min-w-0">
                   {exercise.imageUrl && (
                     <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-100 mb-1.5">
-                      <img src={exercise.imageUrl} alt={exercise.name} className="w-full h-auto max-h-28 object-contain" />
+                      <img src={resolveAssetUrl(exercise.imageUrl) || exercise.imageUrl} alt={exercise.name} className="w-full h-auto max-h-28 object-contain" />
                     </div>
                   )}
                   <p className="font-semibold text-sm text-dark-900">{exercise.name}</p>
@@ -702,7 +703,7 @@ function StudentDashboardHome({
                   {focusedExercise.imageUrl && (
                     <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
                       <img
-                        src={focusedExercise.imageUrl}
+                        src={resolveAssetUrl(focusedExercise.imageUrl) || focusedExercise.imageUrl}
                         alt={focusedExercise.name}
                         className="w-full h-auto max-h-56 object-contain"
                       />
@@ -959,116 +960,131 @@ function WorkoutDetailCard({
   const { t } = useTranslation();
   const [focusedExercise, setFocusedExercise] = useState<Exercise | null>(null);
   const [videoPlayer, setVideoPlayer] = useState<{ embedUrl: string; originalUrl: string } | null>(null);
+  const exerciseCount = workout.exercises?.length || 0;
 
   return (
-    <div className="card-modern p-6 md:p-8">
-      {isCompleted && (
-        <div className="flex justify-end mb-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold shadow-medium">
-            <CheckCircle className="w-3 h-3" />
-            {t('common.completed')}
-          </div>
-        </div>
-      )}
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 text-xs text-blue-600 mb-1.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="font-semibold truncate">{dayLabel}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onStartFocusMode(workout)}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-xs font-semibold transition-colors shadow-medium"
-            >
-              {t('student.start')}
-            </button>
-          </div>
-          <h3 className="text-xl font-display font-bold text-dark-900 mb-0.5 truncate" title={workout.name}>
-            {workout.name}
-          </h3>
-          {workout.description && (
-            <p className="text-dark-600 text-sm line-clamp-2" title={workout.description}>
-              {workout.description}
-            </p>
-          )}
-        </div>
-      </div>
+    <div className="card-modern overflow-hidden p-0 shadow-medium">
+      <div className="relative overflow-hidden bg-gradient-to-br from-accent-600 via-accent-500 to-orange-400 px-5 pt-5 pb-6 text-white">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+        <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
 
-      <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-3 mb-4">
-        <div className="flex items-center gap-2 text-dark-700">
-          <Dumbbell className="w-4 h-4" />
-          <span className="text-sm font-semibold">
-            {workout.exercises?.length || 0} {t('student.exerciseCount', { count: workout.exercises?.length || 0 })}
-          </span>
+        <div className="relative flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-accent-800 shadow-soft">
+              <Calendar className="h-3.5 w-3.5 text-accent-600" />
+              {dayLabel}
+            </span>
+            {isCompleted && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2.5 py-1 text-xs font-semibold">
+                <CheckCircle className="h-3.5 w-3.5" />
+                {t('common.completed')}
+              </span>
+            )}
+          </div>
         </div>
+
+        <h3 className="relative text-2xl font-display font-bold leading-tight">{workout.name}</h3>
+        {workout.description && (
+          <p className="relative mt-1.5 text-sm leading-relaxed text-white/80 line-clamp-2">{workout.description}</p>
+        )}
+
+        <div className="relative mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/90 px-3 py-2.5 text-accent-900 shadow-soft">
+          <div className="flex items-center gap-2 min-w-0">
+            <Dumbbell className="h-4 w-4 shrink-0 text-accent-600" />
+            <span className="text-sm font-semibold truncate">
+              {t('student.exerciseCount', { count: exerciseCount })}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onStartFocusMode(workout)}
+          className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3.5 text-sm font-bold text-accent-700 shadow-strong transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        >
+          <Play className="h-4 w-4 fill-current" />
+          {t('student.start')}
+        </button>
       </div>
 
       {workout.exercises && workout.exercises.length > 0 && (
-        <div className="space-y-4">
-          <h5 className="text-base font-display font-bold text-dark-900">
-            {t('student.exercisesTitle')}
-          </h5>
-          <div className="space-y-2.5">
-            {workout.exercises.map((exercise, idx) => (
-              <div
-                key={exercise.id ?? idx}
-                role="button"
-                tabIndex={0}
-                onClick={() => setFocusedExercise(exercise)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setFocusedExercise(exercise);
-                  }
-                }}
-                className="w-full text-left card-modern p-3 hover:shadow-medium transition-shadow cursor-pointer border-2 border-transparent hover:border-accent-200"
-              >
-                <div className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 bg-gradient-accent text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {exercise.imageUrl && (
-                      <div className="rounded-lg overflow-hidden border border-dark-200 bg-dark-50 mb-1.5">
-                        <img
-                          src={exercise.imageUrl}
-                          alt={exercise.name}
-                          className="w-full h-auto max-h-28 object-contain"
-                        />
+        <div className="p-4 md:p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h5 className="text-base font-display font-bold text-dark-900">{t('student.exercisesTitle')}</h5>
+            <span className="text-xs font-semibold text-dark-400">
+              {t('student.exerciseCount', { count: exerciseCount })}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {workout.exercises.map((exercise, idx) => {
+              const imageSrc = exercise.imageUrl
+                ? resolveAssetUrl(exercise.imageUrl) || exercise.imageUrl
+                : null;
+
+              return (
+                <div
+                  key={exercise.id ?? idx}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setFocusedExercise(exercise)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFocusedExercise(exercise);
+                    }
+                  }}
+                  className="group flex gap-3 rounded-2xl border border-dark-100 bg-white p-3 shadow-soft transition-all hover:border-accent-200 hover:shadow-medium cursor-pointer"
+                >
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-dark-100 bg-dark-50">
+                    {imageSrc ? (
+                      <img src={imageSrc} alt={exercise.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-accent-50 to-orange-50">
+                        <span className="text-lg font-display font-bold text-accent-600">{idx + 1}</span>
+                        <Dumbbell className="mt-1 h-4 w-4 text-accent-400" />
                       </div>
                     )}
-                    <h6 className="font-semibold text-sm text-dark-900 mb-1.5">{exercise.name}</h6>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <span className="text-dark-500">{t('personal.workouts.setsLabel')}</span>
-                        <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
+                    <span className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-accent-500 text-xs font-bold text-white shadow-medium">
+                      {idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h6 className="font-display text-base font-bold leading-snug text-dark-900">{exercise.name}</h6>
+                      <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-dark-300 transition-transform group-hover:translate-x-0.5 group-hover:text-accent-500" />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center min-w-[3.5rem]">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">{t('student.sets')}</p>
+                        <p className="text-sm font-bold text-dark-900">{exercise.sets}</p>
                       </div>
-                      <div>
-                        <span className="text-dark-500">{t('personal.workouts.repsLabel')}</span>
-                        <span className="ml-2 font-semibold text-dark-900">{exercise.reps}</span>
+                      <div className="rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center min-w-[3.5rem]">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">{t('student.reps')}</p>
+                        <p className="text-sm font-bold text-dark-900">{exercise.reps}</p>
                       </div>
                       {exercise.rest && (
-                        <div>
-                          <span className="text-dark-500">{t('personal.workouts.restLabel')}</span>
-                          <span className="ml-2 font-semibold text-dark-900">{exercise.rest}</span>
+                        <div className="rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center min-w-[3.5rem]">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">{t('student.rest')}</p>
+                          <p className="text-sm font-bold text-dark-900">{exercise.rest}</p>
                         </div>
                       )}
                       {exercise.weight && (
-                        <div>
-                          <span className="text-dark-500">{t('personal.workouts.weightLabel')}</span>
-                          <span className="ml-2 font-semibold text-dark-900">{exercise.weight}</span>
+                        <div className="rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center min-w-[3.5rem]">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">{t('student.weight')}</p>
+                          <p className="text-sm font-bold text-dark-900">{exercise.weight}</p>
                         </div>
                       )}
                     </div>
+
                     {exercise.notes && (
-                      <p className="text-xs text-dark-600 mt-1.5 italic">
-                        💡 {exercise.notes}
-                      </p>
+                      <p className="mt-2 line-clamp-2 text-xs italic text-dark-500">💡 {exercise.notes}</p>
                     )}
+
                     {exercise.videoUrl && (
-                      <span onClick={(e) => e.stopPropagation()} className="inline-block mt-2">
+                      <span onClick={(e) => e.stopPropagation()} className="mt-2 inline-block">
                         <button
                           type="button"
                           onClick={() => {
@@ -1076,20 +1092,20 @@ function WorkoutDetailCard({
                             if (embed) setVideoPlayer({ embedUrl: embed, originalUrl: exercise.videoUrl! });
                             else window.open(exercise.videoUrl, '_blank');
                           }}
-                          className="inline-flex items-center gap-1.5 text-xs text-accent-600 hover:text-accent-700 font-semibold"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2 py-1 text-xs font-semibold text-accent-700 hover:bg-accent-100"
                         >
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                          </svg>
+                          <Play className="h-3 w-3 fill-current" />
                           {t('student.viewVideoYoutube')}
                         </button>
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+        </div>
+      )}
 
       {/* Modal focado no exercício */}
       {focusedExercise && (
@@ -1124,7 +1140,7 @@ function WorkoutDetailCard({
               {focusedExercise.imageUrl && (
                 <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50">
                   <img
-                    src={focusedExercise.imageUrl}
+                    src={resolveAssetUrl(focusedExercise.imageUrl) || focusedExercise.imageUrl}
                     alt={focusedExercise.name}
                     className="w-full h-auto max-h-64 object-contain"
                   />
@@ -1229,8 +1245,6 @@ function WorkoutDetailCard({
           </div>
         </div>
       )}
-        </div>
-      )}
     </div>
   );
 }
@@ -1283,11 +1297,7 @@ interface StudentProfile {
   };
 }
 
-function StudentPerfilPage({
-  brandPersonal,
-}: {
-  brandPersonal: { name: string; logoUrl?: string | null } | null;
-}) {
+function StudentPerfilPage() {
   const { t, i18n } = useTranslation();
   const weekdayShort = useWeekdayShortMap();
   const { user, logout } = useAuth();
@@ -1340,15 +1350,6 @@ function StudentPerfilPage({
           {t('student.myProfile')}
         </h2>
         <p className="text-dark-500 text-sm md:text-base">{t('student.profileSubtitle')}</p>
-      </div>
-
-      <div className="card-modern p-5 md:p-6 mb-6">
-        <p className="text-xs text-dark-500 mb-3 uppercase tracking-wide font-semibold">{t('student.yourTrainer')}</p>
-        <StudentBrandMark
-          personal={brandPersonal ?? profile?.personalTrainer ?? user?.personalTrainer}
-          subtitle={t('student.trainerSubtitle')}
-          iconSize="md"
-        />
       </div>
 
       <div className="card-modern p-5 md:p-6">
@@ -1426,12 +1427,6 @@ function StudentPerfilPage({
                 <div className="bg-dark-50 rounded-lg p-3">
                   <p className="text-xs text-dark-500 mb-0.5">{t('student.trainingDays')}</p>
                   <p className="text-dark-900 font-semibold text-sm">{trainingDaysLabel}</p>
-                </div>
-              )}
-              {profile?.personalTrainer?.name && (
-                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs text-dark-500 mb-0.5">{t('student.personalTrainer')}</p>
-                  <p className="text-dark-900 font-semibold text-sm">{profile.personalTrainer.name}</p>
                 </div>
               )}
             </div>

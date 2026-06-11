@@ -119,7 +119,7 @@ async function nativeRequest<T>(
   const status = res.status;
   const data = parseBody(res.data) as T;
 
-  if (status === 401 && !path.includes('login')) {
+  if ((status === 401 || (status === 403 && errorMessage(data, '') === 'Token inválido')) && !path.includes('login')) {
     notifyUnauthorized();
   }
 

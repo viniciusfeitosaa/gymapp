@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { ensureLogoDir, getUploadsRoot } from './utils/personalLogo';
+import { ensureExerciseImageDir } from './utils/exerciseImage';
 import { authRoutes } from './routes/auth.routes';
 import { studentRoutes } from './routes/student.routes';
 import { workoutRoutes } from './routes/workout.routes';
@@ -70,7 +71,9 @@ app.use(cors({
 app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-ensureLogoDir().catch((err) => console.warn('[Uploads] mkdir:', err));
+Promise.all([ensureLogoDir(), ensureExerciseImageDir()]).catch((err) =>
+  console.warn('[Uploads] mkdir:', err)
+);
 app.use('/api/uploads', express.static(path.join(getUploadsRoot())));
 
 // Rotas
