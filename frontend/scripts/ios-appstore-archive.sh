@@ -32,4 +32,4 @@ xcodebuild -exportArchive \
 echo ""
 echo "✓ Build enviado para App Store Connect."
 echo "  Archive: $ARCHIVE_PATH"
-echo "  Próximo passo: App Store Connect → versão 1.0.4 → selecionar build 8"
+echo "  Próximo passo: App Store Connect → versão 1.0.6 → selecionar build 13"

@@ -23,7 +23,7 @@ if command -v adb >/dev/null 2>&1; then
     adb install -r "$APK"
     echo "→ Abrindo app..."
     adb shell am start -n "$PKG/.MainActivity"
-    echo "✓ Instalado. Versão esperada: 1.0.4 (versionCode 7)"
+    echo "✓ Instalado. Versão esperada: 1.0.6 (versionCode 8)"
   else
     echo "⚠ Nenhum dispositivo adb conectado. APK gerado em:"
     echo "  $ROOT/android/$APK"
