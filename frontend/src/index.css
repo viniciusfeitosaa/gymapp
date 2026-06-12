@@ -130,4 +130,214 @@
   .container-responsive {
     @apply w-full max-w-full px-4 sm:px-6 lg:px-8;
   }
+
+  .workout-hero-animated {
+    isolation: isolate;
+  }
+
+  .workout-hero-animated__bg {
+    position: absolute;
+    inset: -45%;
+    z-index: 0;
+    background: linear-gradient(
+      125deg,
+      #c2410c 0%,
+      #ea580c 22%,
+      #f97316 45%,
+      #fb923c 68%,
+      #f97316 100%
+    );
+    background-size: 220% 220%;
+    animation: workout-hero-shift 16s ease-in-out infinite;
+  }
+
+  .workout-hero-animated__blob {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .workout-hero-animated__blob--a {
+    top: -2rem;
+    right: -2rem;
+    width: 8rem;
+    height: 8rem;
+    animation: workout-hero-float-a 10s ease-in-out infinite;
+  }
+
+  .workout-hero-animated__blob--b {
+    bottom: -2.5rem;
+    left: -1.5rem;
+    width: 7rem;
+    height: 7rem;
+    animation: workout-hero-float-b 12s ease-in-out infinite;
+  }
+
+  .workout-hero-animated__blob--c {
+    top: 35%;
+    left: 55%;
+    width: 5.5rem;
+    height: 5.5rem;
+    background: rgba(255, 255, 255, 0.07);
+    animation: workout-hero-float-c 14s ease-in-out infinite;
+  }
+
+  .workout-hero-animated__content {
+    position: relative;
+    z-index: 2;
+  }
+
+  @keyframes workout-hero-shift {
+    0%,
+    100% {
+      transform: translate(0%, 0%) scale(1.05);
+      background-position: 0% 50%;
+    }
+    50% {
+      transform: translate(-4%, 3%) scale(1.1);
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes workout-hero-float-a {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(-12px, 10px);
+    }
+  }
+
+  @keyframes workout-hero-float-b {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(10px, -8px);
+    }
+  }
+
+  @keyframes workout-hero-float-c {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(-8px, 6px) scale(1.08);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workout-hero-animated__bg,
+    .workout-hero-animated__blob,
+    .student-today-animated__bg,
+    .student-today-animated__blob {
+      animation: none;
+    }
+  }
+
+  .student-today-animated {
+    isolation: isolate;
+    background: transparent;
+  }
+
+  .student-today-animated__bg {
+    position: absolute;
+    inset: -40%;
+    z-index: 0;
+    background: linear-gradient(
+      125deg,
+      #eff6ff 0%,
+      #dbeafe 22%,
+      #f5f3ff 48%,
+      #e0e7ff 72%,
+      #eff6ff 100%
+    );
+    background-size: 220% 220%;
+    animation: student-today-shift 18s ease-in-out infinite;
+  }
+
+  .student-today-animated--done .student-today-animated__bg {
+    background: linear-gradient(
+      125deg,
+      #ecfdf5 0%,
+      #d1fae5 28%,
+      #bbf7d0 55%,
+      #d1fae5 100%
+    );
+  }
+
+  .student-today-animated__blob {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .student-today-animated__blob--a {
+    top: -1.5rem;
+    right: -1rem;
+    width: 6rem;
+    height: 6rem;
+    background: rgba(59, 130, 246, 0.1);
+    animation: student-today-float-a 11s ease-in-out infinite;
+  }
+
+  .student-today-animated__blob--b {
+    bottom: -1.5rem;
+    left: -1rem;
+    width: 5rem;
+    height: 5rem;
+    background: rgba(139, 92, 246, 0.08);
+    animation: student-today-float-b 13s ease-in-out infinite;
+  }
+
+  .student-today-animated--done .student-today-animated__blob--a {
+    background: rgba(16, 185, 129, 0.12);
+  }
+
+  .student-today-animated--done .student-today-animated__blob--b {
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  .student-today-animated__content {
+    position: relative;
+    z-index: 2;
+  }
+
+  @keyframes student-today-shift {
+    0%,
+    100% {
+      transform: translate(0%, 0%) scale(1.05);
+      background-position: 0% 50%;
+    }
+    50% {
+      transform: translate(-3%, 2%) scale(1.08);
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes student-today-float-a {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(-10px, 8px);
+    }
+  }
+
+  @keyframes student-today-float-b {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(8px, -6px);
+    }
+  }
 }

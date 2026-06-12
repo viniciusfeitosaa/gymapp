@@ -381,6 +381,7 @@ export default function PersonalDashboard() {
   const location = useLocation();
 
   const currentPath = location.pathname.split('/').pop() || 'home';
+  const isHome = currentPath === 'home';
 
   useEffect(() => {
     applyNativeSafeAreas();
@@ -398,63 +399,105 @@ export default function PersonalDashboard() {
 
   return (
     <div className="native-app-layout min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gradient-to-br from-dark-50 via-white to-primary-50">
-      {/* Header */}
-      <header className="native-app-header bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100 z-50">
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14 md:h-20">
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-accent rounded-lg md:rounded-xl flex items-center justify-center shadow-medium">
-                <GymCodeIcon size={28} className="text-white" />
+      {/* Header — apenas na Home (mobile e desktop) */}
+      {isHome && (
+        <header className="native-app-header bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100 z-50">
+          <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-14 md:h-20">
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-accent rounded-lg md:rounded-xl flex items-center justify-center shadow-medium">
+                  <GymCodeIcon size={28} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg md:text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
+                    Gym Code
+                  </h1>
+                  <p className="text-[10px] md:text-xs text-slate-500 font-medium">{t('personal.panelTitle')}</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg md:text-2xl font-display font-bold bg-gradient-accent bg-clip-text text-transparent">
-                  Gym Code
-                </h1>
-                <p className="text-[10px] md:text-xs text-slate-500 font-medium">{t('personal.panelTitle')}</p>
-              </div>
-            </div>
-            
-            {/* Desktop Menu */}
-            <nav className="hidden md:flex items-center gap-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPath === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(item.path)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                      isActive
-                        ? 'bg-gradient-accent text-white shadow-medium'
-                        : 'text-dark-600 hover:bg-dark-100'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-sm">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
 
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="text-right hidden lg:block">
-                <p className="text-xs md:text-sm font-semibold text-dark-900">{user?.name}</p>
-                <p className="text-[10px] md:text-xs text-slate-500">{user?.email}</p>
+              {/* Desktop Menu */}
+              <nav className="hidden md:flex items-center gap-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPath === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => navigate(item.path)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                        isActive
+                          ? 'bg-gradient-accent text-white shadow-medium'
+                          : 'text-dark-600 hover:bg-dark-100'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="text-right hidden lg:block">
+                  <p className="text-xs md:text-sm font-semibold text-dark-900">{user?.name}</p>
+                  <p className="text-[10px] md:text-xs text-slate-500">{user?.email}</p>
+                </div>
+                <button
+                  onClick={logout}
+                  className="hidden md:block p-1.5 md:p-2.5 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg md:rounded-xl transition-all duration-200"
+                  title={t('personal.logout')}
+                >
+                  <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
               </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-accent rounded-lg md:rounded-xl flex items-center justify-center text-white font-bold text-sm md:text-base">
-                {user?.name?.charAt(0)}
-              </div>
-              <button
-                onClick={logout}
-                className="hidden md:block p-1.5 md:p-2.5 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg md:rounded-xl transition-all duration-200"
-                title={t('personal.logout')}
-              >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
+
+      {/* Navegação desktop nas demais telas (sem branding) */}
+      {!isHome && (
+        <nav className="hidden md:block sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-soft border-b border-dark-100">
+          <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-14">
+              <div className="flex items-center gap-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPath === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => navigate(item.path)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                        isActive
+                          ? 'bg-gradient-accent text-white shadow-medium'
+                          : 'text-dark-600 hover:bg-dark-100'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="text-right hidden lg:block">
+                  <p className="text-xs md:text-sm font-semibold text-dark-900">{user?.name}</p>
+                  <p className="text-[10px] md:text-xs text-slate-500">{user?.email}</p>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-1.5 md:p-2.5 text-dark-600 hover:text-red-600 hover:bg-red-50 rounded-lg md:rounded-xl transition-all duration-200"
+                  title={t('personal.logout')}
+                >
+                  <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* Main Content */}
       <main className="native-app-main w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
@@ -540,11 +583,13 @@ function DashboardStatCard({
   value,
   label,
   tone,
+  featured = false,
 }: {
   icon: typeof Users;
   value: number;
   label: string;
   tone: 'blue' | 'orange';
+  featured?: boolean;
 }) {
   const toneClasses =
     tone === 'blue'
@@ -552,14 +597,26 @@ function DashboardStatCard({
       : { wrap: 'border-accent-100 bg-gradient-to-br from-accent-50 to-white', icon: 'bg-accent-500 text-white' };
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-soft ${toneClasses.wrap}`}>
-      <div className="flex items-center gap-3">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-soft ${toneClasses.icon}`}>
-          <Icon className="h-5 w-5" />
+    <div className={`rounded-2xl border shadow-soft ${toneClasses.wrap} ${featured ? 'p-5 md:p-6' : 'p-4'}`}>
+      <div className={`flex items-center ${featured ? 'gap-4' : 'gap-3'}`}>
+        <div
+          className={`flex shrink-0 items-center justify-center shadow-soft ${toneClasses.icon} ${
+            featured ? 'h-14 w-14 rounded-2xl' : 'h-11 w-11 rounded-xl'
+          }`}
+        >
+          <Icon className={featured ? 'h-6 w-6' : 'h-5 w-5'} />
         </div>
         <div className="min-w-0">
-          <p className="text-2xl font-display font-bold leading-none text-dark-900">{value}</p>
-          <p className="mt-1 text-xs font-medium text-dark-500">{label}</p>
+          <p
+            className={`font-display font-bold leading-none text-dark-900 ${
+              featured ? 'text-3xl md:text-4xl' : 'text-2xl'
+            }`}
+          >
+            {value}
+          </p>
+          <p className={`font-medium text-dark-500 ${featured ? 'mt-1.5 text-sm md:text-base' : 'mt-1 text-xs'}`}>
+            {label}
+          </p>
         </div>
       </div>
     </div>
@@ -574,7 +631,6 @@ function DashboardHome() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [recentLogs, setRecentLogs] = useState<RecentLogItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalTreinos, setTotalTreinos] = useState(0);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -590,7 +646,6 @@ function DashboardHome() {
         setRecentLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
         const workoutsList = Array.isArray(workoutsRes.data) ? workoutsRes.data : [];
         setWorkouts(workoutsList);
-        setTotalTreinos(workoutsList.length);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       } finally {
@@ -628,9 +683,14 @@ function DashboardHome() {
         <p className="mt-1 text-sm text-dark-500 md:text-base">{t('personal.welcomePanel')}</p>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <DashboardStatCard icon={Users} value={totalAlunos} label={t('personal.activeStudents')} tone="blue" />
-        <DashboardStatCard icon={Dumbbell} value={totalTreinos} label={t('personal.workoutsCreated')} tone="orange" />
+      <div className="mb-5">
+        <DashboardStatCard
+          icon={Users}
+          value={totalAlunos}
+          label={t('personal.activeStudents')}
+          tone="blue"
+          featured
+        />
       </div>
 
       {/* Resumo da semana, Quem treina hoje, Top 3 */}
@@ -1990,188 +2050,235 @@ function TreinosPage() {
             if (!dayData) return null;
 
             return (
-              <div className="card-modern p-6 md:p-8 animate-scaleIn">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-gradient-accent text-white flex items-center justify-center font-bold text-lg shadow-medium">
-                      {dayData.short}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-display font-bold text-dark-900">
+              <div className="card-modern overflow-hidden p-0 animate-scaleIn shadow-medium">
+                <div className="workout-hero-animated relative overflow-hidden px-4 pt-4 pb-5 md:px-6 md:pt-5 md:pb-6 text-white">
+                  <div className="workout-hero-animated__bg" aria-hidden />
+                  <div className="workout-hero-animated__blob workout-hero-animated__blob--a" aria-hidden />
+                  <div className="workout-hero-animated__blob workout-hero-animated__blob--b" aria-hidden />
+                  <div className="workout-hero-animated__blob workout-hero-animated__blob--c" aria-hidden />
+
+                  <div className="workout-hero-animated__content">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-accent-800 shadow-soft">
+                        <Calendar className="h-3.5 w-3.5 text-accent-600" />
                         {dayData.label}
-                      </h3>
-                      <p className="text-dark-500 text-sm">
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white/90 ring-1 ring-white/20">
                         {dayData.workout ? t('common.workoutConfigured') : t('common.noWorkoutDefined')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDay(null)}
+                      className="shrink-0 rounded-xl bg-white/15 p-2 text-white/90 ring-1 ring-white/20 transition-colors hover:bg-white/25"
+                      aria-label={t('common.close')}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {dayData.workout ? (
+                    <>
+                      <h3 className="relative text-2xl font-display font-bold leading-tight">
+                        {dayData.workout.name}
+                      </h3>
+                      {dayData.workout.description && (
+                        <p className="relative mt-1.5 text-sm leading-relaxed text-white/80 line-clamp-2">
+                          {dayData.workout.description}
+                        </p>
+                      )}
+
+                      <div className="relative mt-4 flex items-center justify-between gap-3 rounded-2xl bg-white/90 px-3 py-2.5 text-accent-900 shadow-soft">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Dumbbell className="h-4 w-4 shrink-0 text-accent-600" />
+                          <span className="text-sm font-semibold truncate">
+                            {t('personal.workouts.exerciseCount', {
+                              count: dayData.workout.exercises?.length || 0,
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setWorkoutToEdit(dayData.workout!)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-accent-50 px-2.5 py-1.5 text-xs font-semibold text-accent-700 transition-colors hover:bg-accent-100"
+                            title={t('common.edit')}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{t('common.edit')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWorkoutToDelete(dayData.workout!)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{t('common.delete')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="relative py-2">
+                      <p className="text-lg font-display font-bold">{dayData.label}</p>
+                      <p className="mt-1 text-sm text-white/80">
+                        {t('personal.workouts.noWorkoutForDayDesc', { day: dayData.label })}
                       </p>
                     </div>
+                  )}
                   </div>
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className="p-2 text-dark-400 hover:text-dark-900 hover:bg-dark-100 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
                 </div>
 
                 {dayData.workout ? (
-                  <div className="space-y-6">
-                    {/* Informações do Treino */}
-                    <div className="bg-gradient-to-br from-blue-50 to-accent-50 rounded-xl p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-bold text-dark-900 mb-2">
-                            {dayData.workout.name}
-                          </h4>
-                          {dayData.workout.description && (
-                            <p className="text-dark-600 text-sm">
-                              {dayData.workout.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-2 ml-4">
-                          <button
-                            onClick={() => setWorkoutToEdit(dayData.workout!)}
-                            className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-medium"
-                            title={t('common.edit')}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setWorkoutToDelete(dayData.workout!)}
-                            className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-medium"
-                            title={t('common.delete')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-dark-700 text-sm">
-                        <Dumbbell className="w-4 h-4" />
-                        <span className="font-semibold">
-                          {t('personal.workouts.exerciseCount', { count: dayData.workout.exercises?.length || 0 })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Lista de Exercícios */}
-                    {dayData.workout.exercises && dayData.workout.exercises.length > 0 && (
-                      <div>
-                        <h5 className="text-base font-display font-bold text-dark-900 mb-4">
+                  dayData.workout.exercises && dayData.workout.exercises.length > 0 ? (
+                    <div className="p-4 md:p-5">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <h5 className="text-base font-display font-bold text-dark-900">
                           {t('personal.workouts.exercisesTitle')}
                         </h5>
-                        <div className="space-y-3">
-                          {dayData.workout.exercises.map((exercise, idx) => (
-                            <div key={idx} className="card-modern p-4 hover:shadow-medium transition-all">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 bg-gradient-accent text-white rounded-lg flex items-center justify-center font-bold text-base shadow-soft flex-shrink-0">
-                                  {idx + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  {exercise.imageUrl && (
-                                    <div className="rounded-xl overflow-hidden border border-dark-200 bg-dark-50 mb-3">
-                                      <img
-                                        src={resolveAssetUrl(exercise.imageUrl) || exercise.imageUrl}
-                                        alt={exercise.name}
-                                        className="w-full h-auto max-h-48 object-contain"
-                                      />
+                        <span className="text-xs font-semibold text-dark-400">
+                          {t('personal.workouts.exerciseCount', {
+                            count: dayData.workout.exercises.length,
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {dayData.workout.exercises.map((exercise, idx) => {
+                          const imageSrc = exercise.imageUrl
+                            ? resolveAssetUrl(exercise.imageUrl) || exercise.imageUrl
+                            : null;
+
+                          return (
+                            <div
+                              key={exercise.id ?? idx}
+                              className="rounded-2xl border border-dark-100 bg-white p-3 shadow-soft"
+                            >
+                              <div className="flex gap-3">
+                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-dark-100 bg-dark-50">
+                                  {imageSrc ? (
+                                    <img
+                                      src={imageSrc}
+                                      alt={exercise.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-accent-50 to-orange-50">
+                                      <span className="text-lg font-display font-bold text-accent-600">
+                                        {idx + 1}
+                                      </span>
+                                      <Dumbbell className="mt-1 h-4 w-4 text-accent-400" />
                                     </div>
                                   )}
-                                  <h6 className="font-bold text-dark-900 mb-2">
+                                  <span className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-accent-500 text-xs font-bold text-white shadow-medium">
+                                    {idx + 1}
+                                  </span>
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <h6 className="font-display text-base font-bold leading-snug text-dark-900">
                                     {exercise.name}
                                   </h6>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                    <div>
-                                      <span className="text-dark-500">{t('personal.workouts.setsLabel')}</span>
-                                      <span className="ml-2 font-semibold text-dark-900">{exercise.sets}</span>
+
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    <div className="min-w-[3.5rem] rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">
+                                        {t('personal.workouts.setsLabel')}
+                                      </p>
+                                      <p className="text-sm font-bold text-dark-900">{exercise.sets}</p>
                                     </div>
-                                    <div>
-                                      <span className="text-dark-500">{t('personal.workouts.repsLabel')}</span>
-                                      <span className="ml-2 font-semibold text-dark-900">{exercise.reps}</span>
+                                    <div className="min-w-[3.5rem] rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">
+                                        {t('personal.workouts.repsLabel')}
+                                      </p>
+                                      <p className="text-sm font-bold text-dark-900">{exercise.reps}</p>
                                     </div>
                                     {exercise.rest && (
-                                      <div>
-                                        <span className="text-dark-500">{t('personal.workouts.restLabel')}</span>
-                                        <span className="ml-2 font-semibold text-dark-900">{exercise.rest}</span>
+                                      <div className="min-w-[3.5rem] rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">
+                                          {t('personal.workouts.restLabel')}
+                                        </p>
+                                        <p className="text-sm font-bold text-dark-900">{exercise.rest}</p>
                                       </div>
                                     )}
                                     {exercise.weight && (
-                                      <div>
-                                        <span className="text-dark-500">{t('personal.workouts.weightLabel')}</span>
-                                        <span className="ml-2 font-semibold text-dark-900">{exercise.weight}</span>
+                                      <div className="min-w-[3.5rem] rounded-xl border border-dark-100 bg-dark-50 px-2.5 py-1.5 text-center">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-dark-400">
+                                          {t('personal.workouts.weightLabel')}
+                                        </p>
+                                        <p className="text-sm font-bold text-dark-900">{exercise.weight}</p>
                                       </div>
                                     )}
                                   </div>
+
                                   {exercise.notes && (
-                                    <p className="text-sm text-dark-600 mt-2 italic">
+                                    <p className="mt-2 line-clamp-2 text-xs italic text-dark-500">
                                       💡 {exercise.notes}
                                     </p>
                                   )}
-                                  {exercise.videoUrl && (
-                                    <>
-                                      {getYoutubeVideoId(exercise.videoUrl) ? (
-                                        <div className="mt-3 rounded-xl overflow-hidden border border-dark-200 bg-white">
-                                          <div className="aspect-video">
-                                            <iframe
-                                              src={`https://www.youtube.com/embed/${getYoutubeVideoId(exercise.videoUrl)}`}
-                                              title={t('personal.suggestions.demoTitle', { name: exercise.name })}
-                                              className="w-full h-full"
-                                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                              referrerPolicy="strict-origin-when-cross-origin"
-                                              allowFullScreen
-                                            />
-                                          </div>
-                                          <a
-                                            href={exercise.videoUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:text-accent-700 font-semibold"
-                                          >
-                                            {t('personal.suggestions.viewOnYoutube')}
-                                          </a>
-                                        </div>
-                                      ) : (
-                                        <a
-                                          href={exercise.videoUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-2 mt-3 text-sm text-accent-600 hover:text-accent-700 font-semibold"
-                                        >
-                                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                          </svg>
-                                          {t('personal.suggestions.viewVideoOnYoutube')}
-                                        </a>
-                                      )}
-                                    </>
-                                  )}
                                 </div>
                               </div>
+
+                              {exercise.videoUrl && (
+                                <div className="mt-3 border-t border-dark-100 pt-3">
+                                  {getYoutubeVideoId(exercise.videoUrl) ? (
+                                    <div className="overflow-hidden rounded-xl border border-dark-200 bg-white">
+                                      <div className="aspect-video">
+                                        <iframe
+                                          src={`https://www.youtube.com/embed/${getYoutubeVideoId(exercise.videoUrl)}`}
+                                          title={t('personal.suggestions.demoTitle', { name: exercise.name })}
+                                          className="h-full w-full"
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                          referrerPolicy="strict-origin-when-cross-origin"
+                                          allowFullScreen
+                                        />
+                                      </div>
+                                      <a
+                                        href={exercise.videoUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-accent-600 hover:text-accent-700"
+                                      >
+                                        {t('personal.suggestions.viewOnYoutube')}
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <a
+                                      href={exercise.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 rounded-xl bg-dark-50 px-3 py-2 text-sm font-semibold text-accent-600 hover:bg-dark-100"
+                                    >
+                                      {t('personal.suggestions.viewVideoOnYoutube')}
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 bg-dark-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Dumbbell className="w-10 h-10 text-dark-400" />
                     </div>
-                    <h4 className="text-xl font-bold text-dark-900 mb-2">
+                  ) : null
+                ) : (
+                  <div className="px-4 py-8 md:px-6 md:py-10 text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-dark-50">
+                      <Dumbbell className="h-8 w-8 text-dark-400" />
+                    </div>
+                    <h4 className="text-lg font-display font-bold text-dark-900 mb-2">
                       {t('personal.workouts.noWorkoutForDayTitle')}
                     </h4>
-                    <p className="text-dark-500 mb-6">
-                      {t('personal.workouts.noWorkoutForDayDesc', { day: dayData.label })}
-                    </p>
                     <button
+                      type="button"
                       onClick={() => {
                         setAddModalPreselectedDay(dayData.value);
                         setShowAddModal(true);
                       }}
-                      className="btn-primary inline-flex items-center gap-2"
+                      className="btn-primary mt-4 inline-flex items-center gap-2"
                     >
-                      <Plus className="w-5 h-5" />
+                      <Plus className="h-5 w-5" />
                       {t('personal.workouts.createWorkoutForDay', { day: dayData.label })}
                     </button>
                   </div>

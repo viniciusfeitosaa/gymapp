@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X } from 'lucide-react';
+import { LogOut, Dumbbell, Calendar, Activity, Clock, Home, User, ChevronRight, Play, CheckCircle, X, Timer } from 'lucide-react';
 import { StudentBrandMark } from '../components/StudentBrandMark';
 import { useStudentBrand } from '../hooks/useStudentBrand';
 import { AccountDeletionSection } from '../components/AccountDeletionSection';
@@ -36,6 +36,116 @@ interface Workout {
   exercises: Exercise[];
 }
 
+function parseRestToSeconds(rest: string): number | null {
+  const trimmed = rest.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  const colonMatch = trimmed.match(/^(\d+)\s*:\s*(\d+)$/);
+  if (colonMatch) {
+    return parseInt(colonMatch[1], 10) * 60 + parseInt(colonMatch[2], 10);
+  }
+
+  const minMatch = trimmed.match(/^(\d+(?:[.,]\d+)?)\s*(?:min|minutos?|m)$/);
+  if (minMatch) {
+    return Math.round(parseFloat(minMatch[1].replace(',', '.')) * 60);
+  }
+
+  const secMatch = trimmed.match(/^(\d+(?:[.,]\d+)?)\s*(?:s|seg|segs|segundos?)?$/);
+  if (secMatch) {
+    return Math.round(parseFloat(secMatch[1].replace(',', '.')));
+  }
+
+  return null;
+}
+
+function formatRestCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (minutes > 0) return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return `${secs}s`;
+}
+
+function FocusModeRestTimer({
+  rest,
+  timerId,
+  activeTimer,
+  doneFlashId,
+  onStart,
+  onStop,
+  fullWidth = false,
+}: {
+  rest: string;
+  timerId: string;
+  activeTimer: { id: string; remaining: number; total: number } | null;
+  doneFlashId: string | null;
+  onStart: (id: string, seconds: number) => void;
+  onStop: () => void;
+  fullWidth?: boolean;
+}) {
+  const { t } = useTranslation();
+  const totalSeconds = parseRestToSeconds(rest);
+  const isActive = activeTimer?.id === timerId;
+  const isRunning = isActive && activeTimer.remaining > 0;
+  const isDone = doneFlashId === timerId;
+
+  if (totalSeconds === null) {
+    return (
+      <div
+        className={`rounded-xl bg-white/10 border border-white/15 px-3 py-2 ${fullWidth ? 'w-full py-3' : ''}`}
+      >
+        <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.rest')}</p>
+        <p className="text-sm font-bold text-white">{rest}</p>
+      </div>
+    );
+  }
+
+  const progress =
+    isRunning && activeTimer.total > 0
+      ? ((activeTimer.total - activeTimer.remaining) / activeTimer.total) * 100
+      : isDone
+        ? 100
+        : 0;
+
+  return (
+    <button
+      type="button"
+      onClick={() => (isRunning ? onStop() : onStart(timerId, totalSeconds))}
+      className={`relative overflow-hidden rounded-xl border text-left transition-all active:scale-[0.98] ${
+        fullWidth ? 'w-full px-4 py-3' : 'px-3 py-2'
+      } ${
+        isDone
+          ? 'border-emerald-400/60 bg-emerald-500/25'
+          : isRunning
+            ? 'border-emerald-400/50 bg-emerald-500/20 ring-2 ring-emerald-400/30'
+            : 'border-white/15 bg-white/10 hover:bg-white/20'
+      }`}
+      aria-label={isRunning ? t('student.stopRestTimer') : t('student.startRestTimer')}
+    >
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 bg-emerald-400/15 transition-[width] duration-1000 ease-linear"
+        style={{ width: `${progress}%` }}
+        aria-hidden
+      />
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.rest')}</p>
+          <p className={`text-sm font-bold ${isDone ? 'text-emerald-100' : 'text-white'}`}>
+            {isDone
+              ? t('student.restTimerDone')
+              : isRunning
+                ? formatRestCountdown(activeTimer.remaining)
+                : rest}
+          </p>
+          {!isRunning && !isDone && (
+            <p className="mt-0.5 text-[10px] font-medium text-white/45">{t('student.startRestTimer')}</p>
+          )}
+        </div>
+        <Timer className={`h-4 w-4 shrink-0 ${isRunning || isDone ? 'text-emerald-300' : 'text-white/40'}`} />
+      </div>
+    </button>
+  );
+}
+
 function FocusModeWorkout({
   workout,
   onClose,
@@ -50,6 +160,15 @@ function FocusModeWorkout({
   const [count, setCount] = useState(3);
   const [finishing, setFinishing] = useState(false);
   const [videoPlayer, setVideoPlayer] = useState<{ embedUrl: string; originalUrl: string } | null>(null);
+  const [restTimer, setRestTimer] = useState<{ id: string; remaining: number; total: number } | null>(null);
+  const [restDoneFlash, setRestDoneFlash] = useState<string | null>(null);
+  const restDoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (restDoneTimeoutRef.current) clearTimeout(restDoneTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -60,6 +179,31 @@ function FocusModeWorkout({
     const timer = setTimeout(() => setCount((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [phase, count]);
+
+  useEffect(() => {
+    if (!restTimer || restTimer.remaining <= 0) return;
+    const tick = setTimeout(() => {
+      setRestTimer((prev) => {
+        if (!prev) return null;
+        if (prev.remaining <= 1) {
+          setRestDoneFlash(prev.id);
+          if (restDoneTimeoutRef.current) clearTimeout(restDoneTimeoutRef.current);
+          restDoneTimeoutRef.current = setTimeout(() => setRestDoneFlash(null), 2500);
+          return null;
+        }
+        return { ...prev, remaining: prev.remaining - 1 };
+      });
+    }, 1000);
+    return () => clearTimeout(tick);
+  }, [restTimer]);
+
+  const startRestTimer = (id: string, seconds: number) => {
+    if (restDoneTimeoutRef.current) clearTimeout(restDoneTimeoutRef.current);
+    setRestDoneFlash(null);
+    setRestTimer({ id, remaining: seconds, total: seconds });
+  };
+
+  const stopRestTimer = () => setRestTimer(null);
 
   const handleFinish = async () => {
     try {
@@ -119,9 +263,12 @@ function FocusModeWorkout({
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-5 pr-1">
-            {(workout.exercises || []).map((ex, idx) => (
+            {(workout.exercises || []).map((ex, idx) => {
+              const timerId = `${idx}-${ex.id ?? ex.name}`;
+
+              return (
+              <div key={ex.id ?? idx} className="space-y-3">
               <div
-                key={ex.id ?? idx}
                 className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900/55 via-slate-900/45 to-indigo-900/35 p-5 md:p-6 shadow-2xl shadow-black/25 backdrop-blur-xl"
               >
                 <div className="pointer-events-none absolute inset-0 opacity-80">
@@ -151,12 +298,6 @@ function FocusModeWorkout({
                       <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.reps')}</p>
                       <p className="text-sm font-bold text-white">{ex.reps}</p>
                     </div>
-                    {ex.rest && (
-                      <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.rest')}</p>
-                        <p className="text-sm font-bold text-white">{ex.rest}</p>
-                      </div>
-                    )}
                     {ex.weight && (
                       <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2">
                         <p className="text-[10px] uppercase tracking-wide text-white/60">{t('student.weight')}</p>
@@ -198,7 +339,21 @@ function FocusModeWorkout({
                   </button>
                 )}
               </div>
-            ))}
+
+              {ex.rest && (
+                <FocusModeRestTimer
+                  rest={ex.rest}
+                  timerId={timerId}
+                  activeTimer={restTimer}
+                  doneFlashId={restDoneFlash}
+                  onStart={startRestTimer}
+                  onStop={stopRestTimer}
+                  fullWidth
+                />
+              )}
+              </div>
+              );
+            })}
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 to-transparent pt-8">
@@ -324,7 +479,7 @@ export default function StudentDashboard() {
       style={themeStyle}
     >
       {/* Header — só marca do personal (white-label) */}
-      <header className="native-app-header student-brand-header backdrop-blur-xl shadow-soft border-b z-50">
+      <header className="native-app-header student-brand-header backdrop-blur-xl border-b z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-3">
           <div className="flex items-center justify-center min-h-[5.25rem] sm:min-h-[5.75rem] md:min-h-[6.25rem]">
             <StudentBrandMark
@@ -367,8 +522,8 @@ export default function StudentDashboard() {
       )}
 
       {/* Navegação inferior (mobile e desktop) */}
-      <nav className="native-bottom-nav student-bottom-nav bg-white border-t border-dark-200 shadow-strong z-50 box-border">
-        <div className="student-bottom-nav-inner min-h-[3.5rem]">
+      <nav className="native-bottom-nav student-bottom-nav z-50 box-border">
+        <div className="student-bottom-nav-inner">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPath === item.id;
@@ -380,9 +535,12 @@ export default function StudentDashboard() {
                 className={`student-bottom-nav-btn ${
                   isActive ? 'student-bottom-nav-btn--active' : ''
                 }`}
+                aria-current={isActive ? 'page' : undefined}
               >
-                <Icon className="w-5 h-5 shrink-0" />
-                <span>{item.label}</span>
+                <span className="student-bottom-nav-btn__icon-wrap">
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                </span>
+                <span className="student-bottom-nav-btn__label">{item.label}</span>
               </button>
             );
           })}
@@ -536,12 +694,17 @@ function StudentDashboardHome({
 
       {/* Today's Info */}
       <div
-        className={`card-modern p-5 mb-6 border-2 transition-all duration-300 ${
+        className={`student-today-animated card-modern relative overflow-hidden p-5 mb-6 border-2 transition-all duration-300 ${
           todayCompleted
-            ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 shadow-medium'
-            : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-100'
+            ? 'student-today-animated--done border-emerald-200 shadow-medium'
+            : 'border-blue-100'
         }`}
       >
+        <div className="student-today-animated__bg" aria-hidden />
+        <div className="student-today-animated__blob student-today-animated__blob--a" aria-hidden />
+        <div className="student-today-animated__blob student-today-animated__blob--b" aria-hidden />
+
+        <div className="student-today-animated__content">
         <div className="flex items-center gap-2.5 mb-3">
           {todayCompleted ? (
             <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center">
@@ -580,6 +743,7 @@ function StudentDashboardHome({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {loading ? (
@@ -964,7 +1128,7 @@ function WorkoutDetailCard({
 
   return (
     <div className="card-modern overflow-hidden p-0 shadow-medium">
-      <div className="relative overflow-hidden bg-gradient-to-br from-accent-600 via-accent-500 to-orange-400 px-5 pt-5 pb-6 text-white">
+      <div className="relative overflow-hidden student-workout-card-hero px-5 pt-5 pb-6 text-white">
         <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
 
@@ -1040,7 +1204,7 @@ function WorkoutDetailCard({
                     {imageSrc ? (
                       <img src={imageSrc} alt={exercise.name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-accent-50 to-orange-50">
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-accent-50">
                         <span className="text-lg font-display font-bold text-accent-600">{idx + 1}</span>
                         <Dumbbell className="mt-1 h-4 w-4 text-accent-400" />
                       </div>

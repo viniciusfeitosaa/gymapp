@@ -7,11 +7,13 @@
 }
 
 .student-app-layout .bg-gradient-accent,
-.student-app-layout .student-brand-gradient {
+.student-app-layout .student-brand-gradient,
+.student-app-layout .student-workout-card-hero {
   background-image: linear-gradient(
     135deg,
-    var(--student-brand-primary) 0%,
-    var(--student-brand-secondary) 100%
+    color-mix(in srgb, var(--student-brand-secondary) 92%, black) 0%,
+    var(--student-brand-primary) 48%,
+    color-mix(in srgb, var(--student-brand-primary) 72%, white) 100%
   ) !important;
 }
 
@@ -23,20 +25,43 @@
     color-mix(in srgb, var(--student-brand-primary) 10%, white)
   ) !important;
   border-bottom-color: color-mix(in srgb, var(--student-brand-primary) 18%, white) !important;
+  border-bottom-left-radius: 1.75rem;
+  border-bottom-right-radius: 1.75rem;
+  overflow: hidden;
+  box-shadow:
+    0 4px 6px -2px rgba(15, 23, 42, 0.06),
+    0 12px 28px -4px rgba(15, 23, 42, 0.12),
+    0 20px 40px -8px rgba(15, 23, 42, 0.08);
+}
+
+@media (min-width: 768px) {
+  .student-app-layout .student-brand-header {
+    border-bottom-left-radius: 2.5rem;
+    border-bottom-right-radius: 2.5rem;
+  }
 }
 
 .student-app-layout .student-bottom-nav-btn--active,
 .student-app-layout .student-brand-nav-active {
-  background: linear-gradient(
-    135deg,
-    var(--student-brand-primary) 0%,
-    var(--student-brand-secondary) 100%
-  ) !important;
-  color: #fff !important;
+  background: transparent !important;
+  color: var(--student-brand-primary) !important;
+}
+
+.student-app-layout .student-bottom-nav-btn--active .student-bottom-nav-btn__icon-wrap {
+  background: transparent !important;
+  color: var(--student-brand-primary) !important;
+  box-shadow: none !important;
+}
+
+.student-app-layout .student-bottom-nav-btn--active .student-bottom-nav-btn__label {
+  color: var(--student-brand-primary) !important;
+  font-weight: 700;
 }
 
 .student-app-layout .text-accent-600,
-.student-app-layout .text-accent-700 {
+.student-app-layout .text-accent-700,
+.student-app-layout .text-accent-800,
+.student-app-layout .text-accent-900 {
   color: var(--student-brand-primary) !important;
 }
 
@@ -58,8 +83,8 @@
   background-color: color-mix(in srgb, var(--student-brand-primary) 12%, white) !important;
 }
 
-.student-app-layout .text-accent-700 {
-  color: color-mix(in srgb, var(--student-brand-primary) 85%, black) !important;
+.student-app-layout .text-accent-400 {
+  color: color-mix(in srgb, var(--student-brand-primary) 55%, white) !important;
 }
 
 .student-app-layout .border-accent-500.border-t-transparent {
