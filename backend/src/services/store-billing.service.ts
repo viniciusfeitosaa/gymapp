@@ -175,6 +175,51 @@ function looksLikeBase64Receipt(value: string): boolean {
   return value.length > 80 && /^[A-Za-z0-9+/=]+$/.test(value);
 }
 
+function isAppleJws(value: string): boolean {
+  const parts = value.split('.');
+  return parts.length >= 2 && parts[1].length > 10;
+}
+
+function decodeAppleJwsPayload(jws: string): Record<string, unknown> | null {
+  const parts = jws.split('.');
+  if (parts.length < 2) return null;
+  try {
+    return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function verifyAppleJws(jws: string, expectedProductId: string): VerifyPurchaseResult {
+  const payload = decodeAppleJwsPayload(jws);
+  if (!payload) {
+    return { valid: false, error: 'Recibo Apple (JWS) inválido.' };
+  }
+
+  const bundleId = process.env.APPLE_BUNDLE_ID?.trim() || 'com.mygymcode.app';
+  const productId = typeof payload.productId === 'string' ? payload.productId : '';
+  const payloadBundle =
+    typeof payload.bundleId === 'string'
+      ? payload.bundleId
+      : typeof payload.appBundleId === 'string'
+        ? payload.appBundleId
+        : '';
+
+  if (productId && productId !== expectedProductId) {
+    return { valid: false, error: 'Produto de assinatura não reconhecido.' };
+  }
+
+  if (payloadBundle && payloadBundle !== bundleId) {
+    return { valid: false, error: 'Bundle ID do recibo Apple não confere.' };
+  }
+
+  const subscriptionId = String(
+    payload.originalTransactionId ?? payload.transactionId ?? 'apple-jws-subscription'
+  );
+
+  return { valid: true, subscriptionId };
+}
+
 function sandboxTrustEnabled(): boolean {
   return (
     process.env.APPLE_SANDBOX === '1' || process.env.STORE_BILLING_SANDBOX_TRUST === '1'
@@ -193,7 +238,11 @@ export async function verifyStorePurchase(input: VerifyPurchaseInput): Promise<V
       return { valid: false, error: 'Recibo Apple (receipt) obrigatório.' };
     }
 
-    // StoreKit 2 (@capgo/native-purchases) envia transaction.id numérico, não recibo base64.
+    if (isAppleJws(token)) {
+      return verifyAppleJws(token, input.productId);
+    }
+
+    // StoreKit 2 (@capgo/native-purchases) pode enviar transaction.id numérico.
     if (isStoreKit2TransactionId(token)) {
       if (sandboxTrustEnabled()) {
         console.warn(

@@ -8,6 +8,37 @@ import { isNativeApp, nativePlatform } from './nativeStoreBilling';
 const PRODUCT_ID = import.meta.env.VITE_SUBSCRIPTION_PRODUCT_ID || 'gymcode_pro_monthly';
 const PLAN_ID = import.meta.env.VITE_SUBSCRIPTION_PLAN_ID || 'monthly';
 
+type PurchasePluginResult = {
+  transactionId?: string | number;
+  originalTransactionId?: string | number;
+  receipt?: string;
+};
+
+function normalizeTransactionId(raw: unknown): string {
+  if (typeof raw === 'string') return raw.trim();
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    if (Number.isSafeInteger(raw)) return String(raw);
+    return raw.toFixed(0);
+  }
+  return '';
+}
+
+async function verifyPurchaseWithRetry(payload: NativePurchaseResult, attempts = 3): Promise<void> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await verifyPurchase(payload);
+      return;
+    } catch (err) {
+      lastError = err;
+      if (i < attempts - 1) {
+        await new Promise((r) => window.setTimeout(r, 800 * (i + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function assertBillingSupported(): Promise<void> {
   const platform = nativePlatform();
   try {
@@ -21,7 +52,6 @@ async function assertBillingSupported(): Promise<void> {
     }
   } catch (err) {
     const msg = getPurchaseErrorMessage(err);
-    // Fallback: versões antigas do plugin Android não expunham isBillingSupported
     if (platform === 'android' && /not implemented/i.test(msg)) {
       return;
     }
@@ -51,15 +81,19 @@ export async function purchaseProSubscription(): Promise<void> {
       }
     }
 
-    const tx = await NativePurchases.purchaseProduct({
+    const tx = (await NativePurchases.purchaseProduct({
       productIdentifier: PRODUCT_ID,
       productType: PURCHASE_TYPE.SUBS,
       ...(platform === 'android' ? { planIdentifier: PLAN_ID } : {}),
-    });
+    })) as PurchasePluginResult;
 
-    const transactionId = String(tx?.transactionId ?? '').trim();
-    if (!transactionId) {
-      throw new Error('Compra concluída, mas a loja não retornou o ID da transação.');
+    const transactionId =
+      normalizeTransactionId(tx?.transactionId) ||
+      normalizeTransactionId(tx?.originalTransactionId);
+    const jwsReceipt = typeof tx?.receipt === 'string' ? tx.receipt.trim() : '';
+
+    if (!transactionId && !jwsReceipt) {
+      throw new Error('Compra concluída, mas a loja não retornou os dados da transação.');
     }
 
     const payload: NativePurchaseResult = {
@@ -67,10 +101,10 @@ export async function purchaseProSubscription(): Promise<void> {
       productId: PRODUCT_ID,
       ...(platform === 'android'
         ? { purchaseToken: transactionId }
-        : { receipt: transactionId }),
+        : { receipt: jwsReceipt || transactionId }),
     };
 
-    await verifyPurchase(payload);
+    await verifyPurchaseWithRetry(payload);
   } catch (err) {
     const msg = getPurchaseErrorMessage(err);
     if (/cancel/i.test(msg)) {
@@ -86,6 +120,11 @@ export async function purchaseProSubscription(): Promise<void> {
         `Assinatura "${PRODUCT_ID}" não encontrada na Google Play. Confira o Play Console.`
       );
     }
+    if (/token|401|403|network|conectar|internet/i.test(msg)) {
+      throw new Error(
+        'Não foi possível confirmar a assinatura com o servidor. Verifique sua conexão e tente novamente.'
+      );
+    }
     throw new Error(msg);
   }
 }
@@ -93,7 +132,6 @@ export async function purchaseProSubscription(): Promise<void> {
 /** URL padrão da App Store / Play para gerenciar assinaturas (não bloqueia como restorePurchases). */
 export async function openNativeSubscriptionManagement(): Promise<boolean> {
   if (!isNativeApp()) return false;
-  // Sempre delegar à URL da loja via SubscriptionPanel + openExternalUrl (evita hang no restorePurchases).
   return false;
 }
 
@@ -107,7 +145,7 @@ export async function restoreProSubscription(): Promise<void> {
   }
 
   const platform = Capacitor.getPlatform();
-  await verifyPurchase({
+  await verifyPurchaseWithRetry({
     platform: platform === 'ios' ? 'ios' : 'android',
     productId: active,
     ...(platform === 'android'

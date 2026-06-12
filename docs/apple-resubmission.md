@@ -1,5 +1,35 @@
 # Reenvio Apple — correções da rejeição (jun/2026)
 
+## Rejeição build 12 (11/06/2026) — só 2.1(b) IAP
+
+| Problema | Correção no código |
+|----------|-------------------|
+| Erro ao comprar assinatura no sandbox (iPad) | Plugin iOS envia JWS StoreKit 2 + IDs como string; backend valida JWS; retry na confirmação com servidor |
+
+**Build corrigida:** **1.0.6 (14)**
+
+**Confirme no App Store Connect:**
+- **Acordos → Contrato de Apps Pagos** aceito
+- Assinatura `gymcode_pro_monthly` ativa com localização
+- Conta demo personal com assinatura expirada
+
+**Resposta ao App Review (inglês):**
+
+```
+We fixed the in-app purchase error (Guideline 2.1b):
+
+- iOS StoreKit 2 now sends the signed transaction (JWS) to our server after purchase
+- Server validates the subscription product and activates Pro
+- Purchase confirmation retries if the network is slow
+
+Please test build 14 (1.0.6) with the demo personal account in App Review Information.
+Paid Apps Agreement is accepted. Product ID: gymcode_pro_monthly.
+
+Steps: Log in as personal → Perfil → Plano Pro → Assinar Pro agora.
+```
+
+---
+
 ## Rejeição mais recente (09/06/2026 — versão 1.0 build 9)
 
 | Guideline | Problema | Correção |
